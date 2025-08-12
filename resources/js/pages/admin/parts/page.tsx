@@ -129,7 +129,7 @@ export default function PartsListPage() {
         </div>
 
         {/* Filters */}
-        <Card>
+        {/* <Card>
           <CardHeader><CardTitle>Filters</CardTitle></CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
@@ -178,7 +178,7 @@ export default function PartsListPage() {
               <Button variant="ghost" onClick={() => { setFilters({ category_id: "", manufacturer_id: "", is_active: "", sku: "", reference_code: "" }); }}>Reset</Button>
             </div>
           </CardContent>
-        </Card>
+        </Card> */}
 
         {/* Bulk actions */}
         <div className="flex items-center gap-2">
