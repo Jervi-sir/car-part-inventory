@@ -1,0 +1,375 @@
+m in laravel inertia react, its about car parts i have this schema 
+        Schema::create('users', function (Blueprint $table) {
+            $table->id();
+            $table->string('name');
+            $table->string('full_name', 120)->nullable();
+            $table->string('email')->unique();
+            $table->date('birthdate')->nullable();
+            $table->timestamp('email_verified_at')->nullable();
+            $table->string('password');
+            $table->string('password_plaintext')->nullable();
+            $table->rememberToken();
+            $table->timestamps();
+        });
+        Schema::create('categories', function (Blueprint $table) {
+            $table->id();
+            $table->string('name', 80)->unique();
+            $table->timestamps();
+        });
+
+        Schema::create('manufacturers', function (Blueprint $table) {
+            $table->id();
+            $table->string('name', 120)->unique();
+            $table->timestamps();
+        });
+
+        Schema::create('delivery_methods', function (Blueprint $table) {
+            $table->smallIncrements('id');
+            $table->string('code', 24)->unique();   // PICKUP|COURIER|POST
+            $table->string('label', 64);
+        });
+
+        Schema::create('vehicle_brands', function (Blueprint $table) {
+            $table->id();
+            $table->string('name', 120)->unique();
+            $table->timestamps();
+        });
+
+        Schema::create('vehicle_models', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('vehicle_brand_id')->constrained('vehicle_brands')->restrictOnDelete();
+            $table->string('name', 120);
+            $table->smallInteger('year_from')->nullable();
+            $table->smallInteger('year_to')->nullable();
+            $table->timestamps();
+
+            $table->unique(['vehicle_brand_id', 'name', 'year_from', 'year_to']);
+        });
+        Schema::create('parts', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('category_id')->constrained('categories')->restrictOnDelete();
+            $table->foreignId('manufacturer_id')->nullable()->constrained('manufacturers')->nullOnDelete();
+            $table->string('sku', 80)->nullable();            // internal ref (optional)
+            $table->string('name');                           // Désignation
+            $table->text('description')->nullable();
+            $table->integer('package_qty')->default(1);
+            $table->integer('min_order_qty')->default(1);
+            $table->char('currency', 3)->default('DZD');
+            $table->decimal('base_price', 12, 2)->nullable(); // optional baseline
+            $table->boolean('is_active')->default(true);
+            $table->timestamps();
+
+            $table->index(['category_id', 'manufacturer_id']);
+            $table->unique(['sku']); // allow null; unique per non-null
+        });
+
+
+        Schema::create('part_reference_types', function (Blueprint $table) {
+            $table->smallIncrements('id');
+            $table->string('code', 24)->unique(); // OEM, AFTERMARKET, SUPPLIER, EAN_UPC, OTHER
+            $table->string('label', 64);
+        });
+
+        Schema::create('part_references', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('part_id')->constrained('parts')->cascadeOnDelete();
+            $table->foreignId('part_reference_type_id')->constrained('part_reference_types')->cascadeOnDelete();
+            $table->unsignedSmallInteger('ref_type_id');
+            $table->string('reference_code', 120);
+            $table->string('source_brand', 120)->nullable();
+            $table->timestamps();
+
+            $table->unique(['part_id', 'part_reference_type_id', 'reference_code']);
+            $table->index('reference_code');
+        });
+
+        Schema::create('part_fitments', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('part_id')->constrained('parts')->cascadeOnDelete();
+            $table->foreignId('vehicle_model_id')->constrained('vehicle_models')->restrictOnDelete();
+            $table->string('engine_code', 64)->nullable();
+            $table->string('notes', 255)->nullable();
+            $table->timestamps();
+
+            $table->unique(['part_id', 'vehicle_model_id', 'engine_code']);
+        });
+
+        Schema::create('part_images', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('part_id')->constrained('parts')->cascadeOnDelete();
+            $table->text('url');
+            $table->smallInteger('sort_order')->default(0);
+            $table->timestamps();
+        });
+
+        Schema::create('price_tiers', function (Blueprint $table) {
+            $table->smallIncrements('id');
+            $table->string('code', 24)->unique();  // RETAIL, DEMI_GROS, GROS, APPLIQUE
+            $table->string('label', 64);
+        });
+
+        Schema::create('part_prices', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('part_id')->constrained('parts')->cascadeOnDelete();
+            $table->foreignId('price_tier_id')->constrained('price_tiers')->cascadeOnDelete();
+            $table->unsignedSmallInteger('tier_id');
+            $table->integer('min_qty')->default(1);
+            $table->decimal('price', 12, 2);
+            $table->char('currency', 3)->default('DZD');
+            $table->timestamps();
+
+            $table->foreign('tier_id')->references('id')->on('price_tiers')->restrictOnDelete();
+            $table->unique(['part_id', 'tier_id', 'min_qty']);
+        });
+
+        
+
+        Schema::create('warehouses', function (Blueprint $table) {
+            $table->id();
+            $table->string('name', 120);
+            $table->string('site_code', 32)->nullable();
+            $table->string('location_text', 255)->nullable();
+            $table->timestamps();
+        });
+
+        Schema::create('part_stock', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('part_id')->constrained('parts')->cascadeOnDelete();
+            $table->foreignId('warehouse_id')->constrained('warehouses')->restrictOnDelete();
+            $table->integer('qty_on_hand')->default(0);
+            $table->integer('qty_reserved')->default(0);
+            $table->timestamps();
+
+            $table->unique(['part_id', 'warehouse_id']);
+        });
+
+        Schema::create('stock_movements', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('part_id')->constrained('parts')->cascadeOnDelete();
+            $table->foreignId('warehouse_id')->constrained('warehouses')->restrictOnDelete();
+            $table->string('movement_type', 20); // PURCHASE|SALE|RESERVATION|UNRESERVATION|ADJUSTMENT|TRANSFER
+            $table->integer('qty_delta');
+            $table->decimal('unit_cost', 12, 2)->nullable();
+            $table->string('notes', 255)->nullable();
+            $table->timestamps();
+
+            $table->index(['part_id', 'created_at']);
+        });
+        Schema::create('order_statuses', function (Blueprint $table) {
+            $table->smallIncrements('id');
+            $table->string('code', 24)->unique();   // DRAFT|PLACED|CONFIRMED|PICKING|SHIPPED|CANCELLED
+            $table->string('label', 64);
+        });
+        Schema::create('orders', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('user_id')->constrained('users')->restrictOnDelete();
+            $table->unsignedSmallInteger('status_id');
+            $table->unsignedSmallInteger('delivery_method_id')->nullable();
+            $table->foreignId('warehouse_id')->nullable()->constrained('warehouses')->nullOnDelete();
+            $table->string('ship_to_name', 120)->nullable();
+            $table->string('ship_to_phone', 40)->nullable();
+            $table->string('ship_to_address', 255)->nullable();
+            $table->char('currency', 3)->default('DZD');
+            $table->decimal('subtotal', 12, 2)->default(0);
+            $table->decimal('discount_total', 12, 2)->default(0);
+            $table->decimal('shipping_total', 12, 2)->default(0);
+            $table->decimal('tax_total', 12, 2)->default(0);
+            $table->decimal('grand_total', 12, 2)->default(0);
+            $table->timestamps();
+
+            $table->foreign('status_id')->references('id')->on('order_statuses')->restrictOnDelete();
+            $table->foreign('delivery_method_id')->references('id')->on('delivery_methods')->restrictOnDelete();
+        });
+
+        Schema::create('order_items', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('order_id')->constrained('orders')->cascadeOnDelete();
+            $table->foreignId('part_id')->constrained('parts')->restrictOnDelete();
+            $table->integer('qty');
+            $table->decimal('unit_price', 12, 2);
+            $table->char('currency', 3)->default('DZD');
+            $table->decimal('line_total', 12, 2);
+            $table->string('notes', 255)->nullable();
+            $table->timestamps();
+
+            $table->unique(['order_id', 'part_id']);
+            $table->index('part_id');
+        });
+        Schema::create('import_sources', function (Blueprint $table) {
+            $table->id();
+            $table->string('filename', 255);
+            $table->string('source_type', 16); // PDF|XLSX|CSV
+            $table->foreignId('imported_by')->nullable()->constrained('users')->nullOnDelete();
+            $table->timestamp('imported_at')->useCurrent();
+            $table->string('notes', 255)->nullable();
+        });
+
+        Schema::create('import_rows', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('import_source_id')->constrained('import_sources')->cascadeOnDelete();
+            $table->json('raw_json');
+            $table->foreignId('matched_part_id')->nullable()->constrained('parts')->nullOnDelete();
+            $table->timestamp('processed_at')->nullable();
+        });
+
+
+
+        overall i have done 
+- categories CRUD
+- manufacturers CRUD
+- Fitment Matrix 
+- vehicle-brands CRUD
+- vehicle-models CRUD
+
+here is a sample of categeries CRUD u might follow from now on 
+```admin/categories/page.tsx
+// file: app/admin/categories/page.tsx
+"use client";
+import * as React from "react";
+import { useEffect, useMemo, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { ChevronLeft, ChevronRight, Pencil, Trash, Plus } from "lucide-react";
+import { AdminLayout } from "../layout/admin-layout";
+
+type Id = number | string;
+interface Category { id: Id; name: string; created_at?: string; updated_at?: string }
+interface Page<T> { data: T[]; total: number; page: number; per_page: number }
+
+const endpoint = "/api/categories"; // Laravel: index, store, update, destroy
+
+export default function CategoriesPage() {
+  const [pageData, setPageData] = useState<Page<Category>>({ data: [], total: 0, page: 1, per_page: 10 });
+  const [search, setSearch] = useState("");
+  const [open, setOpen] = useState(false);
+  const [initialName, setInitialName] = useState<string>("");
+  const [editingId, setEditingId] = useState<Id | null>(null);
+
+  const maxPage = useMemo(() => Math.max(1, Math.ceil(pageData.total / pageData.per_page)), [pageData]);
+
+  const fetchData = async (page = 1) => {
+    const params = new URLSearchParams({ page: String(page), per_page: String(pageData.per_page), search });
+    const res = await fetch(`${endpoint}?${params.toString()}`, { headers: { Accept: "application/json" } });
+    const json = await res.json();
+    // accept either paginated shape or raw array
+    const normalized: Page<Category> = Array.isArray(json)
+      ? { data: json, page, per_page: 10, total: json.length }
+      : json;
+    setPageData(normalized);
+  };
+
+  useEffect(() => { fetchData(1); }, [search]);
+
+  const openCreate = () => { setEditingId(null); setInitialName(""); setOpen(true); };
+  const openEdit = (row: Category) => { setEditingId(row.id); setInitialName(row.name); setOpen(true); };
+
+  const save = async (name: string) => {
+    const body = JSON.stringify({ name });
+    const headers = { "Content-Type": "application/json", Accept: "application/json" };
+    if (editingId == null) {
+      await fetch(endpoint, { method: "POST", headers, body });
+    } else {
+      await fetch(`${endpoint}/${editingId}`, { method: "PUT", headers, body });
+    }
+    setOpen(false);
+    await fetchData(pageData.page);
+  };
+
+  const remove = async (row: Category) => {
+    if (!confirm(`Delete \"${row.name}\"?`)) return;
+    await fetch(`${endpoint}/${row.id}`, { method: "DELETE", headers: { Accept: "application/json" } });
+    await fetchData(pageData.page);
+  };
+
+  return (
+    <AdminLayout>
+      <div className="p-6 space-y-4">
+        <div className="text-2xl font-semibold">Categories</div>
+        <div className="flex items-center gap-2">
+          <Input placeholder="Search..." value={search} onChange={(e) => setSearch(e.target.value)} className="w-64" />
+          <div className="flex-1" />
+          <Button size="sm" onClick={openCreate}><Plus className="h-4 w-4 mr-1"/>New Category</Button>
+        </div>
+
+        <div className="rounded-md border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-[90px]">ID</TableHead>
+                <TableHead>Name</TableHead>
+                <TableHead className="w-[120px]">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {pageData.data.length === 0 && (
+                <TableRow><TableCell colSpan={3} className="text-center text-muted-foreground">No data</TableCell></TableRow>
+              )}
+              {pageData.data.map((row) => (
+                <TableRow key={String(row.id)}>
+                  <TableCell>{row.id}</TableCell>
+                  <TableCell>{row.name}</TableCell>
+                  <TableCell className="flex gap-2">
+                    <Button variant="outline" size="icon" onClick={() => openEdit(row)}><Pencil className="h-4 w-4"/></Button>
+                    <Button variant="destructive" size="icon" onClick={() => remove(row)}><Trash className="h-4 w-4"/></Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+
+        <div className="flex items-center justify-between">
+          <div className="text-sm text-muted-foreground">
+            {pageData.total ? `${(pageData.page - 1) * pageData.per_page + 1}-${Math.min(pageData.total, pageData.page * pageData.per_page)} of ${pageData.total}` : "0"}
+          </div>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="icon" onClick={() => fetchData(Math.max(1, pageData.page - 1))} disabled={pageData.page <= 1}><ChevronLeft className="h-4 w-4"/></Button>
+            <div className="text-sm">Page {pageData.page} / {maxPage}</div>
+            <Button variant="outline" size="icon" onClick={() => fetchData(Math.min(maxPage, pageData.page + 1))} disabled={pageData.page >= maxPage}><ChevronRight className="h-4 w-4"/></Button>
+          </div>
+        </div>
+
+        {/* Inline dialog (no shared component) */}
+        <NameDialog open={open} onOpenChange={setOpen} title={editingId == null ? "New Category" : "Edit Category"} initialName={initialName} onSave={save} />
+      </div>
+    </AdminLayout>
+  );
+}
+
+function NameDialog({ open, onOpenChange, title, initialName, onSave }: { open: boolean; onOpenChange: (v: boolean) => void; title: string; initialName: string; onSave: (name: string) => void | Promise<void> }) {
+  const [name, setName] = useState(initialName);
+  useEffect(() => setName(initialName), [initialName]);
+  const [submitting, setSubmitting] = useState(false);
+  const submit = async () => { if (!name.trim()) return; setSubmitting(true); await onSave(name.trim()); setSubmitting(false); };
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader><DialogTitle>{title}</DialogTitle></DialogHeader>
+        <div className="space-y-2">
+          <label className="text-sm">Name</label>
+          <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Brakes" />
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+          <Button onClick={submit} disabled={submitting || !name.trim()}>Save</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+```
+
+anyways i want to handle 
+
+  - parts list
+    - filter: category, manufacture, active, sku, reference_code
+    - bulk activate / deactivate
+  - part create/edit
+    - fields (category, manufacturer, sku, name, desc, package_qty, min_order_qty, currency. base_price, is_active)
+    - images
+    - references
+    - grid for (type, reference_code, source_brand)
+  - Part Fitments
+    - add/remove vehicle model + engine_code + notes
