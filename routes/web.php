@@ -13,6 +13,7 @@ Route::prefix('admin')->group(function () {
     Route::get('manufacturers', fn()  => Inertia::render('admin/manufacturers/page'))->name('admin.manufacturers.page');
     Route::get('vehicle-brands', fn()  => Inertia::render('admin/vehicle-brands/page'))->name('admin.vehicle-brands.page');
     Route::get('vehicle-models', fn()  => Inertia::render('admin/vehicle-models/page'))->name('admin.vehicle-models.page');
+    Route::get('parts', fn()  => Inertia::render('admin/parts/page'))->name('admin.parts.page');
 });
 
 
