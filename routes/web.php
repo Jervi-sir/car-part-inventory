@@ -16,7 +16,9 @@ Route::prefix('admin')->group(function () {
     Route::get('parts', fn()  => Inertia::render('admin/parts/page'))->name('admin.parts.page');
 });
 
-
+Route::prefix('client')->group(function () {
+    Route::get('parts', [App\Http\Controllers\Api\Client\PartController::class, 'index'])->name('client.parts.page');
+});
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('dashboard', function () {

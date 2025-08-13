@@ -2,7 +2,7 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\Api\{CategoryController, LookupController, ManufacturerController, PartController, VehicleBrandController, VehicleModelController};
+use App\Http\Controllers\Api\Admin\{CategoryController, ManufacturerController, PartsController, PriceTierController, VehicleBrandController, VehicleModelController};
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -36,20 +36,20 @@ Route::prefix('vehicle-models')->group(function () {
     Route::delete('{vehicleModel}', [VehicleModelController::class, 'destroy']);
 });
 
-Route::get   ('/parts',                [PartController::class, 'index']);
-Route::post  ('/parts',                [PartController::class, 'store']);
-Route::get   ('/parts/{id}',           [PartController::class, 'show']);
-Route::put   ('/parts/{id}',           [PartController::class, 'update']);
-Route::delete('/parts/{id}',           [PartController::class, 'destroy']);
+Route::apiResource('parts', PartsController::class)->except(['show']);
 
-Route::post  ('/parts/bulk-status',    [PartController::class, 'bulkStatus']);
 
-Route::put   ('/parts/{id}/images',    [PartController::class, 'syncImages']);
-Route::put   ('/parts/{id}/references',[PartController::class, 'syncReferences']);
-Route::put   ('/parts/{id}/fitments',  [PartController::class, 'syncFitments']);
+Route::prefix('price-tiers')->group(function () {
+    Route::get('/', [PriceTierController::class, 'index']);
+    Route::post('/', [PriceTierController::class, 'store']);
+    Route::put('{priceTier}', [PriceTierController::class, 'update']);
+    Route::delete('{priceTier}', [PriceTierController::class, 'destroy']);
+});
 
-// Lookups used by the editor (you already have brands/models CRUD; keep or swap)
-Route::get('/parts/part-reference-types',    [LookupController::class, 'partReferenceTypes']);
-Route::get('/parts/vehicle-brands',          [LookupController::class, 'vehicleBrands']);
-Route::get('/parts/vehicle-models',          [LookupController::class, 'vehicleModels']);
+Route::prefix('customer')->group(function () {
+    Route::get('/parts', [App\Http\Controllers\Api\Client\PartController::class, 'list']);
+    Route::get('/brands', [App\Http\Controllers\Api\Client\PartController::class, 'brands']);
+    Route::get('/models', [App\Http\Controllers\Api\Client\PartController::class, 'models']);
+    Route::get('/categories', [App\Http\Controllers\Api\Client\PartController::class, 'categories']);
+});
 

@@ -1,25 +1,25 @@
 <?php
 
-namespace App\Http\Controllers\Api;
+namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\Manufacturer;
+use App\Models\Category;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\Database\QueryException;
 use Symfony\Component\HttpFoundation\Response;
 
-class ManufacturerController extends Controller
+class CategoryController extends Controller
 {
     public function index(Request $request)
     {
-        $q = Manufacturer::query();
+        $q = Category::query();
         if ($s = trim((string)$request->input('search'))) {
             $q->where('name', 'like', "%{$s}%");
         }
         $perPage = max(1, min(200, (int)$request->input('per_page', 10)));
         $page = max(1, (int)$request->input('page', 1));
-        $p = $q->orderBy('id','desc')->paginate($perPage, ['*'], 'page', $page);
+        $p = $q->orderBy('id', 'desc')->paginate($perPage, ['*'], 'page', $page);
         return response()->json([
             'data' => $p->items(),
             'total' => $p->total(),
@@ -31,28 +31,29 @@ class ManufacturerController extends Controller
     public function store(Request $request)
     {
         $data = $request->validate([
-            'name' => ['required','string','max:120','unique:manufacturers,name'],
+            'name' => ['required','string','max:80','unique:categories,name'],
         ]);
-        $model = Manufacturer::create($data);
+        $model = Category::create($data);
         return response()->json($model, Response::HTTP_CREATED);
     }
 
-    public function update(Request $request, Manufacturer $manufacturer)
+    public function update(Request $request, Category $category)
     {
         $data = $request->validate([
-            'name' => ['required','string','max:120', Rule::unique('manufacturers','name')->ignore($manufacturer->id)],
+            'name' => ['required','string','max:80', Rule::unique('categories','name')->ignore($category->id)],
         ]);
-        $manufacturer->update($data);
-        return response()->json($manufacturer);
+        $category->update($data);
+        return response()->json($category);
     }
 
-    public function destroy(Manufacturer $manufacturer)
+    public function destroy(Category $category)
     {
         try {
-            $manufacturer->delete();
+            $category->delete();
             return response()->noContent();
         } catch (QueryException $e) {
-            return response()->json(['message' => 'Cannot delete: manufacturer is in use.'], 409);
+            // FK violation -> 23000
+            return response()->json(['message' => 'Cannot delete: category is in use.'], 409);
         }
     }
 }

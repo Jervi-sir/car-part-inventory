@@ -1,5 +1,4 @@
-m in laravel inertia react, its about car parts i have this schema 
-        Schema::create('users', function (Blueprint $table) {
+Schema::create('users', function (Blueprint $table) {
             $table->id();
             $table->string('name');
             $table->string('full_name', 120)->nullable();
@@ -11,6 +10,7 @@ m in laravel inertia react, its about car parts i have this schema
             $table->rememberToken();
             $table->timestamps();
         });
+
         Schema::create('categories', function (Blueprint $table) {
             $table->id();
             $table->string('name', 80)->unique();
@@ -28,7 +28,6 @@ m in laravel inertia react, its about car parts i have this schema
             $table->string('code', 24)->unique();   // PICKUP|COURIER|POST
             $table->string('label', 64);
         });
-
         Schema::create('vehicle_brands', function (Blueprint $table) {
             $table->id();
             $table->string('name', 120)->unique();
@@ -195,124 +194,175 @@ m in laravel inertia react, its about car parts i have this schema
             $table->unique(['order_id', 'part_id']);
             $table->index('part_id');
         });
-        Schema::create('import_sources', function (Blueprint $table) {
-            $table->id();
-            $table->string('filename', 255);
-            $table->string('source_type', 16); // PDF|XLSX|CSV
-            $table->foreignId('imported_by')->nullable()->constrained('users')->nullOnDelete();
-            $table->timestamp('imported_at')->useCurrent();
-            $table->string('notes', 255)->nullable();
-        });
-
-        Schema::create('import_rows', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('import_source_id')->constrained('import_sources')->cascadeOnDelete();
-            $table->json('raw_json');
-            $table->foreignId('matched_part_id')->nullable()->constrained('parts')->nullOnDelete();
-            $table->timestamp('processed_at')->nullable();
-        });
 
 
 
-        overall i have done 
-- categories CRUD
-- manufacturers CRUD
-- Fitment Matrix 
-- vehicle-brands CRUD
-- vehicle-models CRUD
+this is parts crud 
 
-here is a sample of categeries CRUD u might follow from now on 
-```admin/categories/page.tsx
-// file: app/admin/categories/page.tsx
-"use client";
+```
+// =============================================================================================================
+// file: app/admin/parts/page.tsx
 import * as React from "react";
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ChevronLeft, ChevronRight, Pencil, Trash, Plus } from "lucide-react";
 import { AdminLayout } from "../layout/admin-layout";
 
 type Id = number | string;
-interface Category { id: Id; name: string; created_at?: string; updated_at?: string }
+interface Category { id: Id; name: string }
+interface Manufacturer { id: Id; name: string }
+interface Part { 
+  id: Id; 
+  category_id: Id; 
+  manufacturer_id: Id | null; 
+  sku: string | null; 
+  name: string; 
+  description: string | null; 
+  package_qty: number; 
+  min_order_qty: number; 
+  currency: string; 
+  base_price: number | null; 
+  is_active: boolean 
+}
 interface Page<T> { data: T[]; total: number; page: number; per_page: number }
 
-const endpoint = "/api/categories"; // Laravel: index, store, update, destroy
+const endpointCategories = "/api/categories";
+const endpointManufacturers = "/api/manufacturers";
+const endpointParts = "/api/parts";
 
-export default function CategoriesPage() {
-  const [pageData, setPageData] = useState<Page<Category>>({ data: [], total: 0, page: 1, per_page: 10 });
+export default function PartsPage() {
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [manufacturers, setManufacturers] = useState<Manufacturer[]>([]);
+  const [pageData, setPageData] = useState<Page<Part>>({ data: [], total: 0, page: 1, per_page: 10 });
   const [search, setSearch] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState<string>("");
+  const [manufacturerFilter, setManufacturerFilter] = useState<string>("");
   const [open, setOpen] = useState(false);
-  const [initialName, setInitialName] = useState<string>("");
-  const [editingId, setEditingId] = useState<Id | null>(null);
+  const [editing, setEditing] = useState<Part | null>(null);
 
   const maxPage = useMemo(() => Math.max(1, Math.ceil(pageData.total / pageData.per_page)), [pageData]);
 
-  const fetchData = async (page = 1) => {
-    const params = new URLSearchParams({ page: String(page), per_page: String(pageData.per_page), search });
-    const res = await fetch(`${endpoint}?${params.toString()}`, { headers: { Accept: "application/json" } });
+  const loadCategories = async () => {
+    const res = await fetch(`${endpointCategories}?page=1&per_page=999`, { headers: { Accept: "application/json" } });
     const json = await res.json();
-    // accept either paginated shape or raw array
-    const normalized: Page<Category> = Array.isArray(json)
-      ? { data: json, page, per_page: 10, total: json.length }
-      : json;
+    setCategories(Array.isArray(json) ? json : json.data);
+  };
+
+  const loadManufacturers = async () => {
+    const res = await fetch(`${endpointManufacturers}?page=1&per_page=999`, { headers: { Accept: "application/json" } });
+    const json = await res.json();
+    setManufacturers(Array.isArray(json) ? json : json.data);
+  };
+
+  const fetchData = async (page = 1) => {
+    const params = new URLSearchParams({ page: String(page), per_page: String(pageData.per_page) });
+    if (search) params.set("search", search);
+    if (categoryFilter) params.set("category_id", categoryFilter);
+    if (manufacturerFilter) params.set("manufacturer_id", manufacturerFilter);
+    const res = await fetch(`${endpointParts}?${params.toString()}`, { headers: { Accept: "application/json" } });
+    const json = await res.json();
+    const normalized: Page<Part> = Array.isArray(json) ? { data: json, page, per_page: 10, total: json.length } : json;
     setPageData(normalized);
   };
 
-  useEffect(() => { fetchData(1); }, [search]);
+  useEffect(() => { loadCategories(); loadManufacturers(); }, []);
+  useEffect(() => { fetchData(1); }, [search, categoryFilter, manufacturerFilter]);
 
-  const openCreate = () => { setEditingId(null); setInitialName(""); setOpen(true); };
-  const openEdit = (row: Category) => { setEditingId(row.id); setInitialName(row.name); setOpen(true); };
+  const openCreate = () => { setEditing(null); setOpen(true); };
+  const openEdit = (row: Part) => { setEditing(row); setOpen(true); };
 
-  const save = async (name: string) => {
-    const body = JSON.stringify({ name });
+  const save = async (payload: { 
+    category_id: string; 
+    manufacturer_id: string | undefined; 
+    sku?: string; 
+    name: string; 
+    description?: string; 
+    package_qty: string; 
+    min_order_qty: string; 
+    currency: string; 
+    base_price?: string; 
+    is_active: boolean 
+  }) => {
+    const body = JSON.stringify({
+      category_id: parseInt(payload.category_id),
+      manufacturer_id: payload.manufacturer_id ? parseInt(payload.manufacturer_id) : null,
+      sku: payload.sku?.trim() || null,
+      name: payload.name.trim(),
+      description: payload.description?.trim() || null,
+      package_qty: parseInt(payload.package_qty),
+      min_order_qty: parseInt(payload.min_order_qty),
+      currency: payload.currency.trim(),
+      base_price: payload.base_price ? parseFloat(payload.base_price) : null,
+      is_active: payload.is_active,
+    });
     const headers = { "Content-Type": "application/json", Accept: "application/json" };
-    if (editingId == null) {
-      await fetch(endpoint, { method: "POST", headers, body });
-    } else {
-      await fetch(`${endpoint}/${editingId}`, { method: "PUT", headers, body });
-    }
-    setOpen(false);
-    await fetchData(pageData.page);
+    if (!editing) await fetch(endpointParts, { method: "POST", headers, body });
+    else await fetch(`${endpointParts}/${editing.id}`, { method: "PUT", headers, body });
+    setOpen(false); await fetchData(pageData.page);
   };
 
-  const remove = async (row: Category) => {
-    if (!confirm(`Delete \"${row.name}\"?`)) return;
-    await fetch(`${endpoint}/${row.id}`, { method: "DELETE", headers: { Accept: "application/json" } });
+  const remove = async (row: Part) => {
+    if (!confirm(`Delete part "${row.name}"?`)) return;
+    await fetch(`${endpointParts}/${row.id}`, { method: "DELETE", headers: { Accept: "application/json" } });
     await fetchData(pageData.page);
   };
 
   return (
     <AdminLayout>
       <div className="p-6 space-y-4">
-        <div className="text-2xl font-semibold">Categories</div>
+        <div className="text-2xl font-semibold">Parts</div>
         <div className="flex items-center gap-2">
-          <Input placeholder="Search..." value={search} onChange={(e) => setSearch(e.target.value)} className="w-64" />
+          <Input placeholder="Search parts..." value={search} onChange={(e) => setSearch(e.target.value)} className="w-64" />
+          <select className="border rounded px-3 py-2 text-sm" value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)}>
+            <option value="">All categories</option>
+            {categories.map((c) => (<option key={String(c.id)} value={String(c.id)}>{c.name}</option>))}
+          </select>
+          <select className="border rounded px-3 py-2 text-sm" value={manufacturerFilter} onChange={(e) => setManufacturerFilter(e.target.value)}>
+            <option value="">All manufacturers</option>
+            {manufacturers.map((m) => (<option key={String(m.id)} value={String(m.id)}>{m.name}</option>))}
+          </select>
           <div className="flex-1" />
-          <Button size="sm" onClick={openCreate}><Plus className="h-4 w-4 mr-1"/>New Category</Button>
+          <Button size="sm" onClick={openCreate}><Plus className="h-4 w-4 mr-1" />New Part</Button>
         </div>
 
         <div className="rounded-md border">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-[90px]">ID</TableHead>
+                <TableHead className="w-[70px]">ID</TableHead>
+                <TableHead>Category</TableHead>
+                <TableHead>Manufacturer</TableHead>
+                <TableHead>SKU</TableHead>
                 <TableHead>Name</TableHead>
+                <TableHead>Pkg Qty</TableHead>
+                <TableHead>Min Qty</TableHead>
+                <TableHead>Base Price</TableHead>
+                <TableHead>Active</TableHead>
                 <TableHead className="w-[120px]">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {pageData.data.length === 0 && (
-                <TableRow><TableCell colSpan={3} className="text-center text-muted-foreground">No data</TableCell></TableRow>
-              )}
+              {pageData.data.length === 0 && (<TableRow><TableCell colSpan={10} className="text-center text-muted-foreground">No data</TableCell></TableRow>)}
               {pageData.data.map((row) => (
                 <TableRow key={String(row.id)}>
                   <TableCell>{row.id}</TableCell>
+                  <TableCell>{categories.find(c => String(c.id) === String(row.category_id))?.name || row.category_id}</TableCell>
+                  <TableCell>{row.manufacturer_id ? manufacturers.find(m => String(m.id) === String(row.manufacturer_id))?.name || row.manufacturer_id : ""}</TableCell>
+                  <TableCell>{row.sku ?? ""}</TableCell>
                   <TableCell>{row.name}</TableCell>
+                  <TableCell>{row.package_qty}</TableCell>
+                  <TableCell>{row.min_order_qty}</TableCell>
+                  <TableCell>{row.base_price ? `${row.base_price} ${row.currency}` : ""}</TableCell>
+                  <TableCell>{row.is_active ? "Yes" : "No"}</TableCell>
                   <TableCell className="flex gap-2">
-                    <Button variant="outline" size="icon" onClick={() => openEdit(row)}><Pencil className="h-4 w-4"/></Button>
-                    <Button variant="destructive" size="icon" onClick={() => remove(row)}><Trash className="h-4 w-4"/></Button>
+                    <Button variant="outline" size="icon" onClick={() => openEdit(row)}><Pencil className="h-4 w-4" /></Button>
+                    <Button variant="destructive" size="icon" onClick={() => remove(row)}><Trash className="h-4 w-4" /></Button>
                   </TableCell>
                 </TableRow>
               ))}
@@ -325,51 +375,195 @@ export default function CategoriesPage() {
             {pageData.total ? `${(pageData.page - 1) * pageData.per_page + 1}-${Math.min(pageData.total, pageData.page * pageData.per_page)} of ${pageData.total}` : "0"}
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="icon" onClick={() => fetchData(Math.max(1, pageData.page - 1))} disabled={pageData.page <= 1}><ChevronLeft className="h-4 w-4"/></Button>
+            <Button variant="outline" size="icon" onClick={() => fetchData(Math.max(1, pageData.page - 1))} disabled={pageData.page <= 1}><ChevronLeft className="h-4 w-4" /></Button>
             <div className="text-sm">Page {pageData.page} / {maxPage}</div>
-            <Button variant="outline" size="icon" onClick={() => fetchData(Math.min(maxPage, pageData.page + 1))} disabled={pageData.page >= maxPage}><ChevronRight className="h-4 w-4"/></Button>
+            <Button variant="outline" size="icon" onClick={() => fetchData(Math.min(maxPage, pageData.page + 1))} disabled={pageData.page >= maxPage}><ChevronRight className="h-4 w-4" /></Button>
           </div>
         </div>
 
-        {/* Inline dialog (no shared component) */}
-        <NameDialog open={open} onOpenChange={setOpen} title={editingId == null ? "New Category" : "Edit Category"} initialName={initialName} onSave={save} />
+        <PartDialog open={open} onOpenChange={setOpen} categories={categories} manufacturers={manufacturers} initial={editing || undefined} onSave={save} />
       </div>
     </AdminLayout>
   );
 }
 
-function NameDialog({ open, onOpenChange, title, initialName, onSave }: { open: boolean; onOpenChange: (v: boolean) => void; title: string; initialName: string; onSave: (name: string) => void | Promise<void> }) {
-  const [name, setName] = useState(initialName);
-  useEffect(() => setName(initialName), [initialName]);
+function PartDialog({ open, onOpenChange, categories, manufacturers, initial, onSave }: { 
+  open: boolean; 
+  onOpenChange: (v: boolean) => void; 
+  categories: Category[]; 
+  manufacturers: Manufacturer[]; 
+  initial?: Part; 
+  onSave: (payload: { 
+    category_id: string; 
+    manufacturer_id: string | undefined; 
+    sku?: string; 
+    name: string; 
+    description?: string; 
+    package_qty: string; 
+    min_order_qty: string; 
+    currency: string; 
+    base_price?: string; 
+    is_active: boolean 
+  }) => void | Promise<void> 
+}) {
+  const [categoryId, setCategoryId] = useState(String(initial?.category_id || ""));
+  const [manufacturerId, setManufacturerId] = useState(initial?.manufacturer_id ? String(initial.manufacturer_id) : "none");
+  const [sku, setSku] = useState(initial?.sku || "");
+  const [name, setName] = useState(initial?.name || "");
+  const [description, setDescription] = useState(initial?.description || "");
+  const [packageQty, setPackageQty] = useState(String(initial?.package_qty ?? 1));
+  const [minOrderQty, setMinOrderQty] = useState(String(initial?.min_order_qty ?? 1));
+  const [currency, setCurrency] = useState(initial?.currency || "DZD");
+  const [basePrice, setBasePrice] = useState(initial?.base_price ? String(initial.base_price) : "");
+  const [isActive, setIsActive] = useState(initial?.is_active ?? true);
   const [submitting, setSubmitting] = useState(false);
-  const submit = async () => { if (!name.trim()) return; setSubmitting(true); await onSave(name.trim()); setSubmitting(false); };
+
+  useEffect(() => {
+    setCategoryId(String(initial?.category_id || ""));
+    setManufacturerId(initial?.manufacturer_id ? String(initial.manufacturer_id) : "none");
+    setSku(initial?.sku || "");
+    setName(initial?.name || "");
+    setDescription(initial?.description || "");
+    setPackageQty(String(initial?.package_qty ?? 1));
+    setMinOrderQty(String(initial?.min_order_qty ?? 1));
+    setCurrency(initial?.currency || "DZD");
+    setBasePrice(initial?.base_price ? String(initial.base_price) : "");
+    setIsActive(initial?.is_active ?? true);
+  }, [initial]);
+
+  const submit = async () => {
+    if (!name.trim() || !categoryId) return;
+    setSubmitting(true);
+    await onSave({ 
+      category_id: categoryId, 
+      manufacturer_id: manufacturerId === "none" ? undefined : manufacturerId, 
+      sku: sku || undefined, 
+      name, 
+      description: description || undefined, 
+      package_qty: packageQty, 
+      min_order_qty: minOrderQty, 
+      currency, 
+      base_price: basePrice || undefined, 
+      is_active: isActive
+    });
+    setSubmitting(false);
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
-        <DialogHeader><DialogTitle>{title}</DialogTitle></DialogHeader>
-        <div className="space-y-2">
-          <label className="text-sm">Name</label>
-          <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Brakes" />
+        <DialogHeader><DialogTitle>{initial ? "Edit Part" : "New Part"}</DialogTitle></DialogHeader>
+        <div className="space-y-3">
+          <div className="space-y-1">
+            <label className="text-sm">Category</label>
+            <Select value={categoryId} onValueChange={setCategoryId}>
+              <SelectTrigger><SelectValue placeholder="Select a category" /></SelectTrigger>
+              <SelectContent>
+                {categories.map(c => (<SelectItem key={String(c.id)} value={String(c.id)}>{c.name}</SelectItem>))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <label className="text-sm">Manufacturer (optional)</label>
+            <Select value={manufacturerId} onValueChange={setManufacturerId}>
+              <SelectTrigger><SelectValue placeholder="Select a manufacturer" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">None</SelectItem>
+                {manufacturers.map(m => (<SelectItem key={String(m.id)} value={String(m.id)}>{m.name}</SelectItem>))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <label className="text-sm">SKU (optional)</label>
+            <Input value={sku} onChange={(e) => setSku(e.target.value)} placeholder="e.g. ABC-123" />
+          </div>
+          <div className="space-y-1">
+            <label className="text-sm">Name</label>
+            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Brake Pad Set" />
+          </div>
+          <div className="space-y-1">
+            <label className="text-sm">Description (optional)</label>
+            <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Detailed description..." />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1"><label className="text-sm">Package Qty</label><Input type="number" value={packageQty} onChange={(e) => setPackageQty(e.target.value)} min="1" /></div>
+            <div className="space-y-1"><label className="text-sm">Min Order Qty</label><Input type="number" value={minOrderQty} onChange={(e) => setMinOrderQty(e.target.value)} min="1" /></div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1"><label className="text-sm">Currency</label><Input value={currency} onChange={(e) => setCurrency(e.target.value)} placeholder="DZD" maxLength={3} /></div>
+            <div className="space-y-1"><label className="text-sm">Base Price (optional)</label><Input type="number" step="0.01" value={basePrice} onChange={(e) => setBasePrice(e.target.value)} placeholder="100.00" /></div>
+          </div>
+          <div className="flex items-center space-x-2">
+            <Checkbox id="is_active" checked={isActive} onCheckedChange={(checked) => setIsActive(!!checked)} />
+            <label htmlFor="is_active" className="text-sm">Active</label>
+          </div>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button onClick={submit} disabled={submitting || !name.trim()}>Save</Button>
+          <Button onClick={submit} disabled={submitting || !name.trim() || !categoryId}>Save</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
   );
 }
 ```
+and these are the api i have 
+<?php
 
-anyways i want to handle 
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Api\{CategoryController, ManufacturerController, PartsController, VehicleBrandController, VehicleModelController};
 
-  - parts list
-    - filter: category, manufacture, active, sku, reference_code
-    - bulk activate / deactivate
-  - part create/edit
-    - fields (category, manufacturer, sku, name, desc, package_qty, min_order_qty, currency. base_price, is_active)
-    - images
-    - references
-    - grid for (type, reference_code, source_brand)
-  - Part Fitments
-    - add/remove vehicle model + engine_code + notes
+Route::get('/user', function (Request $request) {
+    return $request->user();
+})->middleware('auth:sanctum');
+
+Route::prefix('categories')->group(function () {
+    Route::get('/', [CategoryController::class, 'index']);
+    Route::post('/', [CategoryController::class, 'store']);
+    Route::put('{category}', [CategoryController::class, 'update']);
+    Route::delete('{category}', [CategoryController::class, 'destroy']);
+});
+
+Route::prefix('manufacturers')->group(function () {
+    Route::get('/', [ManufacturerController::class, 'index']);
+    Route::post('/', [ManufacturerController::class, 'store']);
+    Route::put('{manufacturer}', [ManufacturerController::class, 'update']);
+    Route::delete('{manufacturer}', [ManufacturerController::class, 'destroy']);
+});
+
+Route::prefix('vehicle-brands')->group(function () {
+    Route::get('/', [VehicleBrandController::class, 'index']);
+    Route::post('/', [VehicleBrandController::class, 'store']);
+    Route::put('{vehicleBrand}', [VehicleBrandController::class, 'update']);
+    Route::delete('{vehicleBrand}', [VehicleBrandController::class, 'destroy']);
+});
+
+Route::prefix('vehicle-models')->group(function () {
+    Route::get('/', [VehicleModelController::class, 'index']);
+    Route::post('/', [VehicleModelController::class, 'store']);
+    Route::put('{vehicleModel}', [VehicleModelController::class, 'update']);
+    Route::delete('{vehicleModel}', [VehicleModelController::class, 'destroy']);
+});
+
+Route::apiResource('parts', PartsController::class)->except(['show']);
+
+
+```
+ i want now in the price, to provide orignal price, final price in bulk, price in details ...
+ i have this in the db
+         DB::table('part_reference_types')->upsert([
+            ['id'=>1,'code'=>'OEM','label'=>'OEM Reference'],
+            ['id'=>2,'code'=>'AFTERMARKET','label'=>'Aftermarket Reference'],
+            ['id'=>3,'code'=>'SUPPLIER','label'=>'Supplier Reference'],
+            ['id'=>4,'code'=>'EAN_UPC','label'=>'EAN/UPC'],
+            ['id'=>5,'code'=>'OTHER','label'=>'Other'],
+        ], ['id']);
+
+        DB::table('price_tiers')->upsert([
+            ['id'=>1,'code'=>'RETAIL','label'=>'Retail'],
+            ['id'=>2,'code'=>'DEMI_GROS','label'=>'Demi-gros'],
+            ['id'=>3,'code'=>'GROS','label'=>'Gros'],
+            ['id'=>4,'code'=>'APPLIQUE','label'=>'Appliqué'],
+        ], ['id']);
+        

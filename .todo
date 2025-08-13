@@ -43,16 +43,16 @@
     - pending imports
 - ------------------------------
 - *Catalog*
-  - parts list
-    - filter: category, manufacture, active, sku, reference_code
-    - bulk activate / deactivate
-  - part create/edit
-    - fields (category, manufacturer, sku, name, desc, package_qty, min_order_qty, currency. base_price, is_active)
-    - images
-    - references
-    - grid for (type, reference_code, source_brand)
-  - Part Fitments
-    - add/remove vehicle model + engine_code + notes
+  - parts list @done
+    - filter: category, manufacture, active, sku, reference_code @done
+    - bulk activate / deactivate @done
+  - part create/edit @done
+    - fields (category, manufacturer, sku, name, desc, package_qty, min_order_qty, currency. base_price, is_active) @done
+    - images @done
+    - references @done
+    - grid for (type, reference_code, source_brand) @done
+  - Part Fitments @done
+    - add/remove vehicle model + engine_code + notes @done
 - ------------------------------
 - *Categories / Manufacturers* @done
   - Categories CRUD @done
@@ -62,12 +62,6 @@
   - Vehicle Brands CRUD @done
   - Vehicle Models CRUD (with year_from/year_to) @done
   - Fitment Matrix (optional power-user screen to mass-link parts↔models)
-- ------------------------------
-- *Pricing*
-  - Price Tiers CRUD
-  - Part Prices (per part)
-    - tier, min_qty, price, currency
-  - Bulk Pricing Update (CSV paste/upload or table editor)
 - ------------------------------
 - *Inventory & Warehouses*
   - Warehouses CRUD

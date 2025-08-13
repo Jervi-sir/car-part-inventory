@@ -49,17 +49,6 @@ return new class extends Migration
             $table->index('reference_code');
         });
 
-        Schema::create('part_fitments', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('part_id')->constrained('parts')->cascadeOnDelete();
-            $table->foreignId('vehicle_model_id')->constrained('vehicle_models')->restrictOnDelete();
-            $table->string('engine_code', 64)->nullable();
-            $table->string('notes', 255)->nullable();
-            $table->timestamps();
-
-            $table->unique(['part_id', 'vehicle_model_id', 'engine_code']);
-        });
-
         Schema::create('part_images', function (Blueprint $table) {
             $table->id();
             $table->foreignId('part_id')->constrained('parts')->cascadeOnDelete();
@@ -88,6 +77,13 @@ return new class extends Migration
             $table->unique(['part_id', 'tier_id', 'min_qty']);
         });
 
+        Schema::create('part_vehicle_models', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('part_id')->constrained()->onDelete('cascade');
+            $table->foreignId('vehicle_model_id')->constrained()->onDelete('cascade');
+
+            $table->timestamps();
+        });
         
 
         Schema::create('warehouses', function (Blueprint $table) {
