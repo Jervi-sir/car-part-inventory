@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Client\PartImportController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -17,8 +18,16 @@ Route::prefix('admin')->group(function () {
 });
 
 Route::prefix('client')->group(function () {
-    Route::get('parts', [App\Http\Controllers\Api\Client\PartController::class, 'index'])->name('client.parts.page');
+    Route::get('parts', fn()  => Inertia::render('client/parts-catalog/page'))->name('client.parts.page');
 });
+
+
+Route::prefix('imports')->group(function () {
+    Route::get('parts', [PartImportController::class, 'create'])->name('imports.parts.create');
+    Route::post('parts/preview', [PartImportController::class, 'preview'])->name('imports.parts.preview');
+    Route::post('parts/run', [PartImportController::class, 'run'])->name('imports.parts.run');
+});
+
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('dashboard', function () {

@@ -1,4 +1,5 @@
 // file: app/admin/categories/page.tsx
+"use client";
 import * as React from "react";
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";

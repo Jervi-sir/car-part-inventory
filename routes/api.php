@@ -2,7 +2,11 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\Api\Admin\{CategoryController, ManufacturerController, PartsController, PriceTierController, VehicleBrandController, VehicleModelController};
+use App\Http\Controllers\Api\{CategoryController, LookupController, ManufacturerController, PartController, VehicleBrandController, VehicleModelController};
+use App\Http\Controllers\Api\Client\CartController;
+use App\Http\Controllers\Api\Client\ClientCategoryController;
+use App\Http\Controllers\Api\Client\ClientManufacturerController;
+use App\Http\Controllers\Api\Client\ClientPartController;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -36,20 +40,33 @@ Route::prefix('vehicle-models')->group(function () {
     Route::delete('{vehicleModel}', [VehicleModelController::class, 'destroy']);
 });
 
-Route::apiResource('parts', PartsController::class)->except(['show']);
-
-
-Route::prefix('price-tiers')->group(function () {
-    Route::get('/', [PriceTierController::class, 'index']);
-    Route::post('/', [PriceTierController::class, 'store']);
-    Route::put('{priceTier}', [PriceTierController::class, 'update']);
-    Route::delete('{priceTier}', [PriceTierController::class, 'destroy']);
+Route::prefix('parts')->group(function () {
+    Route::get('/',                [PartController::class, 'index']);
+    Route::post('/',                [PartController::class, 'store']);
+    Route::get('{id}',           [PartController::class, 'show']);
+    Route::put('{id}',           [PartController::class, 'update']);
+    Route::delete('{id}',           [PartController::class, 'destroy']);
+    Route::post('bulk-status',    [PartController::class, 'bulkStatus']);
+    Route::put('{id}/images',    [PartController::class, 'syncImages']);
+    Route::put('{id}/references', [PartController::class, 'syncReferences']);
+    Route::put('{id}/fitments',  [PartController::class, 'syncFitments']);
+    // Lookups used by the editor (you already have brands/models CRUD; keep or swap)
+    Route::get('part-reference-types',    [LookupController::class, 'partReferenceTypes']);
+    Route::get('vehicle-brands',          [LookupController::class, 'vehicleBrands']);
+    Route::get('vehicle-models',          [LookupController::class, 'vehicleModels']);
 });
 
-Route::prefix('customer')->group(function () {
-    Route::get('/parts', [App\Http\Controllers\Api\Client\PartController::class, 'list']);
-    Route::get('/brands', [App\Http\Controllers\Api\Client\PartController::class, 'brands']);
-    Route::get('/models', [App\Http\Controllers\Api\Client\PartController::class, 'models']);
-    Route::get('/categories', [App\Http\Controllers\Api\Client\PartController::class, 'categories']);
-});
 
+Route::prefix('client')->group(function () {
+    Route::get('parts', [ClientPartController::class, 'index']);
+    Route::get('parts/{id}', [ClientPartController::class, 'show']);
+    Route::get('categories', [ClientCategoryController::class, 'index']);
+    Route::get('manufacturers', [ClientManufacturerController::class, 'index']);
+
+
+    Route::get('/cart', [CartController::class, 'current']);
+    Route::post('/cart/items', [CartController::class, 'addItem']);
+    Route::put('/cart/items/{part}', [CartController::class, 'updateItem']);
+    Route::delete('/cart/items/{part}', [CartController::class, 'removeItem']);
+    Route::post('/cart/place', [CartController::class, 'place']);
+});

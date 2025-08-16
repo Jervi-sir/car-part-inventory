@@ -43,8 +43,6 @@ const data = {
         { title: "Manufacturers", url: route('admin.manufacturers.page') },
         { title: "Vehicle Brands", url: route('admin.vehicle-brands.page') },
         { title: "Vehicle Models", url: route('admin.vehicle-models.page') },
-        { title: "Parts", url: route('admin.parts.page') },
-        { title: "Parts Client", url: route('client.parts.page') },
       ],
     },
     
