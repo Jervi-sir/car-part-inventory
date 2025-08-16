@@ -6,9 +6,6 @@ use Illuminate\Database\Eloquent\Model;
 
 class DeliveryMethod extends Model
 {
-    public $timestamps = false;
-    protected $fillable = ['code','label'];
-    protected $table = 'delivery_methods';
-
-    public function orders(){ return $this->hasMany(Order::class, 'delivery_method_id'); }
+    public $timestamps = false; // migration didn’t define timestamps
+    protected $fillable = ['code', 'label'];
 }

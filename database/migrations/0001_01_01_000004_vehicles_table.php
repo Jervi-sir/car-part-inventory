@@ -13,7 +13,8 @@ return new class extends Migration
     {
         Schema::create('vehicle_brands', function (Blueprint $table) {
             $table->id();
-            $table->string('name', 120)->unique();
+            $table->string('name', 120)->unique();          // Mercedes-Benz, BMW, VW...
+            $table->string('logo_url')->nullable();
             $table->timestamps();
         });
 

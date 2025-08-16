@@ -1,124 +1,13 @@
-- databases @done
-- seeder @done
-- ------------------------------
-- *StoreFront (customer)*
-- ------------------------------
-- home / featured
-- ------------------------------
-- search and filters
-  - keywords
-  - category
-  - brand
-  - oem/ref code
-  - vehicle brand, model, year
-  - result list (infinite scroll/ quick-add)
-  - part detail
-    - image, specs. price tier (retail), fitment (brand/model/year/engine), refs (oem/aftermarket) availability per warehouse
-    - add to cart, qty steps, related parts
-  - cart
-  - checkout
-    - shipping method, contact/address, warehouse pickup option, order summary
-  - order confirmation
-  - auth
-    - login
-    - register
-    - forgot password
-  - account dashboard
-    - order list
-      - detail
-    - addresses
-    - profile: name, full name, birthdate
-  - static: about, help, returns
-- ------------------------------
-- ------------------------------
-- ------------------------------
-- ------------------------------
-- Back office (admin/staff)
-- ------------------------------
-- *dashboard*
-  - KPIs: 
-    - orders today
-    - low stock
-    - top parts
-    - pending imports
-- ------------------------------
-- *Catalog*
-  - parts list
-    - filter: category, manufacture, active, sku, reference_code
-    - bulk activate / deactivate
-  - part create/edit
-    - fields (category, manufacturer, sku, name, desc, package_qty, min_order_qty, currency. base_price, is_active)
-    - images
-    - references
-    - grid for (type, reference_code, source_brand)
-  - Part Fitments
-    - add/remove vehicle model + engine_code + notes
-- ------------------------------
-- *Categories / Manufacturers* @done
-  - Categories CRUD @done
-  - Manufacturers CRUD @done
-- ------------------------------
-- *Vehicles & Fitments* @done
-  - Vehicle Brands CRUD @done
-  - Vehicle Models CRUD (with year_from/year_to) @done
-  - Fitment Matrix (optional power-user screen to mass-link parts↔models)
-- ------------------------------
-- *Pricing*
-  - Price Tiers CRUD
-  - Part Prices (per part)
-    - tier, min_qty, price, currency
-  - Bulk Pricing Update (CSV paste/upload or table editor)
-- ------------------------------
-- *Inventory & Warehouses*
-  - Warehouses CRUD
-  - Stock Overview
-    - per part per warehouse: qty_on_hand, qty_reserved
-  - Stock Movement Log
-    - list + create (purchase/sale/reservation/unreservation/adjustment/transfer)
-- ------------------------------
-- *Orders*
-  - Orders List (filters: status, warehouse, date)
-  - Order Detail
-    - items, totals, status transitions, assign warehouse, shipping method, notes
-  - Order Statuses CRUD (labels)
-- ------------------------------
-- *Import*
-  - Import Sources
-    - upload CSV/XLSX/PDF, notes
-  - Import Rows
-    - raw_json preview, matching result, link to matched_part_id, “process”/“reprocess”
-  - Mapping/Parser Config (optional)
-    - define column→field mappings, reference type detection, fitment parsing
-- ------------------------------
-- *Users*
-  - Users List + Detail (basic profile, orders)
-- ------------------------------
-- *Setting*
-  - Delivery Methods CRUD
-  - Part Reference Types CRUD
-  - Currencies (read-only if fixed to DZD)
-  - Tax/Discount rules (if needed later)
-  - Audit Log (optional)
-- ------------------------------
-- *Operational/Reports (later*
-  - Low Stock Report (reorder suggestions)
-  - Price Exceptions (parts missing tier pricing)
-  - Unmatched Import References (needs manual mapping)
-  - Top Sellers / Velocity
-  - Reserved vs On-hand discrepancies
-- ------------------------------
-- *Admin Utilities (nice-to-have)*
-  - Bulk Edit Parts (inline grid: name/category/manufacturer/is_active)
-  - Merge Duplicates (manufacturers, parts by SKU/ref)
-  - Image Downloader/Validator (check broken URLs)
-- ------------------------------
-- *Component hints (shadcn/ui)*
-  - Tables: DataTable with column filters, row selection, inline actions
-  - Forms: Form + zod resolver; Combobox for category/manufacturer/vehicle model; Input OTP for refs if you want fast entry
-  - Media: Carousel for part_images
-  - Modals/Drawers: quick-add fitment/reference
-  - Toaster: import & bulk actions feedback
-  - Steps: Checkout & Import wizard
-  
-  
+- crud parts
+  - list, paginate
+  - create
+  - delete
+  - update
+  - filter
 
+- crud vehicle brands
+- crud vehicle models
+
+- list parts as client
+- add to cart
+- show my cart

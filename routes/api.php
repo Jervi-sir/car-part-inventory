@@ -57,16 +57,4 @@ Route::prefix('parts')->group(function () {
 });
 
 
-Route::prefix('client')->group(function () {
-    Route::get('parts', [ClientPartController::class, 'index']);
-    Route::get('parts/{id}', [ClientPartController::class, 'show']);
-    Route::get('categories', [ClientCategoryController::class, 'index']);
-    Route::get('manufacturers', [ClientManufacturerController::class, 'index']);
 
-
-    Route::get('/cart', [CartController::class, 'current']);
-    Route::post('/cart/items', [CartController::class, 'addItem']);
-    Route::put('/cart/items/{part}', [CartController::class, 'updateItem']);
-    Route::delete('/cart/items/{part}', [CartController::class, 'removeItem']);
-    Route::post('/cart/place', [CartController::class, 'place']);
-});

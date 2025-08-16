@@ -14,12 +14,15 @@ return new class extends Migration
         Schema::create('categories', function (Blueprint $table) {
             $table->id();
             $table->string('name', 80)->unique();
+            $table->boolean('is_special')->default(false);   // for "Catégories spéciales"
+            $table->string('icon_url')->nullable();
             $table->timestamps();
         });
 
         Schema::create('manufacturers', function (Blueprint $table) {
             $table->id();
             $table->string('name', 120)->unique();
+            $table->string('icon_url')->nullable();
             $table->timestamps();
         });
 
@@ -27,6 +30,15 @@ return new class extends Migration
             $table->smallIncrements('id');
             $table->string('code', 24)->unique();   // PICKUP|COURIER|POST
             $table->string('label', 64);
+        });
+
+    
+        Schema::create('warehouses', function (Blueprint $table) {
+            $table->id();
+            $table->string('name', 120);
+            $table->string('site_code', 32)->nullable();
+            $table->string('location_text', 255)->nullable();
+            $table->timestamps();
         });
     }
 
@@ -38,5 +50,6 @@ return new class extends Migration
         Schema::dropIfExists('categories');
         Schema::dropIfExists('manufacturers');
         Schema::dropIfExists('delivery_methods');
+        Schema::dropIfExists('warehouses');
     }
 };

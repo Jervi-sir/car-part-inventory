@@ -5,16 +5,19 @@ namespace App\Http\Controllers\Api\Client;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class ClientPartController extends Controller
 {
     /** Resolve user's price tier id (or code->id). Falls back to RETAIL, then null */
     private function resolveUserTierId(int $userId): ?int
     {
-        // If users table has price_tier_id, use it; otherwise fallback to RETAIL
+        if (!Schema::hasColumn('users', 'price_tier_id')) {
+            // No user-specific tier column; optionally return RETAIL if it exists, else null
+            return DB::table('price_tiers')->where('code', 'RETAIL')->value('id') ?: null;
+        }
         $tierId = DB::table('users')->where('id', $userId)->value('price_tier_id');
         if ($tierId) return (int) $tierId;
-
         $retail = DB::table('price_tiers')->where('code', 'RETAIL')->value('id');
         return $retail ? (int) $retail : null;
     }
@@ -22,7 +25,7 @@ class ClientPartController extends Controller
     /** Best unit price for a part at qty, using tier when possible; else parts.base_price */
     private function unitPriceFor(int $partId, int $qty, ?int $tierId): array
     {
-        $part = DB::table('parts')->where('id', $partId)->first(['base_price','currency']);
+        $part = DB::table('parts')->where('id', $partId)->first(['base_price', 'currency']);
         $currency = $part->currency ?? 'DZD';
         $base = (float) ($part->base_price ?? 0);
 
@@ -54,9 +57,6 @@ class ClientPartController extends Controller
     /** GET /api/client/parts */
     public function index(Request $request)
     {
-        $userId   = (int) $request->user()->id;
-        $tierId   = $this->resolveUserTierId($userId);
-
         $perPage  = max(1, (int) $request->integer('per_page', 12));
         $page     = max(1, (int) $request->integer('page', 1));
         $catId    = $request->filled('category_id') ? (int) $request->input('category_id') : null;
@@ -75,46 +75,57 @@ class ClientPartController extends Controller
         if ($kw !== '') {
             $q->where(function ($w) use ($kw) {
                 $w->where('p.sku', 'like', "%{$kw}%")
-                  ->orWhere('p.name', 'like', "%{$kw}%")
-                  ->orWhere('c.name', 'like', "%{$kw}%")
-                  ->orWhere('m.name', 'like', "%{$kw}%")
-                  ->orWhereExists(function ($sub) use ($kw) {
-                      $sub->from('part_references as pr')
-                          ->whereColumn('pr.part_id', 'p.id')
-                          ->where('pr.reference_code', 'like', "%{$kw}%");
-                  });
+                    ->orWhere('p.name', 'like', "%{$kw}%")
+                    ->orWhere('c.name', 'like', "%{$kw}%")
+                    ->orWhere('m.name', 'like', "%{$kw}%")
+                    ->orWhereExists(function ($sub) use ($kw) {
+                        $sub->from('part_references as pr')
+                            ->whereColumn('pr.part_id', 'p.id')
+                            ->where('pr.reference_code', 'like', "%{$kw}%");
+                    });
             });
         }
 
         $total = (clone $q)->count('p.id');
 
-        // Pull basic rows
         $rows = $q->orderBy('p.name')
             ->forPage($page, $perPage)
             ->get([
-                'p.id', 'p.sku', 'p.name', 'p.base_price', 'p.currency',
-                'p.package_qty', 'p.min_order_qty',
-                'c.id as c_id', 'c.name as c_name',
-                'm.id as m_id', 'm.name as m_name',
+                'p.id',
+                'p.sku',
+                'p.name',
+                'p.base_price',
+                'p.currency',
+                'p.package_qty',
+                'p.min_order_qty',
+                'c.id as c_id',
+                'c.name as c_name',
+                'm.id as m_id',
+                'm.name as m_name',
             ]);
 
-        // Attach first image & unit price per row (qty=1 for catalog)
-        $data = $rows->map(function ($r) use ($tierId) {
-            $img = DB::table('part_images')->where('part_id', $r->id)->orderBy('sort_order')->orderBy('id')->value('url');
+        // Batch-load first image per part (avoid N+1)
+        $partIds = $rows->pluck('id')->all();
+        $images = DB::table('part_images')
+            ->whereIn('part_id', $partIds)
+            ->orderBy('sort_order')
+            ->orderBy('id')
+            ->get(['part_id', 'url'])
+            ->groupBy('part_id')
+            ->map(fn($g) => optional($g->first())->url);
 
-            $price = $this->unitPriceFor((int) $r->id, 1, $tierId);
-
+        $data = $rows->map(function ($r) use ($images) {
             return [
-                'id'           => (int) $r->id,
-                'sku'          => $r->sku,
-                'name'         => $r->name,
-                'category'     => $r->c_id ? ['id' => (int) $r->c_id, 'name' => $r->c_name] : null,
-                'manufacturer' => $r->m_id ? ['id' => (int) $r->m_id, 'name' => $r->m_name] : null,
-                'image_url'    => $img,
-                'unit_price'   => $price['unit_price'],
-                'currency'     => $price['currency'],
-                'package_qty'  => (int) ($r->package_qty ?? 1),
-                'min_order_qty'=> (int) ($r->min_order_qty ?? 1),
+                'id'            => (int) $r->id,
+                'sku'           => $r->sku,
+                'name'          => $r->name,
+                'category'      => $r->c_id ? ['id' => (int) $r->c_id, 'name' => $r->c_name] : null,
+                'manufacturer'  => $r->m_id ? ['id' => (int) $r->m_id, 'name' => $r->m_name] : null,
+                'image_url'     => $images[$r->id] ?? null,
+                'unit_price'    => (float) ($r->base_price ?? 0),
+                'currency'      => $r->currency ?? 'DZD',
+                'package_qty'   => (int) ($r->package_qty ?? 1),
+                'min_order_qty' => (int) ($r->min_order_qty ?? 1),
             ];
         })->values();
 
@@ -138,10 +149,18 @@ class ClientPartController extends Controller
             ->where('p.id', $id)
             ->where('p.is_active', true)
             ->first([
-                'p.id', 'p.sku', 'p.name', 'p.description', 'p.currency', 'p.base_price',
-                'p.package_qty', 'p.min_order_qty',
-                'c.id as c_id', 'c.name as c_name',
-                'm.id as m_id', 'm.name as m_name',
+                'p.id',
+                'p.sku',
+                'p.name',
+                'p.description',
+                'p.currency',
+                'p.base_price',
+                'p.package_qty',
+                'p.min_order_qty',
+                'c.id as c_id',
+                'c.name as c_name',
+                'm.id as m_id',
+                'm.name as m_name',
             ]);
 
         if (!$part) return response()->json(['message' => 'Not found'], 404);
@@ -153,13 +172,13 @@ class ClientPartController extends Controller
         $images = DB::table('part_images')
             ->where('part_id', $id)
             ->orderBy('sort_order')->orderBy('id')
-            ->get(['id','url','sort_order']);
+            ->get(['id', 'url', 'sort_order']);
 
         $refsRows = DB::table('part_references as pr')
             ->join('part_reference_types as t', 't.id', '=', 'pr.part_reference_type_id')
             ->where('pr.part_id', $id)
             ->orderBy('t.code')->orderBy('pr.reference_code')
-            ->get(['pr.id','pr.reference_code','pr.source_brand','t.code as type_code','t.label as type_label']);
+            ->get(['pr.id', 'pr.reference_code', 'pr.source_brand', 't.code as type_code', 't.label as type_label']);
 
         // Group references by type_code
         $references = [];
@@ -178,9 +197,13 @@ class ClientPartController extends Controller
             ->where('f.part_id', $id)
             ->orderBy('vb.name')->orderBy('vm.name')
             ->get([
-                'f.id', 'vb.name as brand', 'vm.name as model',
-                'vm.year_from', 'vm.year_to',
-                'f.engine_code', 'f.notes'
+                'f.id',
+                'vb.name as brand',
+                'vm.name as model',
+                'vm.year_from',
+                'vm.year_to',
+                'f.engine_code',
+                'f.notes'
             ]);
 
         return response()->json([

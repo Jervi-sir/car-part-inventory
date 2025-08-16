@@ -6,8 +6,10 @@ use Illuminate\Database\Eloquent\Model;
 
 class VehicleBrand extends Model
 {
-    public $timestamps = false;
-    protected $fillable = ['name'];
-    public function models(){ return $this->hasMany(VehicleModel::class, 'vehicle_brand_id'); }
+    protected $fillable = ['name', 'logo_url'];
 
+    public function models()
+    {
+        return $this->hasMany(VehicleModel::class);
+    }
 }
