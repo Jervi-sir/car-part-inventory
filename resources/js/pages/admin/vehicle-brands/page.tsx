@@ -10,12 +10,13 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ChevronLeft, ChevronRight, Pencil, Trash, Plus } from "lucide-react";
 import { AdminLayout } from "../layout/admin-layout";
+import { Head } from "@inertiajs/react";
 
 type Id3 = number | string;
 interface VehicleBrand { id: Id3; name: string }
 interface Page3<T> { data: T[]; total: number; page: number; per_page: number }
 
-const endpoint3 = "/api/vehicle-brands";
+const endpoint3 = route('admin.vehicle-brands.api.crud');
 
 export default function VehicleBrandsPage() {
   const [pageData, setPageData] = useState<Page3<VehicleBrand>>({ data: [], total: 0, page: 1, per_page: 10 });
@@ -54,6 +55,7 @@ export default function VehicleBrandsPage() {
 
   return (
     <AdminLayout>
+      <Head title="Vehicle Brands" />
       <div className="p-6 space-y-4">
         <div className="text-2xl font-semibold">Vehicle Brands</div>
         <div className="flex items-center gap-2">

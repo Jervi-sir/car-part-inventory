@@ -5,8 +5,8 @@
   - update
   - filter
 
-- crud vehicle brands
-- crud vehicle models
+- crud vehicle brands @done
+- crud vehicle models @done
 
 - list parts as client
 - add to cart

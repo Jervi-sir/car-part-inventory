@@ -8,24 +8,37 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 class Part extends Model
 {
     protected $fillable = [
-        'manufacturer_id', 'category_id', 'sku', 'name', 'description',
-        'package_qty', 'min_order_qty', 'price_retail', 'price_demi_gros',
-        'price_gros', 'images', 'min_qty_gros', 'is_active'
+        'manufacturer_id',
+        'category_id',
+        'sku',
+        'name',
+        'description',
+        'package_qty',
+        'min_order_qty',
+        'price_retail',
+        'price_demi_gros',
+        'price_gros',
+        'min_qty_gros',
+        'images',
+        'is_active',
     ];
 
     protected $casts = [
-        'images' => 'array',
-        'is_active' => 'boolean'
+        'images'    => 'array',
+        'is_active' => 'boolean',
+        'price_retail' => 'decimal:2',
+        'price_demi_gros' => 'decimal:2',
+        'price_gros' => 'decimal:2',
     ];
-
-    public function manufacturer()
-    {
-        return $this->belongsTo(Manufacturer::class);
-    }
 
     public function category()
     {
         return $this->belongsTo(Category::class);
+    }
+
+    public function manufacturer()
+    {
+        return $this->belongsTo(Manufacturer::class);
     }
 
     public function references()
@@ -47,4 +60,5 @@ class Part extends Model
     {
         return $this->hasMany(OrderItem::class);
     }
+
 }

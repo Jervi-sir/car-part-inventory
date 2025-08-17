@@ -11,14 +11,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ChevronLeft, ChevronRight, Pencil, Trash, Plus } from "lucide-react";
 import { AdminLayout } from "../layout/admin-layout";
+import { Head } from "@inertiajs/react";
 
 type Id4 = number | string;
 interface VehicleBrand2 { id: Id4; name: string }
 interface VehicleModel { id: Id4; vehicle_brand_id: Id4; name: string; year_from: number | null; year_to: number | null }
 interface Page4<T> { data: T[]; total: number; page: number; per_page: number }
 
-const endpointBrands = "/api/vehicle-brands";
-const endpointModels = "/api/vehicle-models";
+const endpointBrands = route('admin.vehicle-brands.api.crud');
+const endpointModels = route('admin.vehicle-models.api.crud');
 
 export default function VehicleModelsPage() {
   const [brands, setBrands] = useState<VehicleBrand2[]>([]);
@@ -39,7 +40,10 @@ export default function VehicleModelsPage() {
   const fetchData = async (page = 1) => {
     const params = new URLSearchParams({ page: String(page), per_page: String(pageData.per_page) });
     if (search) params.set("search", search);
-    if (brandFilter) params.set("vehicle_brand_id", brandFilter);
+    if (brandFilter) {
+      if(brandFilter !== 'all')
+        params.set("vehicle_brand_id", brandFilter);
+    };
     const res = await fetch(`${endpointModels}?${params.toString()}`, { headers: { Accept: "application/json" } });
     const json = await res.json();
     const normalized: Page4<VehicleModel> = Array.isArray(json) ? { data: json, page, per_page: 10, total: json.length } : json;
@@ -73,14 +77,18 @@ export default function VehicleModelsPage() {
 
   return (
     <AdminLayout>
+      <Head title="Vehicle Models" />
       <div className="p-6 space-y-4">
         <div className="text-2xl font-semibold">Vehicle Models</div>
         <div className="flex items-center gap-2">
           <Input placeholder="Search models..." value={search} onChange={(e) => setSearch(e.target.value)} className="w-64" />
-          <select className="border rounded px-3 py-2 text-sm" value={brandFilter} onChange={(e) => setBrandFilter(e.target.value)}>
-            <option value="">All brands</option>
-            {brands.map((b) => (<option key={String(b.id)} value={String(b.id)}>{b.name}</option>))}
-          </select>
+          <Select value={brandFilter} onValueChange={(v) => setBrandFilter(v)}>
+            <SelectTrigger><SelectValue placeholder="Select category" className="w-full" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All</SelectItem>
+              {brands.map(c => <SelectItem key={String(c.id)} value={String(c.id)}>{c.name}</SelectItem>)}
+            </SelectContent>
+          </Select>
           <div className="flex-1" />
           <Button size="sm" onClick={openCreate}><Plus className="h-4 w-4 mr-1" />New Model</Button>
         </div>
@@ -162,8 +170,8 @@ function VehicleModelDialog({ open, onOpenChange, brands, initial, onSave }: { o
           <div className="space-y-1">
             <label className="text-sm">Brand</label>
             <Select value={vehicleBrandId} onValueChange={setVehicleBrandId}>
-              <SelectTrigger><SelectValue placeholder="Select a brand" /></SelectTrigger>
-              <SelectContent>
+              <SelectTrigger className="w-full" ><SelectValue placeholder="Select a brand"  /></SelectTrigger>
+              <SelectContent >
                 {brands.map(b => (<SelectItem key={String(b.id)} value={String(b.id)}>{b.name}</SelectItem>))}
               </SelectContent>
             </Select>

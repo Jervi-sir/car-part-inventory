@@ -8,12 +8,13 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ChevronLeft, ChevronRight, Pencil, Trash, Plus } from "lucide-react";
 import { AdminLayout } from "../layout/admin-layout";
+import { Head } from "@inertiajs/react";
 
 type Id = number | string;
 interface Category { id: Id; name: string; created_at?: string; updated_at?: string }
 interface Page<T> { data: T[]; total: number; page: number; per_page: number }
 
-const endpoint = "/api/categories"; // Laravel: index, store, update, destroy
+const endpoint = route('admin.categories.api.crud'); // Laravel: index, store, update, destroy
 
 export default function CategoriesPage() {
   const [pageData, setPageData] = useState<Page<Category>>({ data: [], total: 0, page: 1, per_page: 10 });
@@ -60,6 +61,7 @@ export default function CategoriesPage() {
 
   return (
     <AdminLayout>
+      <Head title="Categories" />
       <div className="p-6 space-y-4">
         <div className="text-2xl font-semibold">Categories</div>
         <div className="flex items-center gap-2">

@@ -1,370 +1,185 @@
 <?php
+// app/Http/Controllers/Api/PartController.php
 
-namespace App\Http\Controllers\Api;
+namespace App\Http\Controllers\Api\Admin;
 
+use App\Http\Controllers\Controller;
+use App\Models\Part;
+use App\Models\PartReference;
+use App\Models\PartFitment;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Arr;
-use App\Http\Controllers\Controller;
+use Illuminate\Support\Facades\DB;
 
 class PartController extends Controller
 {
-    public function index(Request $request)
+    public function index(Request $req)
     {
-        $perPage = (int) $request->integer('per_page', 10) ?: 10;
-        $page    = (int) $request->integer('page', 1) ?: 1;
+        $perPage = (int)($req->integer('per_page') ?: 10);
+        $page    = (int)($req->integer('page') ?: 1);
 
-        $q = DB::table('parts as p')
-            ->leftJoin('categories as c', 'c.id', '=', 'p.category_id')
-            ->leftJoin('manufacturers as m', 'm.id', '=', 'p.manufacturer_id')
-            ->selectRaw(
-                "p.id, p.sku, p.name, p.base_price, p.currency, p.is_active,
-                json_build_object('id', c.id, 'name', c.name) as category,
-                json_build_object('id', m.id, 'name', m.name) as manufacturer"
-            );
-        if ($request->filled('category_id')) {
-            $q->where('p.category_id', $request->input('category_id'));
-        }
-        if ($request->filled('manufacturer_id')) {
-            $q->where('p.manufacturer_id', $request->input('manufacturer_id'));
-        }
-        if ($request->filled('is_active') && in_array($request->input('is_active'), ['0', '1', 0, 1], true)) {
-            $q->where('p.is_active', (bool) $request->input('is_active'));
-        }
-        if ($sku = trim((string)$request->input('sku'))) {
-            $q->where('p.sku', 'like', "%{$sku}%");
-        }
-        if ($ref = trim((string)$request->input('reference_code'))) {
-            $q->whereExists(function ($sub) use ($ref) {
-                $sub->from('part_references as pr')
-                    ->whereColumn('pr.part_id', 'p.id')
-                    ->where('pr.reference_code', 'like', "%{$ref}%");
-            });
-        }
+        $q = Part::query()
+            ->with(['category:id,name', 'manufacturer:id,name'])
+            ->when($req->filled('category_id'), fn($x) => $x->where('category_id', $req->integer('category_id')))
+            ->when($req->filled('manufacturer_id'), fn($x) => $x->where('manufacturer_id', $req->integer('manufacturer_id')))
+            ->when($req->filled('is_active') && $req->is_active !== '', fn($x) => $x->where('is_active', (bool)$req->is_active))
+            ->when($req->filled('sku'), fn($x) => $x->where('sku', 'LIKE', '%' . $req->sku . '%'))
+            ->when($req->filled('reference_code'), function ($x) use ($req) {
+                $x->whereExists(function ($s) use ($req) {
+                    $s->select(DB::raw(1))
+                        ->from('part_references as pr')
+                        ->whereColumn('pr.part_id', 'parts.id')
+                        ->where('pr.code', 'LIKE', '%' . $req->reference_code . '%');
+                });
+            })
+            ->orderBy('id', 'desc');
 
         $total = (clone $q)->count();
-        $rows  = $q->orderBy('p.id', 'desc')
-            ->forPage($page, $perPage)
-            ->get();
+        $rows  = $q->forPage($page, $perPage)->get();
+
+        // normalize payload
+        $data = $rows->map(function (Part $p) {
+            return [
+                'id'           => $p->id,
+                'sku'          => $p->sku,
+                'name'         => $p->name,
+                'category'     => $p->relationLoaded('category') && $p->category ? ['id' => $p->category->id, 'name' => $p->category->name] : null,
+                'manufacturer' => $p->relationLoaded('manufacturer') && $p->manufacturer ? ['id' => $p->manufacturer->id, 'name' => $p->manufacturer->name] : null,
+                'price_retail' => $p->price_retail,
+                'is_active'    => (bool)$p->is_active,
+            ];
+        });
 
         return response()->json([
-            'data'     => $rows,
+            'data'     => $data,
             'total'    => $total,
             'page'     => $page,
             'per_page' => $perPage,
         ]);
     }
 
-    public function store(Request $request)
+    public function store(Request $req)
     {
-        $data = $this->validateCore($request);
+        $val = $this->validated($req);
 
-        $id = DB::table('parts')->insertGetId([
-            'category_id'    => $data['category_id'],
-            'manufacturer_id' => $data['manufacturer_id'],
-            'sku'            => $data['sku'],
-            'name'           => $data['name'],
-            'description'    => $data['description'],
-            'package_qty'    => $data['package_qty'],
-            'min_order_qty'  => $data['min_order_qty'],
-            'currency'       => $data['currency'],
-            'base_price'     => $data['base_price'],
-            'is_active'      => $data['is_active'],
-            'created_at'     => now(),
-            'updated_at'     => now(),
-        ]);
+        $part = Part::create($val);
 
-        return response()->json(['id' => $id], 201);
+        return response()->json(['id' => $part->id], 201);
     }
 
-    public function show($id)
+    public function show(Part $part)
     {
-        $part = DB::table('parts')->where('id', $id)->first();
-        if (!$part) return response()->json(['message' => 'Not found'], 404);
-
-        $images = DB::table('part_images')
-            ->where('part_id', $id)
-            ->orderBy('sort_order')->orderBy('id')
-            ->get(['id', 'url', 'sort_order']);
-
-        $references = DB::table('part_references as pr')
-            ->join('part_reference_types as t', 't.id', '=', 'pr.part_reference_type_id')
-            ->where('pr.part_id', $id)
-            ->orderBy('pr.id')
-            ->get([
-                'pr.id',
-                'pr.part_reference_type_id',
-                'pr.reference_code',
-                'pr.source_brand',
-                't.code as type_code',
-                't.label as type_label'
-            ]);
-
-        // include vehicle_brand_id for editor convenience
-        $fitments = DB::table('part_fitments as f')
-            ->join('vehicle_models as vm', 'vm.id', '=', 'f.vehicle_model_id')
-            ->join('vehicle_brands as vb', 'vb.id', '=', 'vm.vehicle_brand_id')
-            ->where('f.part_id', $id)
-            ->orderBy('f.id')
-            ->get([
-                'f.id',
-                'vm.vehicle_brand_id',
-                'f.vehicle_model_id',
-                'f.engine_code',
-                'f.notes'
-            ]);
+        $part->load(['references', 'fitments.vehicleModel.vehicleBrand']);
 
         return response()->json([
-            'part'       => $part,
-            'images'     => $images,
-            'references' => $references,
-            'fitments'   => $fitments,
+            'part' => [
+                'id'               => $part->id,
+                'category_id'      => $part->category_id,
+                'manufacturer_id'  => $part->manufacturer_id,
+                'sku'              => $part->sku,
+                'name'             => $part->name,
+                'description'      => $part->description,
+                'package_qty'      => $part->package_qty,
+                'min_order_qty'    => $part->min_order_qty,
+                'price_retail'     => $part->price_retail,
+                'price_demi_gros'  => $part->price_demi_gros,
+                'price_gros'       => $part->price_gros,
+                'min_qty_gros'     => $part->min_qty_gros,
+                'images'           => $part->images ?? [],
+                'is_active'        => (bool)$part->is_active,
+            ],
+            'references' => $part->references->map(fn(PartReference $r) => [
+                'id'          => $r->id,
+                'type'        => $r->type,
+                'code'        => $r->code,
+                'source_brand'=> $r->source_brand,
+            ]),
+            'fitments' => $part->fitments->map(function (PartFitment $f) {
+                return [
+                    'id'               => $f->id,
+                    'vehicle_model_id' => $f->vehicle_model_id,
+                    'engine_code'      => $f->engine_code,
+                    'notes'            => $f->notes,
+                    'vehicle_brand'    => $f->vehicleModel?->vehicleBrand?->name,
+                    'vehicle_model'    => $f->vehicleModel?->name,
+                    'year_from'        => $f->vehicleModel?->year_from,
+                    'year_to'          => $f->vehicleModel?->year_to,
+                ];
+            }),
         ]);
     }
 
-    public function update(Request $request, $id)
+    public function update(Request $req, Part $part)
     {
-        $exists = DB::table('parts')->where('id', $id)->exists();
-        if (!$exists) return response()->json(['message' => 'Not found'], 404);
-
-        $data = $this->validateCore($request, $id);
-
-        DB::table('parts')->where('id', $id)->update([
-            'category_id'    => $data['category_id'],
-            'manufacturer_id' => $data['manufacturer_id'],
-            'sku'            => $data['sku'],
-            'name'           => $data['name'],
-            'description'    => $data['description'],
-            'package_qty'    => $data['package_qty'],
-            'min_order_qty'  => $data['min_order_qty'],
-            'currency'       => $data['currency'],
-            'base_price'     => $data['base_price'],
-            'is_active'      => $data['is_active'],
-            'updated_at'     => now(),
-        ]);
+        $val = $this->validated($req, $part->id);
+        $part->update($val);
 
         return response()->json(['ok' => true]);
     }
 
-    public function destroy($id)
+    public function destroy(Part $part)
     {
-        $deleted = DB::table('parts')->where('id', $id)->delete();
-        return response()->json(['deleted' => (bool) $deleted]);
+        $part->delete();
+        return response()->json(['ok' => true]);
     }
 
-    public function bulkStatus(Request $request)
+    public function bulkStatus(Request $req)
     {
-        $validated = $request->validate([
+        $data = $req->validate([
             'ids'       => ['required', 'array', 'min:1'],
-            'ids.*'     => ['integer', 'distinct'],
+            'ids.*'     => ['integer', 'exists:parts,id'],
             'is_active' => ['required', 'boolean'],
         ]);
 
-        DB::table('parts')->whereIn('id', $validated['ids'])->update([
-            'is_active'  => $validated['is_active'],
-            'updated_at' => now(),
-        ]);
+        Part::whereIn('id', $data['ids'])->update(['is_active' => $data['is_active']]);
 
-        return response()->json(['ok' => true, 'count' => count($validated['ids'])]);
+        return response()->json(['updated' => count($data['ids'])]);
     }
 
-    public function syncImages(Request $request, $id)
+    public function updateImages(Request $req, Part $part)
     {
-        $exists = DB::table('parts')->where('id', $id)->exists();
-        if (!$exists) return response()->json(['message' => 'Not found'], 404);
-
-        $validated = $request->validate([
-            'images'             => ['required', 'array'],
-            'images.*.id'        => ['nullable', 'integer'],
-            'images.*.url'       => ['required', 'url'],
+        $data = $req->validate([
+            'images'              => ['required', 'array'],
+            'images.*.url'        => ['required', 'string', 'max:1024'],
             'images.*.sort_order' => ['nullable', 'integer'],
         ]);
 
-        $incoming = collect($validated['images'])->values();
-        $incomingIds = $incoming->pluck('id')->filter()->all();
+        $sorted = collect($data['images'])
+            ->map(fn($i) => ['url' => $i['url'], 'sort_order' => $i['sort_order'] ?? 0])
+            ->sortBy('sort_order')
+            ->values()
+            ->all();
 
-        // delete removed
-        DB::table('part_images')
-            ->where('part_id', $id)
-            ->when(count($incomingIds) > 0, fn($q) => $q->whereNotIn('id', $incomingIds))
-            ->delete();
+        $part->images = $sorted;
+        $part->save();
 
-        // upsert & reorder by provided index
-        foreach ($incoming as $idx => $img) {
-            $payload = [
-                'part_id'    => (int) $id,
-                'url'        => $img['url'],
-                'sort_order' => $idx,
-                'updated_at' => now(),
-            ];
-            if (!empty($img['id'])) {
-                DB::table('part_images')->where('id', $img['id'])->update($payload);
-            } else {
-                $payload['created_at'] = now();
-                DB::table('part_images')->insert($payload);
-            }
-        }
-
-        return response()->json(['ok' => true]);
+        return response()->json(['ok' => true, 'images' => $sorted]);
     }
 
-    public function syncReferences(Request $request, $id)
+    private function validated(Request $req, ?int $id = null): array
     {
-        $exists = DB::table('parts')->where('id', $id)->exists();
-        if (!$exists) return response()->json(['message' => 'Not found'], 404);
-
-        $validated = $request->validate([
-            'references'                              => ['required', 'array'],
-            'references.*.id'                         => ['nullable', 'integer'],
-            'references.*.part_reference_type_id'     => ['required', 'integer', 'exists:part_reference_types,id'],
-            'references.*.reference_code'             => ['required', 'string', 'max:120'],
-            'references.*.source_brand'               => ['nullable', 'string', 'max:120'],
-        ]);
-
-        $incoming = collect($validated['references'])->map(function ($r) {
-            return [
-                'id'                       => Arr::get($r, 'id'),
-                'part_reference_type_id'   => (int) $r['part_reference_type_id'],
-                'reference_code'           => trim($r['reference_code']),
-                'source_brand'             => $r['source_brand'] !== null && $r['source_brand'] !== '' ? trim($r['source_brand']) : null,
-            ];
-        });
-
-        $incomingIds = $incoming->pluck('id')->filter()->all();
-
-        // delete removed
-        DB::table('part_references')
-            ->where('part_id', $id)
-            ->when(count($incomingIds) > 0, fn($q) => $q->whereNotIn('id', $incomingIds))
-            ->delete();
-
-        // upsert keeping uniqueness (part_id, part_reference_type_id, reference_code)
-        foreach ($incoming as $r) {
-            $payload = [
-                'part_id'                   => (int) $id,
-                'part_reference_type_id'    => $r['part_reference_type_id'],
-                'reference_code'            => $r['reference_code'],
-                'source_brand'              => $r['source_brand'],
-                'updated_at'                => now(),
-            ];
-
-            if (!empty($r['id'])) {
-                DB::table('part_references')->where('id', $r['id'])->update($payload);
-            } else {
-                $payload['created_at'] = now();
-
-                // prevent duplicate insert hitting unique index
-                $existing = DB::table('part_references')
-                    ->where('part_id', $id)
-                    ->where('part_reference_type_id', $r['part_reference_type_id'])
-                    ->where('reference_code', $r['reference_code'])
-                    ->first();
-
-                if ($existing) {
-                    DB::table('part_references')->where('id', $existing->id)->update($payload);
-                } else {
-                    DB::table('part_references')->insert($payload);
-                }
-            }
-        }
-
-        return response()->json(['ok' => true]);
-    }
-
-    public function syncFitments(Request $request, $id)
-    {
-        $exists = DB::table('parts')->where('id', $id)->exists();
-        if (!$exists) return response()->json(['message' => 'Not found'], 404);
-
-        $validated = $request->validate([
-            'fitments'                   => ['required', 'array'],
-            'fitments.*.id'              => ['nullable', 'integer'],
-            'fitments.*.vehicle_model_id' => ['required', 'integer', 'exists:vehicle_models,id'],
-            'fitments.*.engine_code'     => ['nullable', 'string', 'max:64'],
-            'fitments.*.notes'           => ['nullable', 'string', 'max:255'],
-        ]);
-
-        $incoming = collect($validated['fitments'])->map(function ($f) {
-            return [
-                'id'               => Arr::get($f, 'id'),
-                'vehicle_model_id' => (int) $f['vehicle_model_id'],
-                'engine_code'      => $f['engine_code'] ?? null,
-                'notes'            => $f['notes'] ?? null,
-            ];
-        });
-
-        $incomingIds = $incoming->pluck('id')->filter()->all();
-
-        // delete removed
-        DB::table('part_fitments')
-            ->where('part_id', $id)
-            ->when(count($incomingIds) > 0, fn($q) => $q->whereNotIn('id', $incomingIds))
-            ->delete();
-
-        // upsert honoring unique(part_id, vehicle_model_id, engine_code)
-        foreach ($incoming as $f) {
-            $payload = [
-                'part_id'         => (int) $id,
-                'vehicle_model_id' => $f['vehicle_model_id'],
-                'engine_code'     => $f['engine_code'],
-                'notes'           => $f['notes'],
-                'updated_at'      => now(),
-            ];
-
-            if (!empty($f['id'])) {
-                DB::table('part_fitments')->where('id', $f['id'])->update($payload);
-            } else {
-                $payload['created_at'] = now();
-
-                $existsUnique = DB::table('part_fitments')
-                    ->where('part_id', $id)
-                    ->where('vehicle_model_id', $f['vehicle_model_id'])
-                    ->where(function ($q) use ($f) {
-                        // handle NULL uniqueness for engine_code
-                        if ($f['engine_code'] === null) $q->whereNull('engine_code');
-                        else $q->where('engine_code', $f['engine_code']);
-                    })->exists();
-
-                if ($existsUnique) {
-                    // update the existing row (fetch id first)
-                    $row = DB::table('part_fitments')
-                        ->where('part_id', $id)
-                        ->where('vehicle_model_id', $f['vehicle_model_id'])
-                        ->where(function ($q) use ($f) {
-                            if ($f['engine_code'] === null) $q->whereNull('engine_code');
-                            else $q->where('engine_code', $f['engine_code']);
-                        })->first();
-
-                    DB::table('part_fitments')->where('id', $row->id)->update($payload);
-                } else {
-                    DB::table('part_fitments')->insert($payload);
-                }
-            }
-        }
-
-        return response()->json(['ok' => true]);
-    }
-
-    private function validateCore(Request $request, $id = null): array
-    {
-        // sku is nullable unique (MySQL allows many NULLs)
-        return $request->validate([
-            'category_id'    => ['required', 'integer', 'exists:categories,id'],
-            'manufacturer_id' => ['nullable', 'integer', 'exists:manufacturers,id'],
-            'sku'            => [
+        return $req->validate([
+            'manufacturer_id'  => ['nullable', 'integer', 'exists:manufacturers,id'],
+            'category_id'      => ['required', 'integer', 'exists:categories,id'],
+            'sku'              => [
                 'nullable',
                 'string',
                 'max:80',
-                Rule::unique('parts', 'sku')->ignore($id)->whereNull('deleted_at') // if you use soft deletes later
+                Rule::unique('parts', 'sku')->ignore($id),
             ],
-            'name'           => ['required', 'string', 'max:255'],
-            'description'    => ['nullable', 'string'],
-            'package_qty'    => ['required', 'integer', 'min:1'],
-            'min_order_qty'  => ['required', 'integer', 'min:1'],
-            'currency'       => ['required', 'string', 'size:3'],
-            'base_price'     => ['nullable', 'numeric', 'min:0'],
-            'is_active'      => ['required', 'boolean'],
+            'name'             => ['required', 'string', 'max:255'],
+            'description'      => ['nullable', 'string'],
+            'package_qty'      => ['required', 'integer', 'min:1'],
+            'min_order_qty'    => ['required', 'integer', 'min:1'],
+            'price_retail'     => ['nullable', 'numeric', 'min:0'],
+            'price_demi_gros'  => ['nullable', 'numeric', 'min:0'],
+            'price_gros'       => ['nullable', 'numeric', 'min:0'],
+            'min_qty_gros'     => ['required', 'integer', 'min:1'],
+            'is_active'        => ['required', 'boolean'],
         ]);
     }
+
+
+    
 }

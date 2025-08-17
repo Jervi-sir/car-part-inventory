@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ChevronLeft, ChevronRight, Pencil, Trash, Plus } from "lucide-react";
 import { AdminLayout } from "../layout/admin-layout";
+import { Head } from "@inertiajs/react";
 
 type Id2 = number | string;
 interface Manufacturer { id: Id2; name: string; created_at?: string; updated_at?: string }
@@ -54,6 +55,7 @@ export default function ManufacturersPage() {
 
   return (
     <AdminLayout>
+      <Head title="Manufacturers" />
       <div className="p-6 space-y-4">
         <div className="text-2xl font-semibold">Manufacturers</div>
         <div className="flex items-center gap-2">
