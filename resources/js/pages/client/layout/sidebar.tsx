@@ -4,6 +4,7 @@ import {
   Command,
   Container,
   SearchIcon,
+  SettingsIcon,
   ShoppingCartIcon,
 } from "lucide-react"
 
@@ -46,6 +47,11 @@ const data = {
       title: "Orders",
       url: route('client.orders.page'),
       icon: Container,
+    },
+    {
+      title: "Settings",
+      url: route('client.settings.page'),
+      icon: SettingsIcon,
     },
   ],
 

@@ -1,10 +1,12 @@
+// resources/js/pages/admin/order.tsx
 import { useEffect, useState } from "react";
 import { Head, router, usePage } from "@inertiajs/react";
-import { ClientLayout } from "../layout/client-layout";
+import { AdminLayout } from "../layout/admin-layout"; // change if you have an AdminLayout
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ArrowLeft, Truck } from "lucide-react";
+import api from "@/lib/api";
 
 declare const route: (name: string, params?: any) => string;
 
@@ -54,25 +56,9 @@ type OrderPayload = {
   updated_at?: string | null;
 };
 
-const csrf =
-  (typeof document !== "undefined" &&
-    (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content) ||
-  "";
-
-const baseHeaders = (json = true) => ({
-  Accept: "application/json",
-  ...(json ? { "Content-Type": "application/json" } : {}),
-  "X-CSRF-TOKEN": csrf,
-  "X-Requested-With": "XMLHttpRequest",
-});
-
-const http = {
-  get: (url: string) => fetch(url, { method: "GET", headers: baseHeaders(false), credentials: "same-origin" }),
-};
-
 const endpoints = {
-  orderShow: (id: Id) => route("shop.api.orders.show", { order: id }),
-  backToCatalog: route("client.parts.page"),
+  orderShow: (id: Id) => route("admin.order.api.show", { order: id }),
+  backToList: route("admin.orders.page"),
 };
 
 export default function OrderPage() {
@@ -87,16 +73,10 @@ export default function OrderPage() {
     setErr(null);
     setLoading(true);
     try {
-      const res = await http.get(endpoints.orderShow(orderId));
-      if (!res.ok) {
-        const js = await res.json().catch(() => null);
-        setErr(js?.message ?? "Failed to load order.");
-      } else {
-        const js = await res.json();
-        setOrder(js as OrderPayload);
-      }
+      const res = await api.get(endpoints.orderShow(orderId));
+      setOrder(res.data as OrderPayload);
     } catch (e: any) {
-      setErr(e?.message ?? "Failed to load order.");
+      setErr(e?.response?.data?.message || e?.message || "Failed to load order.");
     } finally {
       setLoading(false);
     }
@@ -118,13 +98,19 @@ export default function OrderPage() {
   };
 
   return (
-    <ClientLayout title={`Order #${orderId}`} >
+    <AdminLayout title={`Order #${orderId}`} >
       <div className="p-6 pt-0">
         <Head title={`Order #${orderId}`} />
 
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
-            <Button className="cursor-pointer" size={'icon'} variant="outline" onClick={() => router.get(window.history.back() as any)}>
+            <Button
+              className="cursor-pointer"
+              size={'icon'}
+              variant="outline"
+              onClick={() => (window.location.href = endpoints.backToList)}
+              title="Back to Orders"
+            >
               <ArrowLeft />
             </Button>
             <h1 className="text-2xl font-semibold">Order #{orderId}</h1>
@@ -182,9 +168,6 @@ export default function OrderPage() {
               <Card className="p-4 gap-2">
                 <div className="font-semibold mb-0">Status</div>
                 <div className="text-sm">
-                  {/* <div className="mb-2">
-                    <span className="px-2 py-1 rounded bg-muted">{statusLabel(order.status)}</span>
-                  </div> */}
                   <div className="flex items-center gap-2 text-xs flex-wrap">
                     {order.status_steps.map((s, idx) => (
                       <span
@@ -240,6 +223,6 @@ export default function OrderPage() {
           </div>
         )}
       </div>
-    </ClientLayout>
+    </AdminLayout>
   );
 }

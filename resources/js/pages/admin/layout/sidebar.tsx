@@ -32,6 +32,7 @@ const data = {
     { title: "Vehicle Brands", url: route("admin.vehicle-brands.page"), icon: CarFront },
     { title: "Vehicle Models", url: route("admin.vehicle-models.page"), icon: Package },
     { title: "Parts", url: route("admin.parts.page"), icon: Puzzle },
+    { title: "Orders", url: route("admin.orders.page"), icon: Puzzle },
   ],
 }
 

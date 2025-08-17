@@ -1,15 +1,14 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Head } from "@inertiajs/react";
-import { ClientLayout } from "../layout/client-layout";
+import { AdminLayout } from "../layout/admin-layout"; // change if you have an AdminLayout
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ChevronLeft, ChevronRight, Search } from "lucide-react";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { ChevronDown } from "lucide-react";
+import { ChevronLeft, ChevronRight, ChevronDown, ChevronRight as ChevronRightIcon } from "lucide-react";
+import api from "@/lib/api";
 
 declare const route: (name: string, params?: any) => string;
 
@@ -41,24 +40,9 @@ type OrderRow = {
 
 type Page<T> = { data: T[]; total: number; page: number; per_page: number };
 
-const csrf =
-  (typeof document !== "undefined" &&
-    (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content) ||
-  "";
-
-const baseHeaders = (json = true) => ({
-  Accept: "application/json",
-  ...(json ? { "Content-Type": "application/json" } : {}),
-  "X-CSRF-TOKEN": csrf,
-  "X-Requested-With": "XMLHttpRequest",
-});
-const http = {
-  get: (url: string) => fetch(url, { method: "GET", headers: baseHeaders(false), credentials: "same-origin" }),
-};
-
 const endpoints = {
-  list: route("shop.api.orders.index"),
-  view: (id: Id) => route("client.order.page", { order: id }),
+  list: route("admin.api.orders.index"),
+  view: (id: Id) => route("admin.order.page", { order: id }),
 };
 
 const statusOptions = ["all", "cart", "pending", "confirmed", "preparing", "shipped", "completed", "canceled"] as const;
@@ -81,27 +65,37 @@ export default function OrdersPage() {
   });
   const [pageData, setPageData] = useState<Page<OrderRow>>({ data: [], total: 0, page: 1, per_page: 12 });
   const [expandedRows, setExpandedRows] = useState<Record<number, boolean>>({});
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
 
   const maxPage = useMemo(() => Math.max(1, Math.ceil(pageData.total / pageData.per_page)), [pageData]);
   const reqRef = useRef(0);
 
   const refresh = async (page = 1) => {
     const myReq = ++reqRef.current;
-    const params = new URLSearchParams({
-      page: String(page),
-      per_page: String(pageData.per_page),
-      q: filters.q,
-      status: filters.status,
-      delivery_method: filters.delivery_method,
-      from: filters.from,
-      to: filters.to,
-      sort_by: filters.sort_by,
-      sort_dir: filters.sort_dir,
-    });
-    const res = await http.get(`${endpoints.list}?${params.toString()}`);
-    const js = await res.json();
-    if (myReq !== reqRef.current) return;
-    setPageData(js);
+    setLoading(true);
+    setErr(null);
+    try {
+      const { data } = await api.get(endpoints.list, {
+        params: {
+          page,
+          per_page: pageData.per_page,
+          q: filters.q,
+          status: filters.status,
+          delivery_method: filters.delivery_method,
+          from: filters.from,
+          to: filters.to,
+          sort_by: filters.sort_by,
+          sort_dir: filters.sort_dir,
+        },
+      });
+      if (myReq !== reqRef.current) return;
+      setPageData(data as Page<OrderRow>);
+    } catch (e: any) {
+      setErr(e?.response?.data?.message || e?.message || "Failed to load orders.");
+    } finally {
+      if (myReq === reqRef.current) setLoading(false);
+    }
   };
 
   useEffect(() => { refresh(1); }, []); // initial
@@ -116,7 +110,6 @@ export default function OrdersPage() {
     });
     const extra = arr.length > 3 ? ` +${arr.length - 3} more` : "";
     return first.join(", ") + extra;
-    // You can show brand/model later if needed by expanding the payload
   };
 
   const money = (n: number, c: string) => `${Number(n).toFixed(2)} ${c}`;
@@ -126,61 +119,57 @@ export default function OrdersPage() {
   };
 
   return (
-    <ClientLayout title="Orders">
+    <AdminLayout title="Orders">
       <div className="p-6 pt-0">
-        <Head title="My Orders" />
+        <Head title="Orders" />
         <div className="flex items-center justify-between mb-4">
-          <h1 className="text-2xl font-semibold">My Orders</h1>
+          <h1 className="text-2xl font-semibold">Orders</h1>
         </div>
+
         {/* Filters */}
         <Card className="p-4 mb-4">
           <div className="flex flex-row flex-wrap gap-3">
-            <div className="w-[180px] md:col-span-2 space-y-2">
+            <div className="w-[220px] md:col-span-2 space-y-2">
               <Label>Search</Label>
-              <div className="flex gap-2">
-                <Input
-                  className="w-full"
-                  placeholder="Order #, item name, SKU, reference…"
-                  value={filters.q}
-                  onChange={(e) => setFilters({ ...filters, q: e.target.value })}
-                />
-                {/* <Button variant="outline" onClick={() => refresh(1)}>
-                  <Search className="h-4 w-4" />
-                </Button> */}
-              </div>
+              <Input
+                className="w-full"
+                placeholder="Order #, name, phone, SKU, reference…"
+                value={filters.q}
+                onChange={(e) => setFilters({ ...filters, q: e.target.value })}
+              />
             </div>
 
-            <div className="w-[120px] space-y-2">
+            <div className="w-[140px] space-y-2">
               <Label>Status</Label>
               <Select value={filters.status} onValueChange={(v) => setFilters({ ...filters, status: v })}>
-                <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="w-full"><SelectValue placeholder="All" /></SelectTrigger>
                 <SelectContent>
                   {statusOptions.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
 
-            <div className="w-[120px] space-y-2">
+            <div className="w-[140px] space-y-2">
               <Label>Method</Label>
               <Select value={filters.delivery_method} onValueChange={(v) => setFilters({ ...filters, delivery_method: v })}>
-                <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="w-full"><SelectValue placeholder="All" /></SelectTrigger>
                 <SelectContent>
                   {methodOptions.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
 
-            <div className="w-[150px] space-y-2">
+            <div className="w-[160px] space-y-2">
               <Label>From</Label>
               <Input className="w-full" type="date" value={filters.from} onChange={(e) => setFilters({ ...filters, from: e.target.value })} />
             </div>
 
-            <div className="w-[150px] space-y-2">
+            <div className="w-[160px] space-y-2">
               <Label>To</Label>
               <Input className="w-full" type="date" value={filters.to} onChange={(e) => setFilters({ ...filters, to: e.target.value })} />
             </div>
 
-            <div className="w-[240px] space-y-2">
+            <div className="w-[280px] space-y-2">
               <Label>Sort</Label>
               <div className="flex gap-2">
                 <Select value={filters.sort_by} onValueChange={(v) => setFilters({ ...filters, sort_by: v })}>
@@ -199,12 +188,25 @@ export default function OrdersPage() {
               </div>
             </div>
 
-            <div className="flex items-end">
-              <Button variant="ghost" onClick={() => { setFilters({ q: "", status: "all", delivery_method: "all", from: "", to: "", sort_by: "created_at", sort_dir: "desc" }); }}>
+            <div className="flex items-end gap-2">
+              <Button
+                variant="outline"
+                onClick={() => refresh(1)}
+                disabled={loading}
+              >
+                {loading ? "Loading…" : "Apply"}
+              </Button>
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  setFilters({ q: "", status: "all", delivery_method: "all", from: "", to: "", sort_by: "created_at", sort_dir: "desc" });
+                }}
+              >
                 Clear
               </Button>
             </div>
           </div>
+          {err && <div className="text-sm text-red-600 mt-2">{err}</div>}
         </Card>
 
         {/* Table */}
@@ -212,8 +214,8 @@ export default function OrdersPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-[90px]">Order #</TableHead>
-                <TableHead className="w-[160px]">Date</TableHead>
+                <TableHead className="w-[100px]">Order #</TableHead>
+                <TableHead className="w-[180px]">Date</TableHead>
                 <TableHead className="w-[120px]">Status</TableHead>
                 <TableHead>Items (brief)</TableHead>
                 <TableHead className="w-[90px]">Count</TableHead>
@@ -224,14 +226,14 @@ export default function OrdersPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {pageData.data.length === 0 ? (
+              {pageData.data?.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={9} className="text-center text-muted-foreground">
-                    No orders found
+                    {loading ? "Loading…" : "No orders found"}
                   </TableCell>
                 </TableRow>
               ) : (
-                pageData.data.map(o => {
+                pageData.data?.map(o => {
                   const expanded = expandedRows[o.id] || false;
 
                   return (
@@ -250,7 +252,7 @@ export default function OrdersPage() {
                             {expanded ? (
                               <ChevronDown className="h-4 w-4" />
                             ) : (
-                              <ChevronRight className="h-4 w-4" />
+                              <ChevronRightIcon className="h-4 w-4" />
                             )}
                             #{o.id}
                           </button>
@@ -301,8 +303,6 @@ export default function OrdersPage() {
                 })
               )}
             </TableBody>
-
-
           </Table>
         </div>
 
@@ -334,6 +334,6 @@ export default function OrdersPage() {
           </div>
         </div>
       </div>
-    </ClientLayout>
+    </AdminLayout>
   );
 }

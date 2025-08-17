@@ -3,6 +3,7 @@
 use App\Http\Controllers\Admin\CategoryController;
 use App\Http\Controllers\Admin\LookupController;
 use App\Http\Controllers\Admin\ManufacturerController;
+use App\Http\Controllers\Admin\OrderController;
 use App\Http\Controllers\Admin\PartController;
 use App\Http\Controllers\Admin\PartFitmentController;
 use App\Http\Controllers\Admin\VehicleBrandController;
@@ -25,7 +26,7 @@ Route::prefix('admin')->group(function () {
     });
     // Vehicle Brands
     Route::prefix('manufacturers')->group(function () {
-        Route::get('/', fn()  => Inertia::render('admin/manufacturers/page'))->name('admin.manufacturers.page'); 
+        Route::get('/', fn()  => Inertia::render('admin/manufacturers/page'))->name('admin.manufacturers.page');
         Route::prefix('api')->group(function () {
             Route::get('/', [ManufacturerController::class, 'index'])->name('admin.manufacturers.api.crud');
             Route::post('/', [ManufacturerController::class, 'store']);
@@ -85,7 +86,18 @@ Route::prefix('admin')->group(function () {
     });
 
 
-    Route::get('fitments', fn()  => Inertia::render('admin/fitments/page'))->name('admin.fitments.page');
-    Route::get('parts', fn()  => Inertia::render('admin/parts/page'))->name('admin.parts.page');
-});
+    Route::prefix('orders')->group(function () {
+        Route::get('/', [OrderController::class, 'page'])->name('admin.orders.page');
+        // JSON API
+        Route::prefix('api')->group(function () {
+            Route::get('/', [OrderController::class, 'index'])->name('admin.api.orders.index');
+        });
+    });
 
+    Route::prefix('order')->group(function () {
+        Route::get('id/{order}', [OrderController::class, 'showPage'])->name('admin.order.page');
+        Route::prefix('api')->group(function () {
+            Route::get('{order}', [OrderController::class, 'show'])->name('admin.order.api.show');
+        });
+    });
+});

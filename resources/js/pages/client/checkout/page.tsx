@@ -1,5 +1,4 @@
-// resources/js/Pages/client/checkout/page.tsx
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { Head } from "@inertiajs/react";
 import { ClientLayout } from "../layout/client-layout";
 
@@ -9,6 +8,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Minus, Plus, Trash2, Truck, ShoppingCart, X } from "lucide-react";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { cn } from "@/lib/utils";
+import api from "@/lib/api"; // path to the axios code you pasted
 
 declare const route: (name: string, params?: any) => string;
 
@@ -23,41 +25,31 @@ type CartItemFull = {
   image?: string | null;
   manufacturer?: Mini | null;
   category?: Mini | null;
-
   min_order_qty: number;
   min_qty_gros: number;
   price_retail?: number | null;
   price_demi_gros?: number | null;
   price_gros?: number | null;
-
   fitment_models: string[];
   fitment_brands: string[];
   references: Ref[];
-
   qty: number;
 };
 
 type Cart = { items: CartItemFull[]; subtotal: number; count: number; currency: string };
 
-const csrf =
-  (typeof document !== "undefined" &&
-    (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content) ||
-  "";
-
-const baseHeaders = (json = true) => ({
-  Accept: "application/json",
-  ...(json ? { "Content-Type": "application/json" } : {}),
-  "X-CSRF-TOKEN": csrf,
-  "X-Requested-With": "XMLHttpRequest",
-});
-
-const http = {
-  get: (url: string) => fetch(url, { method: "GET", headers: baseHeaders(false), credentials: "same-origin" }),
-  post: (url: string, body?: any) =>
-    fetch(url, { method: "POST", headers: baseHeaders(), credentials: "same-origin", body: body ? JSON.stringify(body) : undefined }),
-  put: (url: string, body?: any) =>
-    fetch(url, { method: "PUT", headers: baseHeaders(), credentials: "same-origin", body: body ? JSON.stringify(body) : undefined }),
-  delete: (url: string) => fetch(url, { method: "DELETE", headers: baseHeaders(false), credentials: "same-origin" }),
+type Address = {
+  id: number;
+  label?: string | null;
+  recipient_name?: string | null;
+  phone?: string | null;
+  address_line1: string;
+  address_line2?: string | null;
+  city: string;
+  state?: string | null;
+  postal_code?: string | null;
+  country: string;
+  is_default: boolean;
 };
 
 const endpoints = {
@@ -65,27 +57,43 @@ const endpoints = {
   cartUpdate: (id: Id) => route("shop.api.cart.update", { part: id }),
   cartRemove: (id: Id) => route("shop.api.cart.remove", { part: id }),
   cartClear: route("shop.api.cart.clear"),
-  checkoutSubmit: route("shop.api.checkout.submit"), // NEW
+  checkoutSubmit: route("shop.api.checkout.submit"),
+  addressesIndex: route("client.settings.api.shipping-addresses.crud"),
 };
+
+// 👇 new http wrapper with axios
+const http = {
+  get: (url: string, config: any = {}) => api.get(url, config),
+  post: (url: string, body?: any, config: any = {}) => api.post(url, body, config),
+  put: (url: string, body?: any, config: any = {}) => api.put(url, body, config),
+  delete: (url: string, config: any = {}) => api.delete(url, config),
+};
+
+
 
 export default function CheckoutPage() {
   const [cart, setCart] = useState<Cart>({ items: [], subtotal: 0, count: 0, currency: "DZD" });
   const [loading, setLoading] = useState(true);
   const [busyRow, setBusyRow] = useState<number | null>(null);
+
+  const [addresses, setAddresses] = useState<Address[]>([]);
+  const [addrLoading, setAddrLoading] = useState(true);
+
   const [form, setForm] = useState({
     full_name: "",
     phone: "",
     address: "",
-    delivery_method: "pickup", // default
+    delivery_method: "pickup" as "pickup" | "courier" | "post",
   });
+
+  const [selectedAddressId, setSelectedAddressId] = useState<string>("new");
   const [submitBusy, setSubmitBusy] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [placed, setPlaced] = useState<{ order_id: number; grand_total: number } | null>(null);
 
   const refreshCart = async () => {
     setLoading(true);
-    const res = await http.get(endpoints.cartShow);
-    const js = await res.json();
+    const { data: js } = await http.get(endpoints.cartShow);
     setCart({
       items: js.items ?? [],
       subtotal: js.subtotal ?? 0,
@@ -95,8 +103,27 @@ export default function CheckoutPage() {
     setLoading(false);
   };
 
+  const loadAddresses = async () => {
+    setAddrLoading(true);
+    try {
+      const { data: js } = await http.get(endpoints.addressesIndex);
+      const list: Address[] = js?.data ?? js ?? [];
+      setAddresses(list);
+      const def = list.find(a => a.is_default);
+      if (def) setSelectedAddressId(String(def.id));
+      else if (list.length) setSelectedAddressId(String(list[0].id));
+      else setSelectedAddressId("new");
+    } catch (e) {
+      console.error("Failed loading addresses", e);
+      setSelectedAddressId("new");
+    } finally {
+      setAddrLoading(false);
+    }
+  };
+
   useEffect(() => {
     refreshCart();
+    loadAddresses();
   }, []);
 
   const updateQty = async (id: Id, qty: number) => {
@@ -119,40 +146,59 @@ export default function CheckoutPage() {
     await refreshCart();
   };
 
+  const needsAddress = form.delivery_method === "courier" || form.delivery_method === "post";
+  const usingSavedAddress = selectedAddressId !== "new";
+  const chosenAddress = useMemo(
+    () => (usingSavedAddress ? addresses.find(a => String(a.id) === selectedAddressId) ?? null : null),
+    [usingSavedAddress, selectedAddressId, addresses]
+  );
+
   const submitShipping = async () => {
     setSubmitError(null);
     if (!cart.items.length) return;
+    if (needsAddress) {
+      if (!usingSavedAddress && !form.address.trim()) {
+        setSubmitError("Please provide an address or select a saved one.");
+        return;
+      }
+    }
 
     setSubmitBusy(true);
     try {
-      const res = await http.post(endpoints.checkoutSubmit, {
+      const payload: any = {
         full_name: form.full_name.trim(),
         phone: form.phone.trim(),
-        address: form.address.trim(),
         delivery_method: form.delivery_method,
-      });
+      };
 
-      if (!res.ok) {
-        const js = await res.json().catch(() => null);
-        const msg =
-          js?.errors?.address?.[0] ??
-          js?.errors?.cart?.[0] ??
-          js?.message ??
-          "Failed to submit shipping.";
-        setSubmitError(msg);
+      if (needsAddress) {
+        if (usingSavedAddress && chosenAddress) {
+          payload.address_id = chosenAddress.id;
+        } else {
+          payload.address = form.address.trim();
+        }
       } else {
-        const js = await res.json();
-        // success: mark placed, refresh cart (will be empty now)
-        setPlaced({ order_id: js.order_id, grand_total: js.grand_total });
-        await refreshCart();
+        if (form.address.trim()) payload.address = form.address.trim();
       }
+
+      const res = await http.post(endpoints.checkoutSubmit, payload);
+
+      const js = res.data;
+      setPlaced({ order_id: js.order_id, grand_total: js.grand_total });
+      await refreshCart();
     } catch (e: any) {
-      setSubmitError(e?.message ?? "Failed to submit shipping.");
+      const msg =
+        e?.response?.data?.errors?.address?.[0] ??
+        e?.response?.data?.errors?.address_id?.[0] ??
+        e?.response?.data?.errors?.cart?.[0] ??
+        e?.response?.data?.message ??
+        e?.message ??
+        "Failed to submit shipping.";
+      setSubmitError(msg);
     } finally {
       setSubmitBusy(false);
     }
   };
-
 
   const isEmpty = cart.items.length === 0;
 
@@ -160,7 +206,7 @@ export default function CheckoutPage() {
     <ClientLayout title="Checkout">
       <div className="p-6 pt-0">
         <Head title="Checkout" />
-        
+
         <div className="flex items-center justify-between mb-4">
           <h1 className="text-2xl font-semibold">Checkout</h1>
           <Button variant="outline" onClick={refreshCart}>
@@ -169,9 +215,9 @@ export default function CheckoutPage() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Full Columns */}
-          <Card className="p-4 lg:col-span-2">
-            <div className="flex items-center justify-between mb-4">
+          {/* Order items */}
+          <Card className="p-4 gap-3 lg:col-span-2">
+            <div className="flex items-center justify-between">
               <div className="font-semibold">Your Order</div>
               {!isEmpty && (
                 <Button variant="ghost" size="sm" onClick={clear}>
@@ -233,13 +279,13 @@ export default function CheckoutPage() {
                           <TableCell className="text-xs">
                             {it.references?.length
                               ? it.references.map((r, i) => (
-                                <span key={i}>
-                                  {r.code}
-                                  {r.source_brand ? ` (${r.source_brand})` : ""}
-                                  {r.type ? ` [${r.type}]` : ""}
-                                  {i < it.references.length - 1 ? ", " : ""}
-                                </span>
-                              ))
+                                  <span key={i}>
+                                    {r.code}
+                                    {r.source_brand ? ` (${r.source_brand})` : ""}
+                                    {r.type ? ` [${r.type}]` : ""}
+                                    {i < it.references.length - 1 ? ", " : ""}
+                                  </span>
+                                ))
                               : "—"}
                           </TableCell>
                           <TableCell>
@@ -287,10 +333,10 @@ export default function CheckoutPage() {
             )}
           </Card>
 
-          {/* Summary */}
+          {/* Right column */}
           <div className="space-y-6">
-            <Card className="p-4">
-              <div className="font-semibold mb-3">Order Summary</div>
+            <Card className="p-4 gap-3">
+              <div className="font-semibold">Order Summary</div>
               <div className="space-y-2 text-sm">
                 <div className="flex items-center justify-between">
                   <span>Items</span>
@@ -315,10 +361,10 @@ export default function CheckoutPage() {
               </div>
             </Card>
 
-            <Card className="p-4">
-              <div className="font-semibold mb-3">Contact & Shipping</div>
+            <Card className="p-4 gap-3">
+              <div className="font-semibold">Contact</div>
               <div className="grid grid-cols-1 gap-3">
-                <div>
+                <div className="space-y-2">
                   <Label>Full name</Label>
                   <Input
                     placeholder="Your name"
@@ -327,7 +373,7 @@ export default function CheckoutPage() {
                     disabled={submitBusy}
                   />
                 </div>
-                <div>
+                <div className="space-y-2">
                   <Label>Phone</Label>
                   <Input
                     placeholder="05xx-xx-xx-xx"
@@ -336,23 +382,122 @@ export default function CheckoutPage() {
                     disabled={submitBusy}
                   />
                 </div>
-                <div>
-                  <Label>Address</Label>
-                  <Input
-                    placeholder={form.delivery_method === 'pickup' ? "(optional for pickup)" : "Street, City"}
-                    value={form.address}
-                    onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))}
-                    disabled={submitBusy}
-                  />
-                </div>
               </div>
-              <Button
-                className="w-full "
-                disabled={isEmpty || submitBusy}
-                onClick={submitShipping}
+
+              <div className="font-semibold pt-2">Delivery Method</div>
+              <RadioGroup
+                className="grid grid-cols-3 gap-2"
+                value={form.delivery_method}
+                onValueChange={(v) => setForm((f) => ({ ...f, delivery_method: v as any }))}
               >
+                {(["pickup", "courier", "post"] as const).map((opt) => (
+                  <label
+                    key={opt}
+                    className={cn(
+                      "flex items-center gap-2 rounded-md border p-2 cursor-pointer",
+                      form.delivery_method === opt && "border-primary ring-1 ring-primary/30"
+                    )}
+                  >
+                    <RadioGroupItem value={opt} />
+                    <span className="capitalize">{opt}</span>
+                  </label>
+                ))}
+              </RadioGroup>
+
+              {needsAddress && (
+                <>
+                  <div className="font-semibold pt-2">Shipping Address</div>
+
+                  {/* Saved address selector */}
+                  {addrLoading ? (
+                    <div className="text-sm text-muted-foreground">Loading addresses...</div>
+                  ) : addresses.length ? (
+                    <RadioGroup
+                      className="space-y-2"
+                      value={selectedAddressId}
+                      onValueChange={(v) => setSelectedAddressId(v)}
+                    >
+                      {addresses.map((a) => (
+                        <label
+                          key={a.id}
+                          className={cn(
+                            "flex gap-3 rounded-md border p-3 cursor-pointer",
+                            String(a.id) === selectedAddressId && "border-primary ring-1 ring-primary/30"
+                          )}
+                        >
+                          <RadioGroupItem value={String(a.id)} />
+                          <div className="text-sm">
+                            <div className="font-medium">
+                              {a.label || "Address"} {a.is_default && <span className="ml-2 text-xs">• Default</span>}
+                            </div>
+                            <div className="text-muted-foreground">
+                              {a.recipient_name ? `${a.recipient_name} • ` : ""}
+                              {a.phone || ""}
+                            </div>
+                            <div>
+                              {a.address_line1}
+                              {a.address_line2 ? `, ${a.address_line2}` : ""}, {a.city}
+                              {a.state ? `, ${a.state}` : ""} {a.postal_code || ""} • {a.country}
+                            </div>
+                          </div>
+                        </label>
+                      ))}
+
+                      {/* New address option */}
+                      <label
+                        className={cn(
+                          "flex gap-3 rounded-md border p-3 cursor-pointer",
+                          selectedAddressId === "new" && "border-primary ring-1 ring-primary/30"
+                        )}
+                      >
+                        <RadioGroupItem value="new" />
+                        <div className="text-sm">
+                          <div className="font-medium">Use a different address</div>
+                          <div className="text-muted-foreground">Enter it below</div>
+                        </div>
+                      </label>
+                    </RadioGroup>
+                  ) : (
+                    <div className="text-sm text-muted-foreground">
+                      You don’t have saved addresses. Enter a new one below.
+                    </div>
+                  )}
+
+                  {/* Free-text input only when "new" is selected */}
+                  {selectedAddressId === "new" && (
+                    <div className="pt-2">
+                      <Label>Address</Label>
+                      <Input
+                        placeholder="Street, City"
+                        value={form.address}
+                        onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))}
+                        disabled={submitBusy}
+                      />
+                    </div>
+                  )}
+                </>
+              )}
+
+              {!needsAddress && (
+                <div className="text-xs text-muted-foreground">
+                  Pickup selected — address optional (you may still add instructions).
+                </div>
+              )}
+
+              {!!submitError && (
+                <div className="text-sm text-red-600">{submitError}</div>
+              )}
+
+              <Button className="w-full" disabled={isEmpty || submitBusy} onClick={submitShipping}>
                 Continue to shipping <Truck className="ml-2 h-4 w-4" />
               </Button>
+
+              {placed && (
+                <div className="text-sm mt-2">
+                  Order <span className="font-mono">#{placed.order_id}</span> placed. Total:{" "}
+                  <span className="font-semibold">{placed.grand_total} {cart.currency}</span>
+                </div>
+              )}
             </Card>
           </div>
         </div>

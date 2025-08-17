@@ -8,6 +8,7 @@ use App\Models\OrderItem;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Models\Part;
+use App\Models\UserShippingAddress;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 
@@ -290,21 +291,36 @@ class CartController extends Controller
             'full_name'       => ['required', 'string', 'min:2', 'max:120'],
             'phone'           => ['required', 'string', 'min:5', 'max:40'],
             'address'         => ['nullable', 'string', 'max:255'],
+            'address_id'      => ['nullable', 'integer', 'exists:user_shipping_addresses,id'],
             'delivery_method' => ['required', Rule::in(['pickup', 'courier', 'post'])],
         ]);
 
-        // Address is required for courier & post
-        if (in_array($data['delivery_method'], ['courier', 'post']) && empty($data['address'])) {
+        // For courier/post: must have either address_id (owned by user) or address text
+        $needsAddress = in_array($data['delivery_method'], ['courier', 'post'], true);
+
+        $chosenAddress = null;
+        if (!empty($data['address_id'])) {
+            $chosenAddress = UserShippingAddress::where('id', $data['address_id'])
+                ->where('user_id', $user->id)
+                ->first();
+            if (!$chosenAddress) {
+                return response()->json([
+                    'message' => 'Invalid address.',
+                    'errors'  => ['address_id' => ['Address not found']]
+                ], 422);
+            }
+        }
+
+        if ($needsAddress && !$chosenAddress && empty($data['address'])) {
             return response()->json([
                 'message' => 'Address is required for this delivery method.',
                 'errors'  => ['address' => ['Address is required for courier/post']]
             ], 422);
         }
 
-        return DB::transaction(function () use ($user, $data) {
+        return DB::transaction(function () use ($user, $data, $chosenAddress, $needsAddress) {
             $order = $this->getOrCreateCartOrder($user->id);
 
-            // Must have items
             $itemsCount = $order->items()->count();
             if ($itemsCount === 0) {
                 return response()->json([
@@ -313,7 +329,6 @@ class CartController extends Controller
                 ], 422);
             }
 
-            // Simple shipping rules (adjust later or move to a table)
             $shipping = match ($data['delivery_method']) {
                 'pickup'  => 0.00,
                 'courier' => 600.00,
@@ -321,25 +336,46 @@ class CartController extends Controller
                 default   => 0.00,
             };
 
-            // Recalc subtotal from items
             $subtotal = (float)$order->items()->sum('line_total');
 
+            // Fill shipping contact + address: prioritize saved address if provided
+            $shipToName  = $data['full_name'];
+            $shipToPhone = $data['phone'];
+            $shipToAddress = null;
+
+            if ($chosenAddress) {
+                // You can format it however you store it in one field:
+                $shipToAddress = trim(implode(', ', array_filter([
+                    $chosenAddress->address_line1,
+                    $chosenAddress->address_line2,
+                    $chosenAddress->city,
+                    $chosenAddress->state,
+                    $chosenAddress->postal_code,
+                    $chosenAddress->country,
+                ])));
+                // Optionally override contact from saved address:
+                if (!empty($chosenAddress->recipient_name)) $shipToName = $chosenAddress->recipient_name;
+                if (!empty($chosenAddress->phone))          $shipToPhone = $chosenAddress->phone;
+            } else {
+                // Free-text (optional for pickup)
+                $shipToAddress = $data['address'] ?? null;
+            }
+
             $order->fill([
-                'status'          => 'pending', // finalize
+                'status'          => 'pending',
                 'delivery_method' => $data['delivery_method'],
-                'ship_to_name'    => $data['full_name'],
-                'ship_to_phone'   => $data['phone'],
-                'ship_to_address' => $data['address'] ?? null,
+                'ship_to_name'    => $shipToName,
+                'ship_to_phone'   => $shipToPhone,
+                'ship_to_address' => $shipToAddress,
                 'shipping_total'  => $shipping,
                 'subtotal'        => $subtotal,
-                'tax_total'       => 0.00, // adjust if needed
+                'tax_total'       => 0.00,
                 'discount_total'  => $order->discount_total ?? 0.00,
             ]);
 
             $order->grand_total = $order->subtotal - $order->discount_total + $order->shipping_total + $order->tax_total;
             $order->save();
 
-            // Return a concise receipt-like payload
             return response()->json([
                 'ok'          => true,
                 'order_id'    => $order->id,

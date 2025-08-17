@@ -23,7 +23,21 @@ return new class extends Migration
             $table->rememberToken();
             $table->timestamps();
         });
-
+        Schema::create('user_shipping_addresses', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('user_id')->constrained()->cascadeOnDelete();
+            $table->string('label')->nullable(); // e.g. "Home", "Work"
+            $table->string('recipient_name')->nullable();
+            $table->string('phone', 32)->nullable();
+            $table->string('address_line1');
+            $table->string('address_line2')->nullable();
+            $table->string('city');
+            $table->string('state')->nullable();
+            $table->string('postal_code')->nullable();
+            $table->string('country', 2)->default('DZ'); // ISO code
+            $table->boolean('is_default')->default(false);
+            $table->timestamps();
+        });
         Schema::create('password_reset_tokens', function (Blueprint $table) {
             $table->string('email')->primary();
             $table->string('token');
