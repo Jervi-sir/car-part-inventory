@@ -2,35 +2,42 @@
 
 namespace App\Http\Controllers\Admin;
 
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\Controller;
+use App\Models\Category;
+use App\Models\Manufacturer;
+use App\Models\VehicleBrand;
+use App\Models\VehicleModel;
+use Illuminate\Http\Request;
 
 class LookupController extends Controller
 {
-    public function partReferenceTypes()
+    public function categories(Request $req)
     {
-        $rows = DB::table('part_reference_types')
-            ->orderBy('id')->get(['id','code','label']);
-        return response()->json(['data' => $rows]);
+        $q = Category::query()->orderBy('name');
+        $data = $q->get(['id','name']);
+        return response()->json(['data' => $data]);
     }
 
-    public function vehicleBrands(Request $request)
+    public function manufacturers(Request $req)
     {
-        $rows = DB::table('vehicle_brands')
-            ->when($request->filled('search'), fn($q)=>$q->where('name','like','%'.$request->input('search').'%'))
-            ->orderBy('name')->paginate($request->integer('per_page', 1000));
-        return response()->json($rows);
+        $q = Manufacturer::query()->orderBy('name');
+        $data = $q->get(['id','name']);
+        return response()->json(['data' => $data]);
     }
 
-    public function vehicleModels(Request $request)
+    public function vehicleBrands(Request $req)
     {
-        $q = DB::table('vehicle_models')
-            ->when($request->filled('vehicle_brand_id'), fn($q)=>$q->where('vehicle_brand_id',$request->input('vehicle_brand_id')))
-            ->when($request->filled('search'), fn($q)=>$q->where('name','like','%'.$request->input('search').'%'))
-            ->orderBy('name');
+        $data = VehicleBrand::orderBy('name')->get(['id','name']);
+        return response()->json(['data' => $data]);
+    }
 
-        $per = $request->integer('per_page', 1000);
-        return response()->json($q->paginate($per));
+    public function vehicleModels(Request $req)
+    {
+        $req->validate(['vehicle_brand_id' => ['required','integer','exists:vehicle_brands,id']]);
+        $brandId = (int)$req->vehicle_brand_id;
+        $data = VehicleModel::where('vehicle_brand_id', $brandId)
+            ->orderBy('name')
+            ->get(['id','name','year_from','year_to']);
+        return response()->json(['data' => $data]);
     }
 }

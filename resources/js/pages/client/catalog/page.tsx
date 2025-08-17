@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Head } from "@inertiajs/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,23 +6,10 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ChevronLeft, ChevronRight, ShoppingCart, Trash2, Plus, Minus, RefreshCw } from "lucide-react";
+import { ChevronLeft, ChevronRight, ShoppingCart, Trash2, Plus, Minus, RefreshCw, ChevronDown } from "lucide-react";
 import { ClientLayout } from "../layout/client-layout";
 import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger, } from "@/components/ui/dropdown-menu";
-
-const csrf = (typeof document !== "undefined" && (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content) || "";
-const baseHeaders = (json = true) => ({
-  Accept: "application/json",
-  ...(json ? { "Content-Type": "application/json" } : {}),
-  "X-CSRF-TOKEN": csrf,
-  "X-Requested-With": "XMLHttpRequest",
-});
-const http = {
-  get: (url: string) => fetch(url, { method: "GET", headers: baseHeaders(false), credentials: "same-origin" }),
-  post: (url: string, body?: any) => fetch(url, { method: "POST", headers: baseHeaders(), credentials: "same-origin", body: body ? JSON.stringify(body) : undefined }),
-  put: (url: string, body?: any) => fetch(url, { method: "PUT", headers: baseHeaders(), credentials: "same-origin", body: body ? JSON.stringify(body) : undefined }),
-  delete: (url: string) => fetch(url, { method: "DELETE", headers: baseHeaders(false), credentials: "same-origin" }),
-};
+import api from "@/lib/api";
 
 declare const route: (name: string, params?: any) => string;
 
@@ -87,27 +74,29 @@ export default function CatalogPage() {
   const [cart, setCart] = useState<{ items: CartItem[]; subtotal: number; count: number; currency: string }>({ items: [], subtotal: 0, count: 0, currency: "DZD" });
 
   const [qtyById, setQtyById] = useState<Record<number, number>>({});
+  const [expanded, setExpanded] = useState<Record<number, boolean>>({});
   const maxPage = useMemo(() => Math.max(1, Math.ceil(pageData.total / pageData.per_page)), [pageData]);
+  const show = (v: unknown) => (v === 0 || v ? String(v) : "—");
   // State for column visibility
   const defaultColumnVisibility = {
     sku: true,
     name: true,
     manufacturer: true,
-    fitmentModels: true,
-    fitmentBrands: true,
-    minOrderQty: true,
-    minQtyGros: true,
+    fitmentModels: false,
+    fitmentBrands: false,
+    minOrderQty: false,
+    minQtyGros: false,
     priceRetail: true,
-    priceDemiGros: true,
-    priceGros: true,
-    references: true,
+    priceDemiGros: false,
+    priceGros: false,
+    references: false,
     qty: true,
     add: true,
   };
   // Initialize column visibility from localStorage or default
   const [columnVisibility, setColumnVisibility] = useState(() => {
     if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("catalogColumnVisibility");
+      const saved = localStorage.getItem("catalogColumnVisibility_v2");
       if (saved) {
         try {
           const parsed = JSON.parse(saved);
@@ -120,17 +109,25 @@ export default function CatalogPage() {
     }
     return defaultColumnVisibility;
   });
+
+  const visibleCount = useMemo(
+    () => Object.values(columnVisibility).filter(Boolean).length,
+    [columnVisibility]
+  );
   // Save column visibility to localStorage whenever it changes
   useEffect(() => {
     if (typeof window !== "undefined") {
-      localStorage.setItem("catalogColumnVisibility", JSON.stringify(columnVisibility));
+      localStorage.setItem("catalogColumnVisibility_v2", JSON.stringify(columnVisibility));
     }
   }, [columnVisibility]);
 
   useEffect(() => {
     (async () => {
-      const [c, m, b] = await Promise.all([http.get(endpoints.cats), http.get(endpoints.mans), http.get(endpoints.vbrands)]);
-      const [cj, mj, bj] = await Promise.all([c.json(), m.json(), b.json()]);
+      const [{ data: cj }, { data: mj }, { data: bj }] = await Promise.all([
+        api.get(endpoints.cats),
+        api.get(endpoints.mans),
+        api.get(endpoints.vbrands),
+      ]);
       const ext = (x: any) => (Array.isArray(x?.data) ? x.data : x?.data ?? []);
       setCats(ext(cj));
       setMans(ext(mj));
@@ -140,15 +137,14 @@ export default function CatalogPage() {
   }, []);
 
   const refreshCart = async () => {
-    const res = await http.get(endpoints.cartShow);
-    const js = await res.json();
+    const { data: js } = await api.get(endpoints.cartShow);
     setCart({ items: js.items ?? [], subtotal: js.subtotal ?? 0, count: js.count ?? 0, currency: js.currency ?? "DZD" });
   };
   const reqRef = useRef(0);
 
   const refreshParts = async (page = 1) => {
     const myReq = ++reqRef.current;
-    const params = new URLSearchParams({
+    const params = {
       page: String(page),
       per_page: String(pageData.per_page),
       q: filters.q,
@@ -156,10 +152,9 @@ export default function CatalogPage() {
       manufacturer_id: filters.manufacturer_id,
       vehicle_brand_id: filters.vehicle_brand_id,
       vehicle_model_id: filters.vehicle_model_id,
-    });
+    };
 
-    const res = await http.get(`${endpoints.parts}?${params.toString()}`);
-    const js = await res.json();
+    const { data: js } = await api.get(endpoints.parts, { params });
 
     if (myReq !== reqRef.current) return;
 
@@ -183,8 +178,7 @@ export default function CatalogPage() {
   useEffect(() => {
     (async () => {
       if (filters.vehicle_brand_id && filters.vehicle_brand_id !== "all") {
-        const res = await http.get(endpoints.vmodels(filters.vehicle_brand_id));
-        const js = await res.json();
+        const { data: js } = await api.get(endpoints.vmodels(filters.vehicle_brand_id));
         const ext = (x: any) => (Array.isArray(x?.data) ? x.data : x?.data ?? []);
         setModels(ext(js));
       } else {
@@ -195,13 +189,13 @@ export default function CatalogPage() {
   }, [filters.vehicle_brand_id]);
 
   const addToCart = async (id: number) => {
-    await http.post(endpoints.cartAdd, { part_id: id, quantity: qtyById[id] ?? 1 });
+    await api.post(endpoints.cartAdd, { part_id: id, quantity: qtyById[id] ?? 1 });
     await refreshCart();
   };
 
   return (
     <ClientLayout title="Catalog">
-      <div className="max-w-7xl mx-auto p-6">
+      <div className="p-6 pt-0">
         <Head title="Shop" />
         <div className="flex items-center justify-between mb-4">
           <h1 className="text-2xl font-semibold">Catalog</h1>
@@ -213,13 +207,14 @@ export default function CatalogPage() {
               <DropdownMenuContent className="w-56">
                 <DropdownMenuLabel>Table Columns</DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                  {Object.keys(columnVisibility).map((key) => (
+                {Object.keys(columnVisibility).map((key) => (
                   <DropdownMenuCheckboxItem
                     key={key}
                     checked={columnVisibility[key as keyof typeof columnVisibility]}
                     onCheckedChange={(checked) =>
                       setColumnVisibility((prev: any) => ({ ...prev, [key]: checked }))
                     }
+                    onSelect={(e) => e.preventDefault()}   // <— keep menu open
                   >
                     {key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, " $1")}
                   </DropdownMenuCheckboxItem>
@@ -298,6 +293,7 @@ export default function CatalogPage() {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-[36px]" />
                 {columnVisibility.sku && <TableHead className="w-[120px]">SKU</TableHead>}
                 {columnVisibility.name && <TableHead>Name</TableHead>}
                 {columnVisibility.manufacturer && <TableHead className="w-[180px]">Manufacturer</TableHead>}
@@ -316,81 +312,224 @@ export default function CatalogPage() {
             <TableBody>
               {pageData.data.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={Object.values(columnVisibility).filter(Boolean).length} className="text-center text-muted-foreground">
+                  <TableCell colSpan={visibleCount + 1} className="text-center text-muted-foreground">
                     No parts found
                   </TableCell>
                 </TableRow>
               )}
               {pageData.data.map((p) => (
-                <TableRow key={p.id}>
-                  {columnVisibility.sku && <TableCell className="font-mono text-xs">{p.sku || "—"}</TableCell>}
-                  {columnVisibility.name && <TableCell className="font-medium">{p.name}</TableCell>}
-                  {columnVisibility.manufacturer && <TableCell>{p.manufacturer?.name || "—"}</TableCell>}
-                  {columnVisibility.fitmentModels && (
-                    <TableCell className="text-xs">{p.fitment_models?.length ? p.fitment_models.join(", ") : "—"}</TableCell>
-                  )}
-                  {columnVisibility.fitmentBrands && (
-                    <TableCell className="text-xs">{p.fitment_brands?.length ? p.fitment_brands.join(", ") : "—"}</TableCell>
-                  )}
-                  {columnVisibility.minOrderQty && <TableCell>{p.min_order_qty}</TableCell>}
-                  {columnVisibility.minQtyGros && <TableCell>{p.min_qty_gros}</TableCell>}
-                  {columnVisibility.priceRetail && <TableCell>{p.price_retail != null ? `${p.price_retail} DZD` : "–"}</TableCell>}
-                  {columnVisibility.priceDemiGros && <TableCell>{p.price_demi_gros != null ? `${p.price_demi_gros} DZD` : "–"}</TableCell>}
-                  {columnVisibility.priceGros && <TableCell>{p.price_gros != null ? `${p.price_gros} DZD` : "–"}</TableCell>}
-                  {columnVisibility.references && (
-                    <TableCell className="text-xs">
-                      {p.references?.length
-                        ? p.references.map((r, i) => (
-                          <span key={i}>
-                            {r.code}
-                            {r.source_brand ? ` (${r.source_brand})` : ""}
-                            {r.type ? ` [${r.type}]` : ""}
-                            {i < p.references.length - 1 ? ", " : ""}
-                          </span>
-                        ))
-                        : "—"}
+                <React.Fragment key={p.id}>
+                  <TableRow>
+                    {/* expander cell */}
+                    <TableCell className="align-middle">
+                      <button
+                        type="button"
+                        className="p-1 rounded hover:bg-muted transition"
+                        aria-label={expanded[p.id] ? "Collapse" : "Expand"}
+                        onClick={() => setExpanded((e) => ({ ...e, [p.id]: !e[p.id] }))}
+                      >
+                        <ChevronDown className={`h-4 w-4 transition-transform ${expanded[p.id] ? "" : "-rotate-90"}`} />
+                      </button>
                     </TableCell>
-                  )}
-                  {columnVisibility.qty && (
-                    <TableCell>
-                      <div className="flex items-center gap-1">
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          onClick={() => setQtyById((q) => ({ ...q, [p.id]: Math.max(1, (q[p.id] ?? 1) - 1) }))}
-                        >
-                          <Minus className="h-4 w-4" />
+
+                    {columnVisibility.sku && <TableCell className="font-mono text-xs">{p.sku || "—"}</TableCell>}
+                    {columnVisibility.name && <TableCell className="font-medium">{p.name}</TableCell>}
+                    {columnVisibility.manufacturer && <TableCell>{p.manufacturer?.name || "—"}</TableCell>}
+                    {columnVisibility.fitmentModels && (
+                      <TableCell className="text-xs">{p.fitment_models?.length ? p.fitment_models.join(", ") : "—"}</TableCell>
+                    )}
+                    {columnVisibility.fitmentBrands && (
+                      <TableCell className="text-xs">{p.fitment_brands?.length ? p.fitment_brands.join(", ") : "—"}</TableCell>
+                    )}
+                    {columnVisibility.minOrderQty && <TableCell>{p.min_order_qty}</TableCell>}
+                    {columnVisibility.minQtyGros && <TableCell>{p.min_qty_gros}</TableCell>}
+                    {columnVisibility.priceRetail && <TableCell>{p.price_retail != null ? `${p.price_retail} DZD` : "–"}</TableCell>}
+                    {columnVisibility.priceDemiGros && <TableCell>{p.price_demi_gros != null ? `${p.price_demi_gros} DZD` : "–"}</TableCell>}
+                    {columnVisibility.priceGros && <TableCell>{p.price_gros != null ? `${p.price_gros} DZD` : "–"}</TableCell>}
+                    {columnVisibility.references && (
+                      <TableCell className="text-xs">
+                        {p.references?.length
+                          ? p.references.map((r, i) => (
+                            <span key={i}>
+                              {r.code}
+                              {r.source_brand ? ` (${r.source_brand})` : ""}
+                              {r.type ? ` [${r.type}]` : ""}
+                              {i < p.references.length - 1 ? ", " : ""}
+                            </span>
+                          ))
+                          : "—"}
+                      </TableCell>
+                    )}
+                    {columnVisibility.qty && (
+                      <TableCell>
+                        <div className="flex items-center gap-1">
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            onClick={() => setQtyById((q) => ({ ...q, [p.id]: Math.max(1, (q[p.id] ?? 1) - 1) }))}
+                          >
+                            <Minus className="h-4 w-4" />
+                          </Button>
+                          <Input
+                            type="number"
+                            min={Math.max(1, p.min_order_qty || 1)}
+                            className="remove_arrows w-16 text-center"
+                            value={qtyById[p.id] ?? Math.max(1, p.min_order_qty || 1)}
+                            onChange={(e) => {
+                              const base = Math.max(1, p.min_order_qty || 1);
+                              const v = Math.max(base, Number(e.target.value) || base);
+                              setQtyById((q) => ({ ...q, [p.id]: v }));
+                            }}
+                          />
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            onClick={() => setQtyById((q) => ({ ...q, [p.id]: (q[p.id] ?? Math.max(1, p.min_order_qty || 1)) + 1 }))}
+                          >
+                            <Plus className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    )}
+                    {columnVisibility.add && (
+                      <TableCell>
+                        <Button className="w-full" onClick={() => addToCart(p.id)}>
+                          <ShoppingCart className="h-4 w-4 mr-2" /> Add
                         </Button>
-                        <Input
-                          type="number"
-                          min={Math.max(1, p.min_order_qty || 1)}
-                          className="remove_arrows w-16 text-center"
-                          value={qtyById[p.id] ?? Math.max(1, p.min_order_qty || 1)}
-                          onChange={(e) => {
-                            const base = Math.max(1, p.min_order_qty || 1);
-                            const v = Math.max(base, Number(e.target.value) || base);
-                            setQtyById((q) => ({ ...q, [p.id]: v }));
-                          }}
-                        />
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          onClick={() => setQtyById((q) => ({ ...q, [p.id]: (q[p.id] ?? Math.max(1, p.min_order_qty || 1)) + 1 }))}
-                        >
-                          <Plus className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
+                      </TableCell>
+                    )}
+                  </TableRow>
+                  {expanded[p.id] && (
+                    <TableRow>
+                      {/* span across expander + visible columns */}
+                      <TableCell colSpan={visibleCount + 1} className="bg-muted/40 p-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                          {/* Always OK to show image (it's not a toggle column) */}
+                          {p.image && (
+                            <div className="rounded border bg-background p-3 flex gap-3">
+                              <div className="w-20 h-20 rounded overflow-hidden bg-muted/40 flex items-center justify-center">
+                                <img src={p.image} alt={p.name} className="object-cover w-full h-full" />
+                              </div>
+                              <div className="text-sm">
+                                <div className="text-xs font-medium text-muted-foreground mb-1">Image</div>
+                                <div className="truncate max-w-[220px]">{p.image}</div>
+                              </div>
+                            </div>
+                          )}
+                          {/* Basics (only if hidden in columns) */}
+                          {!columnVisibility.sku && <DetailItem label="SKU" value={p.sku || "—"} />}
+                          {!columnVisibility.name && <DetailItem label="Name" value={p.name} />}
+                          {!columnVisibility.manufacturer && (
+                            <DetailItem label="Manufacturer" value={p.manufacturer?.name || "—"} />
+                          )}
+                          {/* Fitments (only if hidden) */}
+                          {!columnVisibility.fitmentBrands && (
+                            <DetailItem
+                              label="Fitment Brands"
+                              value={p.fitment_brands?.length ? p.fitment_brands.join(", ") : "—"}
+                            />
+                          )}
+                          {!columnVisibility.fitmentModels && (
+                            <DetailItem
+                              label="Fitment Models"
+                              value={p.fitment_models?.length ? p.fitment_models.join(", ") : "—"}
+                            />
+                          )}
+                          {/* Quantities & thresholds (only if hidden) */}
+                          {!columnVisibility.minOrderQty && <DetailItem label="Min Order" value={show(p.min_order_qty)} />}
+                          {!columnVisibility.minQtyGros && <DetailItem label="Min (Gros)" value={show(p.min_qty_gros)} />}
+                          {/* Prices (only if hidden) */}
+                          {!columnVisibility.priceRetail && (
+                            <DetailItem label="Retail" value={p.price_retail != null ? `${p.price_retail} DZD` : "–"} />
+                          )}
+                          {!columnVisibility.priceDemiGros && (
+                            <DetailItem
+                              label="Demi-gros"
+                              value={p.price_demi_gros != null ? `${p.price_demi_gros} DZD` : "–"}
+                            />
+                          )}
+                          {!columnVisibility.priceGros && (
+                            <DetailItem label="Gros" value={p.price_gros != null ? `${p.price_gros} DZD` : "–"} />
+                          )}
+
+                          {/* References (only if hidden) */}
+                          {!columnVisibility.references && (
+                            <div className="lg:col-span-3">
+                              <div className="text-xs font-medium text-muted-foreground mb-1">References</div>
+                              {p.references?.length ? (
+                                <ul className="text-sm list-disc pl-5 space-y-0.5">
+                                  {p.references.map((r, i) => (
+                                    <li key={i}>
+                                      {r.code}
+                                      {r.source_brand ? ` · ${r.source_brand}` : ""}
+                                      {r.type ? ` · ${r.type}` : ""}
+                                    </li>
+                                  ))}
+                                </ul>
+                              ) : (
+                                <div className="text-sm">—</div>
+                              )}
+                            </div>
+                          )}
+
+                          {/* Interactions (only if hidden) */}
+                          {!columnVisibility.qty && (
+                            <div className="rounded border bg-background p-3">
+                              <div className="text-xs font-medium text-muted-foreground mb-1">Qty</div>
+                              <div className="flex items-center gap-1">
+                                <Button
+                                  variant="outline"
+                                  size="icon"
+                                  onClick={() =>
+                                    setQtyById((q) => ({ ...q, [p.id]: Math.max(1, (q[p.id] ?? 1) - 1) }))
+                                  }
+                                >
+                                  <Minus className="h-4 w-4" />
+                                </Button>
+                                <Input
+                                  type="number"
+                                  min={Math.max(1, p.min_order_qty || 1)}
+                                  className="remove_arrows w-16 text-center"
+                                  value={qtyById[p.id] ?? Math.max(1, p.min_order_qty || 1)}
+                                  onChange={(e) => {
+                                    const base = Math.max(1, p.min_order_qty || 1);
+                                    const v = Math.max(base, Number(e.target.value) || base);
+                                    setQtyById((q) => ({ ...q, [p.id]: v }));
+                                  }}
+                                />
+                                <Button
+                                  variant="outline"
+                                  size="icon"
+                                  onClick={() =>
+                                    setQtyById((q) => ({
+                                      ...q,
+                                      [p.id]: (q[p.id] ?? Math.max(1, p.min_order_qty || 1)) + 1,
+                                    }))
+                                  }
+                                >
+                                  <Plus className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </div>
+                          )}
+
+                          {!columnVisibility.add && (
+                            <div className="rounded border bg-background p-3">
+                              <div className="text-xs font-medium text-muted-foreground mb-1">Add</div>
+                              <Button className="w-full" onClick={() => addToCart(p.id)}>
+                                <ShoppingCart className="h-4 w-4 mr-2" /> Add
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                      </TableCell>
+
+                    </TableRow>
                   )}
-                  {columnVisibility.add && (
-                    <TableCell>
-                      <Button className="w-full" onClick={() => addToCart(p.id)}>
-                        <ShoppingCart className="h-4 w-4 mr-2" /> Add
-                      </Button>
-                    </TableCell>
-                  )}
-                </TableRow>
+                </React.Fragment>
+
               ))}
+
             </TableBody>
           </Table>
         </div>
@@ -436,7 +575,7 @@ export default function CatalogPage() {
           </div>
         </div>
       </div>
-    </ClientLayout>
+    </ClientLayout >
   );
 }
 
@@ -444,15 +583,15 @@ function CartWidget({ cart, refreshCart }: { cart: { items: CartItem[]; subtotal
   const [open, setOpen] = useState(false);
 
   const updateQty = async (id: Id, qty: number) => {
-    await http.put(endpoints.cartUpdate(id), { quantity: qty });
+    await api.put(endpoints.cartUpdate(id), { quantity: qty });
     await refreshCart();
   };
   const remove = async (id: Id) => {
-    await http.delete(endpoints.cartRemove(id));
+    await api.delete(endpoints.cartRemove(id));
     await refreshCart();
   };
   const clear = async () => {
-    await http.delete(endpoints.cartClear);
+    await api.delete(endpoints.cartClear);
     await refreshCart();
   };
 
@@ -501,6 +640,16 @@ function CartWidget({ cart, refreshCart }: { cart: { items: CartItem[]; subtotal
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+
+function DetailItem({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div className="rounded border bg-background p-3">
+      <div className="text-xs font-medium text-muted-foreground mb-1">{label}</div>
+      <div className="text-sm break-words">{value}</div>
     </div>
   );
 }

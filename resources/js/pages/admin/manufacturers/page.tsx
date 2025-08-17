@@ -55,7 +55,7 @@ export default function ManufacturersPage() {
   return (
     <AdminLayout>
       <Head title="Manufacturers" />
-      <div className="p-6 space-y-4">
+      <div className="p-6 pt-0 space-y-4">
         <div className="text-2xl font-semibold">Manufacturers</div>
         <div className="flex items-center gap-2">
           <Input placeholder="Search..." value={search} onChange={(e) => setSearch(e.target.value)} className="w-64" />

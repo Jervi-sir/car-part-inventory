@@ -121,7 +121,7 @@ export default function PartsIndex() {
   return (
     <AdminLayout>
       <Head title="Parts" />
-      <div className="p-6 space-y-4">
+      <div className="p-6 pt-0 space-y-4">
         <div className="flex items-center justify-between">
           <div className="text-2xl font-semibold">Parts</div>
           <div className="flex items-center gap-2">
@@ -137,30 +137,30 @@ export default function PartsIndex() {
         {/* Filters */}
         <Card className="p-4">
           <div className="grid grid-cols-1 md:grid-cols-6 gap-3">
-            <div>
+            <div className="space-y-2">
               <Label>Category</Label>
               <Select value={filters.category_id} onValueChange={(v) => setFilters({ ...filters, category_id: v })}>
-                <SelectTrigger><SelectValue placeholder="All" /></SelectTrigger>
+                <SelectTrigger className="w-full"><SelectValue placeholder="All" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All</SelectItem>
                   {cats.map((c) => <SelectItem key={String(c.id)} value={String(c.id)}>{c.name}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
-            <div>
+            <div className="space-y-2">
               <Label>Manufacturer</Label>
               <Select value={filters.manufacturer_id} onValueChange={(v) => setFilters({ ...filters, manufacturer_id: v })}>
-                <SelectTrigger><SelectValue placeholder="All" /></SelectTrigger>
+                <SelectTrigger className="w-full"><SelectValue placeholder="All" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All</SelectItem>
                   {mans.map((m) => <SelectItem key={String(m.id)} value={String(m.id)}>{m.name}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
-            <div>
+            <div className="space-y-2">
               <Label>Status</Label>
               <Select value={filters.is_active} onValueChange={(v) => setFilters({ ...filters, is_active: v })}>
-                <SelectTrigger><SelectValue placeholder="All" /></SelectTrigger>
+                <SelectTrigger className="w-full"><SelectValue placeholder="All" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All</SelectItem>
                   <SelectItem value="1">Active</SelectItem>
@@ -168,15 +168,15 @@ export default function PartsIndex() {
                 </SelectContent>
               </Select>
             </div>
-            <div>
+            <div className="space-y-2">
               <Label>SKU</Label>
               <Input value={filters.sku} onChange={(e) => setFilters({ ...filters, sku: e.target.value })} />
             </div>
-            <div>
+            <div className="space-y-2">
               <Label>Reference code</Label>
               <Input value={filters.reference_code} onChange={(e) => setFilters({ ...filters, reference_code: e.target.value })} />
             </div>
-            <div className="flex items-end">
+            <div className="flex items-end justify-end">
               <Button variant="outline" onClick={() => setFilters({ category_id: "", manufacturer_id: "", is_active: "", sku: "", reference_code: "" })}>
                 Clear
               </Button>
