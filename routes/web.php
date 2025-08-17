@@ -91,20 +91,18 @@ Route::prefix('admin')->group(function () {
 
 
 Route::prefix('catalog')->group(function () {
-    // Inertia page
     Route::get('/', fn() => Inertia::render('client/catalog/page'))->name('client.parts.page');
     Route::get('/checkout', fn() => Inertia::render('client/checkout/page'))->name('client.checkout.page');
 
-    // APIs
-    Route::prefix('api')->group(function () {
-        Route::get('/parts', [CatalogController::class, 'index'])->name('shop.api.parts'); // list w/ filters
+    Route::prefix('api')->middleware('auth')->group(function () {
+        Route::get('/parts', [CatalogController::class, 'index'])->name('shop.api.parts');
 
-        // Cart (session-based)
         Route::get('/cart', [CartController::class, 'show'])->name('shop.api.cart.show');
         Route::post('/cart/items', [CartController::class, 'add'])->name('shop.api.cart.add');
-        Route::put('/cart/items/{part}', [CartController::class, 'update'])->name('shop.api.cart.update');   // {quantity:int}
+        Route::put('/cart/items/{part}', [CartController::class, 'update'])->name('shop.api.cart.update');
         Route::delete('/cart/items/{part}', [CartController::class, 'remove'])->name('shop.api.cart.remove');
         Route::delete('/cart/clear', [CartController::class, 'clear'])->name('shop.api.cart.clear');
+        Route::post('/checkout/submit', [CartController::class, 'submit'])->name('shop.api.checkout.submit');
     });
 });
 

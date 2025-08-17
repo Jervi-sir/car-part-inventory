@@ -53,6 +53,8 @@ const baseHeaders = (json = true) => ({
 
 const http = {
   get: (url: string) => fetch(url, { method: "GET", headers: baseHeaders(false), credentials: "same-origin" }),
+  post: (url: string, body?: any) =>
+    fetch(url, { method: "POST", headers: baseHeaders(), credentials: "same-origin", body: body ? JSON.stringify(body) : undefined }),
   put: (url: string, body?: any) =>
     fetch(url, { method: "PUT", headers: baseHeaders(), credentials: "same-origin", body: body ? JSON.stringify(body) : undefined }),
   delete: (url: string) => fetch(url, { method: "DELETE", headers: baseHeaders(false), credentials: "same-origin" }),
@@ -63,12 +65,22 @@ const endpoints = {
   cartUpdate: (id: Id) => route("shop.api.cart.update", { part: id }),
   cartRemove: (id: Id) => route("shop.api.cart.remove", { part: id }),
   cartClear: route("shop.api.cart.clear"),
+  checkoutSubmit: route("shop.api.checkout.submit"), // NEW
 };
 
 export default function CheckoutPage() {
   const [cart, setCart] = useState<Cart>({ items: [], subtotal: 0, count: 0, currency: "DZD" });
   const [loading, setLoading] = useState(true);
   const [busyRow, setBusyRow] = useState<number | null>(null);
+  const [form, setForm] = useState({
+    full_name: "",
+    phone: "",
+    address: "",
+    delivery_method: "pickup", // default
+  });
+  const [submitBusy, setSubmitBusy] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [placed, setPlaced] = useState<{ order_id: number; grand_total: number } | null>(null);
 
   const refreshCart = async () => {
     setLoading(true);
@@ -106,6 +118,41 @@ export default function CheckoutPage() {
     await http.delete(endpoints.cartClear);
     await refreshCart();
   };
+
+  const submitShipping = async () => {
+    setSubmitError(null);
+    if (!cart.items.length) return;
+
+    setSubmitBusy(true);
+    try {
+      const res = await http.post(endpoints.checkoutSubmit, {
+        full_name: form.full_name.trim(),
+        phone: form.phone.trim(),
+        address: form.address.trim(),
+        delivery_method: form.delivery_method,
+      });
+
+      if (!res.ok) {
+        const js = await res.json().catch(() => null);
+        const msg =
+          js?.errors?.address?.[0] ??
+          js?.errors?.cart?.[0] ??
+          js?.message ??
+          "Failed to submit shipping.";
+        setSubmitError(msg);
+      } else {
+        const js = await res.json();
+        // success: mark placed, refresh cart (will be empty now)
+        setPlaced({ order_id: js.order_id, grand_total: js.grand_total });
+        await refreshCart();
+      }
+    } catch (e: any) {
+      setSubmitError(e?.message ?? "Failed to submit shipping.");
+    } finally {
+      setSubmitBusy(false);
+    }
+  };
+
 
   const isEmpty = cart.items.length === 0;
 
@@ -185,13 +232,13 @@ export default function CheckoutPage() {
                           <TableCell className="text-xs">
                             {it.references?.length
                               ? it.references.map((r, i) => (
-                                  <span key={i}>
-                                    {r.code}
-                                    {r.source_brand ? ` (${r.source_brand})` : ""}
-                                    {r.type ? ` [${r.type}]` : ""}
-                                    {i < it.references.length - 1 ? ", " : ""}
-                                  </span>
-                                ))
+                                <span key={i}>
+                                  {r.code}
+                                  {r.source_brand ? ` (${r.source_brand})` : ""}
+                                  {r.type ? ` [${r.type}]` : ""}
+                                  {i < it.references.length - 1 ? ", " : ""}
+                                </span>
+                              ))
                               : "—"}
                           </TableCell>
                           <TableCell>
@@ -265,10 +312,6 @@ export default function CheckoutPage() {
                   </span>
                 </div>
               </div>
-
-              <Button className="w-full mt-4" disabled={isEmpty}>
-                Continue to shipping <Truck className="ml-2 h-4 w-4" />
-              </Button>
             </Card>
 
             <Card className="p-4">
@@ -276,20 +319,39 @@ export default function CheckoutPage() {
               <div className="grid grid-cols-1 gap-3">
                 <div>
                   <Label>Full name</Label>
-                  <Input placeholder="Your name" />
+                  <Input
+                    placeholder="Your name"
+                    value={form.full_name}
+                    onChange={(e) => setForm((f) => ({ ...f, full_name: e.target.value }))}
+                    disabled={submitBusy}
+                  />
                 </div>
                 <div>
                   <Label>Phone</Label>
-                  <Input placeholder="05xx-xx-xx-xx" />
+                  <Input
+                    placeholder="05xx-xx-xx-xx"
+                    value={form.phone}
+                    onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
+                    disabled={submitBusy}
+                  />
                 </div>
                 <div>
                   <Label>Address</Label>
-                  <Input placeholder="Street, City" />
+                  <Input
+                    placeholder={form.delivery_method === 'pickup' ? "(optional for pickup)" : "Street, City"}
+                    value={form.address}
+                    onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))}
+                    disabled={submitBusy}
+                  />
                 </div>
               </div>
-              <p className="text-xs text-muted-foreground mt-3">
-                (Optional UI for now — wire it when you implement order creation.)
-              </p>
+              <Button
+                className="w-full "
+                disabled={isEmpty || submitBusy}
+                onClick={submitShipping}
+              >
+                Continue to shipping <Truck className="ml-2 h-4 w-4" />
+              </Button>
             </Card>
           </div>
         </div>

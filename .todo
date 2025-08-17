@@ -1,13 +1,19 @@
-- crud parts
-  - list, paginate
-  - create
-  - delete
-  - update
-  - filter
+- crud parts @done
+  - list, paginate @done
+  - create @done
+  - delete @done
+  - update @done
+  - filter @done
 
 - crud vehicle brands @done
 - crud vehicle models @done
 
-- list parts as client
-- add to cart
-- show my cart
+- list parts as client @done
+- add to cart @done
+- show my cart @done
+- save cart in the db as cart 
+  - continue to shipping, 
+- list my orders
+  - show this order
+  - get its status
+  - 
