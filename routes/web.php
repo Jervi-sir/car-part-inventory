@@ -13,6 +13,7 @@ use App\Http\Controllers\Api\Client\ClientPartController;
 use App\Http\Controllers\Api\Client\ClientCategoryController;
 use App\Http\Controllers\Api\Client\ClientManufacturerController;
 use App\Http\Controllers\Api\Admin\LookupController;
+use App\Http\Controllers\Api\Client\CatalogController;
 use App\Http\Controllers\Api\VehicleBrandController;
 use App\Http\Controllers\Api\VehicleModelController;
 
@@ -88,15 +89,35 @@ Route::prefix('admin')->group(function () {
     Route::get('parts', fn()  => Inertia::render('admin/parts/page'))->name('admin.parts.page');
 });
 
-Route::prefix('client')->group(function () {
-    Route::get('parts', fn()  => Inertia::render('client/parts-catalog/page'))->name('client.parts.page');
+
+Route::prefix('catalog')->group(function () {
+    // Inertia page
+    Route::get('/', fn() => Inertia::render('client/catalog/page'))->name('client.parts.page');
+    Route::get('/checkout', fn() => Inertia::render('client/checkout/page'))->name('client.checkout.page');
+
+    // APIs
+    Route::prefix('api')->group(function () {
+        Route::get('/parts', [CatalogController::class, 'index'])->name('shop.api.parts'); // list w/ filters
+
+        // Cart (session-based)
+        Route::get('/cart', [CartController::class, 'show'])->name('shop.api.cart.show');
+        Route::post('/cart/items', [CartController::class, 'add'])->name('shop.api.cart.add');
+        Route::put('/cart/items/{part}', [CartController::class, 'update'])->name('shop.api.cart.update');   // {quantity:int}
+        Route::delete('/cart/items/{part}', [CartController::class, 'remove'])->name('shop.api.cart.remove');
+        Route::delete('/cart/clear', [CartController::class, 'clear'])->name('shop.api.cart.clear');
+    });
 });
 
-Route::prefix('imports')->group(function () {
-    Route::get('parts', [PartImportController::class, 'create'])->name('imports.parts.create');
-    Route::post('parts/preview', [PartImportController::class, 'preview'])->name('imports.parts.preview');
-    Route::post('parts/run', [PartImportController::class, 'run'])->name('imports.parts.run');
-});
+
+// Route::prefix('client')->group(function () {
+//     Route::get('parts', fn()  => Inertia::render('client/parts-catalog/page'))->name('client.parts.page');
+// });
+
+// Route::prefix('imports')->group(function () {
+//     Route::get('parts', [PartImportController::class, 'create'])->name('imports.parts.create');
+//     Route::post('parts/preview', [PartImportController::class, 'preview'])->name('imports.parts.preview');
+//     Route::post('parts/run', [PartImportController::class, 'run'])->name('imports.parts.run');
+// });
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('dashboard', function () {
@@ -105,22 +126,22 @@ Route::middleware(['auth', 'verified'])->group(function () {
 });
 
 
-Route::prefix('api')->group(function () {
+// Route::prefix('api')->group(function () {
 
-    Route::prefix('client')->middleware('auth')->group(function () {
-        Route::get('parts', [ClientPartController::class, 'index']);
-        Route::get('parts/{id}', [ClientPartController::class, 'show']);
-        Route::get('categories', [ClientCategoryController::class, 'index']);
-        Route::get('manufacturers', [ClientManufacturerController::class, 'index']);
+//     Route::prefix('client')->middleware('auth')->group(function () {
+//         Route::get('parts', [ClientPartController::class, 'index']);
+//         Route::get('parts/{id}', [ClientPartController::class, 'show']);
+//         Route::get('categories', [ClientCategoryController::class, 'index']);
+//         Route::get('manufacturers', [ClientManufacturerController::class, 'index']);
 
 
-        Route::get('/cart', [CartController::class, 'current']);
-        Route::post('/cart/items', [CartController::class, 'addItem']);
-        Route::put('/cart/items/{part}', [CartController::class, 'updateItem']);
-        Route::delete('/cart/items/{part}', [CartController::class, 'removeItem']);
-        Route::post('/cart/place', [CartController::class, 'place']);
-    });
-});
+//         Route::get('/cart', [CartController::class, 'current']);
+//         Route::post('/cart/items', [CartController::class, 'addItem']);
+//         Route::put('/cart/items/{part}', [CartController::class, 'updateItem']);
+//         Route::delete('/cart/items/{part}', [CartController::class, 'removeItem']);
+//         Route::post('/cart/place', [CartController::class, 'place']);
+//     });
+// });
 
 require __DIR__ . '/settings.php';
 require __DIR__ . '/auth.php';

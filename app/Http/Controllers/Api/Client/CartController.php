@@ -5,254 +5,184 @@ namespace App\Http\Controllers\Api\Client;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use App\Models\Part;
 
 class CartController extends Controller
 {
-    /** Get (or create) the current DRAFT order for the user */
-    private function getDraftOrderId(int $userId): int
+    private function cart()
     {
-        $statusId = $this->statusId('DRAFT');
-
-        $order = DB::table('orders')
-            ->where('user_id', $userId)
-            ->where('status_id', $statusId)
-            ->first(['id']);
-
-        if ($order) return (int) $order->id;
-
-        return (int) DB::table('orders')->insertGetId([
-            'user_id'          => $userId,
-            'status_id'        => $statusId,
-            'currency'         => 'DZD',
-            'subtotal'         => 0,
-            'discount_total'   => 0,
-            'shipping_total'   => 0,
-            'tax_total'        => 0,
-            'grand_total'      => 0,
-            'created_at'       => now(),
-            'updated_at'       => now(),
+        return session()->get('cart', [
+            'items' => [],
+            'currency' => 'DZD',
         ]);
     }
 
-    /** Resolve an order_status by code, e.g. DRAFT/PLACED */
-    private function statusId(string $code): int
+    private function putCart(array $cart)
     {
-        $row = cache()->remember("order_status_id_{$code}", 3600, function () use ($code) {
-            return DB::table('order_statuses')->where('code', $code)->first(['id']);
-        });
-        abort_unless($row, 500, "Missing order_statuses seed for code {$code}");
-        return (int) $row->id;
+        session(['cart' => $cart]);
     }
 
-    /** Recalculate totals for given order */
-    private function recalcTotals(int $orderId): array
+    public function show()
     {
-        $currency = DB::table('orders')->where('id', $orderId)->value('currency') ?? 'DZD';
+        $cart = $this->cart();
 
-        $subtotal = (float) DB::table('order_items')
-            ->where('order_id', $orderId)
-            ->sum('line_total');
-
-        // For now keep discounts/shipping/tax zero (you can plug logic later)
-        $discount = 0.0;
-        $shipping = 0.0;
-        $tax      = 0.0;
-        $grand    = $subtotal - $discount + $shipping + $tax;
-
-        DB::table('orders')
-            ->where('id', $orderId)
-            ->update([
-                'subtotal'       => $subtotal,
-                'discount_total' => $discount,
-                'shipping_total' => $shipping,
-                'tax_total'      => $tax,
-                'grand_total'    => $grand,
-                'updated_at'     => now(),
+        // when empty, return the same shape
+        if (empty($cart['items'])) {
+            return response()->json([
+                'items'    => [],
+                'currency' => $cart['currency'],
+                'count'    => 0,
+                'subtotal' => 0,
             ]);
+        }
 
-        return [
-            'currency'       => $currency,
-            'subtotal'       => $subtotal,
-            'discount_total' => $discount,
-            'shipping_total' => $shipping,
-            'tax_total'      => $tax,
-            'grand_total'    => $grand,
-        ];
-    }
+        $partIds = array_map(fn($x) => (int)$x['id'], array_values($cart['items']));
 
-    /** GET /api/cart -> current draft + items + summary */
-    public function current(Request $request)
-    {
-        $userId = (int) $request->user()->id;
-        $orderId = $this->getDraftOrderId($userId);
+        // Load all needed details in one shot
+        $parts = \App\Models\Part::query()
+            ->with([
+                'manufacturer:id,name',
+                'category:id,name',
+                'fitments.vehicleModel.vehicleBrand:id,name',
+                'references:id,part_id,type,code,source_brand',
+            ])
+            ->whereIn('id', $partIds)
+            ->get()
+            ->keyBy('id');
 
-        $items = DB::table('order_items as oi')
-            ->join('parts as p', 'p.id', '=', 'oi.part_id')
-            ->where('oi.order_id', $orderId)
-            ->orderBy('oi.id')
-            ->get([
-                'oi.part_id',
-                'p.name',
-                'p.sku',
-                'oi.qty',
-                'oi.unit_price',
-                'oi.currency',
-                'oi.line_total',
-            ]);
+        $items = [];
+        $subtotal = 0;
+        $count = 0;
 
-        $summary = $this->recalcTotals($orderId);
+        foreach ($cart['items'] as $line) {
+            $pid = (int)$line['id'];
+            $p = $parts->get($pid);
+            if (!$p) continue;
+
+            // image
+            $image = is_array($p->images ?? null) && !empty($p->images)
+                ? ($p->images[0]['url'] ?? $p->images[0])
+                : null;
+
+            // models & brands
+            $models = [];
+            $brands = [];
+            foreach ($p->fitments as $f) {
+                $vm = $f->vehicleModel;
+                if ($vm) {
+                    $models[] = $vm->name;
+                    $brandName = $vm->vehicleBrand?->name;
+                    if ($brandName) $brands[$brandName] = true; // unique
+                }
+            }
+
+            // references
+            $refs = $p->references->map(fn($r) => [
+                'type' => $r->type,
+                'code' => $r->code,
+                'source_brand' => $r->source_brand,
+            ])->values();
+
+            $qty = (int)($line['qty'] ?? 0);
+            $unit = (float)($p->price_retail ?? $line['unit_price'] ?? 0); // prefer live retail
+            $subtotal += $unit * $qty;
+            $count += $qty;
+
+            $items[] = [
+                'id'              => $p->id,
+                'sku'             => $p->sku,
+                'name'            => $p->name,
+                'image'           => $image,
+                'manufacturer'    => $p->manufacturer?->only(['id', 'name']),
+                'category'        => $p->category?->only(['id', 'name']),
+                'min_order_qty'   => $p->min_order_qty,
+                'min_qty_gros'    => $p->min_qty_gros,
+                'price_retail'    => (float)$p->price_retail,
+                'price_demi_gros' => (float)$p->price_demi_gros,
+                'price_gros'      => (float)$p->price_gros,
+                'fitment_models'  => array_values($models),
+                'fitment_brands'  => array_keys($brands),
+                'references'      => $refs,
+                'qty'             => $qty,
+            ];
+        }
 
         return response()->json([
-            'items'   => $items,
-            'summary' => $summary,
+            'items'    => $items,
+            'currency' => $cart['currency'],
+            'count'    => $count,
+            'subtotal' => round($subtotal, 2),
         ]);
     }
 
-    /** POST /api/cart/items { part_id, qty } */
-    public function addItem(Request $request)
+
+    public function add(Request $req)
     {
-        $userId  = (int) $request->user()->id;
-        $payload = $request->validate([
-            'part_id' => ['required', 'integer', 'exists:parts,id'],
-            'qty'     => ['nullable', 'integer', 'min:1'],
+        $data = $req->validate([
+            'part_id'  => ['required', 'integer', 'exists:parts,id'],
+            'quantity' => ['nullable', 'integer', 'min:1'],
         ]);
+        $qty = (int)($data['quantity'] ?? 1);
 
-        $part = DB::table('parts')->where('id', $payload['part_id'])->first([
-            'id','name','sku','base_price','currency','is_active','min_order_qty','package_qty'
+        $part = Part::where('is_active', true)->findOrFail($data['part_id']);
+        $image = is_array($part->images ?? null) && !empty($part->images) ? ($part->images[0]['url'] ?? $part->images[0]) : null;
+
+        $cart = $this->cart();
+        $line = $cart['items'][$part->id] ?? [
+            'id'         => $part->id,
+            'name'       => $part->name,
+            'unit_price' => (float)($part->price_retail ?? 0),
+            'qty'        => 0,
+            'image'      => $image,
+            'sku'        => $part->sku,
+        ];
+        $line['qty'] += $qty;
+        $cart['items'][$part->id] = $line;
+
+        $this->putCart($cart);
+        return $this->show();
+    }
+
+    public function update(Request $req, Part $part)
+    {
+        $data = $req->validate([
+            'quantity' => ['required', 'integer', 'min:0'],
         ]);
+        $cart = $this->cart();
 
-        abort_unless($part, 404, 'Part not found');
-        abort_unless((bool) $part->is_active, 422, 'This part is inactive');
-        $qty = max(1, (int) ($payload['qty'] ?? $part->min_order_qty ?? 1));
-
-        // Enforce min_order_qty and package multiples
-        $minOrder    = max(1, (int) ($part->min_order_qty ?? 1));
-        $packageSize = max(1, (int) ($part->package_qty ?? 1));
-        if ($qty < $minOrder) $qty = $minOrder;
-        if ($qty % $packageSize !== 0) {
-            $qty = (int) (ceil($qty / $packageSize) * $packageSize);
-        }
-
-        $unit = (float) ($part->base_price ?? 0);
-        $cur  = $part->currency ?: 'DZD';
-        abort_if($unit <= 0, 422, 'No base price configured for this part');
-
-        $orderId = $this->getDraftOrderId($userId);
-
-        // Upsert unique(order_id, part_id)
-        $existing = DB::table('order_items')
-            ->where('order_id', $orderId)
-            ->where('part_id', $part->id)
-            ->first(['id','qty','unit_price']);
-
-        if ($existing) {
-            $newQty = (int) $existing->qty + $qty;
-            DB::table('order_items')->where('id', $existing->id)->update([
-                'qty'        => $newQty,
-                'unit_price' => $unit,
-                'currency'   => $cur,
-                'line_total' => $newQty * $unit,
-                'updated_at' => now(),
-            ]);
+        if ($data['quantity'] === 0) {
+            unset($cart['items'][$part->id]);
         } else {
-            DB::table('order_items')->insert([
-                'order_id'   => $orderId,
-                'part_id'    => $part->id,
-                'qty'        => $qty,
-                'unit_price' => $unit,
-                'currency'   => $cur,
-                'line_total' => $qty * $unit,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
+            if (!isset($cart['items'][$part->id])) {
+                // create if not exists
+                $image = is_array($part->images ?? null) && !empty($part->images) ? ($part->images[0]['url'] ?? $part->images[0]) : null;
+                $cart['items'][$part->id] = [
+                    'id'         => $part->id,
+                    'name'       => $part->name,
+                    'unit_price' => (float)($part->price_retail ?? 0),
+                    'qty'        => 0,
+                    'image'      => $image,
+                    'sku'        => $part->sku,
+                ];
+            }
+            $cart['items'][$part->id]['qty'] = (int)$data['quantity'];
         }
 
-        $summary = $this->recalcTotals($orderId);
-        return response()->json(['ok' => true, 'summary' => $summary]);
+        $this->putCart($cart);
+        return $this->show();
     }
 
-    /** PUT /api/cart/items/{part} { qty } */
-    public function updateItem(Request $request, int $part)
+    public function remove(Part $part)
     {
-        $userId = (int) $request->user()->id;
-        $payload = $request->validate([
-            'qty' => ['required', 'integer', 'min:1'],
-        ]);
-
-        $orderId = $this->getDraftOrderId($userId);
-
-        // Get part constraints
-        $p = DB::table('parts')->where('id', $part)->first(['min_order_qty','package_qty','base_price','currency','is_active']);
-        abort_unless($p, 404, 'Part not found');
-        abort_unless((bool) $p->is_active, 422, 'This part is inactive');
-        $unit = (float) ($p->base_price ?? 0);
-        $cur  = $p->currency ?: 'DZD';
-        abort_if($unit <= 0, 422, 'No base price configured for this part');
-
-        $qty = (int) $payload['qty'];
-        $minOrder    = max(1, (int) ($p->min_order_qty ?? 1));
-        $packageSize = max(1, (int) ($p->package_qty ?? 1));
-        if ($qty < $minOrder) $qty = $minOrder;
-        if ($qty % $packageSize !== 0) {
-            $qty = (int) (ceil($qty / $packageSize) * $packageSize);
-        }
-
-        $affected = DB::table('order_items')
-            ->where('order_id', $orderId)
-            ->where('part_id', $part)
-            ->update([
-                'qty'        => $qty,
-                'unit_price' => $unit,
-                'currency'   => $cur,
-                'line_total' => $qty * $unit,
-                'updated_at' => now(),
-            ]);
-
-        abort_if(!$affected, 404, 'Item not found in cart');
-
-        $summary = $this->recalcTotals($orderId);
-        return response()->json(['ok' => true, 'summary' => $summary]);
+        $cart = $this->cart();
+        unset($cart['items'][$part->id]);
+        $this->putCart($cart);
+        return $this->show();
     }
 
-    /** DELETE /api/cart/items/{part} */
-    public function removeItem(Request $request, int $part)
+    public function clear()
     {
-        $userId  = (int) $request->user()->id;
-        $orderId = $this->getDraftOrderId($userId);
-
-        $deleted = DB::table('order_items')
-            ->where('order_id', $orderId)
-            ->where('part_id', $part)
-            ->delete();
-
-        abort_if(!$deleted, 404, 'Item not found in cart');
-
-        $summary = $this->recalcTotals($orderId);
-        return response()->json(['ok' => true, 'summary' => $summary]);
-    }
-
-    /** POST /api/cart/place -> finalize the draft order */
-    public function place(Request $request)
-    {
-        $userId  = (int) $request->user()->id;
-        $orderId = $this->getDraftOrderId($userId);
-
-        $itemsCount = DB::table('order_items')->where('order_id', $orderId)->count();
-        abort_if($itemsCount === 0, 422, 'Cart is empty');
-
-        // Optionally validate shipping info or require it before placing.
-        $placedId = $this->statusId('PLACED');
-
-        DB::table('orders')
-            ->where('id', $orderId)
-            ->update([
-                'status_id'  => $placedId,
-                'updated_at' => now(),
-            ]);
-
-        // Create a fresh empty draft for next time
-        $newDraftId = $this->getDraftOrderId($userId);
-
-        return response()->json(['order_id' => $orderId]);
+        $this->putCart(['items' => [], 'currency' => 'DZD']);
+        return $this->show();
     }
 }
