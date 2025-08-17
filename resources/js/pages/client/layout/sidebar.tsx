@@ -20,7 +20,8 @@ import {
 import { DropdownMenu, DropdownMenuTrigger, } from "@/components/ui/dropdown-menu"
 import { SidebarMenu, SidebarMenuButton, SidebarMenuItem, } from "@/components/ui/sidebar"
 import { Collapsible, CollapsibleTrigger } from "@/components/ui/collapsible"
-import { Link } from "@inertiajs/react"
+import { Link, usePage } from "@inertiajs/react"
+import { cn } from "@/lib/utils"
 
 // This is sample data.
 const data = {
@@ -51,6 +52,8 @@ const data = {
 }
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+  const { url } = usePage();
+
   return (
     <Sidebar collapsible="icon" {...props} >
       <SidebarHeader>
@@ -60,24 +63,36 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <SidebarGroup>
           <SidebarGroupLabel>Platform</SidebarGroupLabel>
           <SidebarMenu>
-            {data.navMain.map((item) => (
-              <Collapsible
-                key={item.title}
-                asChild
-                defaultOpen={item.isActive}
-              >
-                <SidebarMenuItem>
-                  <CollapsibleTrigger asChild>
+            {data.navMain.map((item) => {
+              // convert absolute URL to just pathname
+              const itemPath = new URL(item.url, window.location.origin).pathname
+              const isActive = url.startsWith(itemPath)
+
+              return (
+                <Collapsible
+                  key={item.title}
+                  asChild
+                  defaultOpen={item.isActive}
+                >
+                  <SidebarMenuItem>
+                    <CollapsibleTrigger asChild>
                       <Link href={item.url}>
-                    <SidebarMenuButton tooltip={item.title}>
-                        {item.icon && <item.icon />}
-                        <span>{item.title}</span>
-                    </SidebarMenuButton>
+                        <SidebarMenuButton
+                          tooltip={item.title}
+                          className={cn(
+                            "cursor-pointer",
+                            isActive ? "bg-sidebar-accent text-sidebar-accent-foreground" : ""
+                          )}
+                        >
+                          {item.icon && <item.icon />}
+                          <span>{item.title}</span>
+                        </SidebarMenuButton>
                       </Link>
-                  </CollapsibleTrigger>
-                </SidebarMenuItem>
-              </Collapsible>
-            ))}
+                    </CollapsibleTrigger>
+                  </SidebarMenuItem>
+                </Collapsible>
+              )
+            })}
           </SidebarMenu>
         </SidebarGroup>
       </SidebarContent>

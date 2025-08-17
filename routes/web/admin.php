@@ -25,10 +25,13 @@ Route::prefix('admin')->group(function () {
     });
     // Vehicle Brands
     Route::prefix('manufacturers')->group(function () {
-        Route::get('/', [ManufacturerController::class, 'index']);
-        Route::post('/', [ManufacturerController::class, 'store']);
-        Route::put('{manufacturer}', [ManufacturerController::class, 'update']);
-        Route::delete('{manufacturer}', [ManufacturerController::class, 'destroy']);
+        Route::get('/', fn()  => Inertia::render('admin/manufacturers/page'))->name('admin.manufacturers.page'); 
+        Route::prefix('api')->group(function () {
+            Route::get('/', [ManufacturerController::class, 'index'])->name('admin.manufacturers.api.crud');
+            Route::post('/', [ManufacturerController::class, 'store']);
+            Route::put('{manufacturer}', [ManufacturerController::class, 'update']);
+            Route::delete('{manufacturer}', [ManufacturerController::class, 'destroy']);
+        });
     });
     // Vehicle Brands
     Route::prefix('vehicle-brands')->group(function () {
@@ -83,7 +86,6 @@ Route::prefix('admin')->group(function () {
 
 
     Route::get('fitments', fn()  => Inertia::render('admin/fitments/page'))->name('admin.fitments.page');
-    Route::get('manufacturers', fn()  => Inertia::render('admin/manufacturers/page'))->name('admin.manufacturers.page');    // [done]
     Route::get('parts', fn()  => Inertia::render('admin/parts/page'))->name('admin.parts.page');
 });
 

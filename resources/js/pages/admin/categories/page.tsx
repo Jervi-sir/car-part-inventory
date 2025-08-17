@@ -1,6 +1,3 @@
-// file: app/admin/categories/page.tsx
-"use client";
-import * as React from "react";
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,6 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ChevronLeft, ChevronRight, Pencil, Trash, Plus } from "lucide-react";
 import { AdminLayout } from "../layout/admin-layout";
 import { Head } from "@inertiajs/react";
+import api from "@/lib/api";
 
 type Id = number | string;
 interface Category { id: Id; name: string; created_at?: string; updated_at?: string }
@@ -27,8 +25,7 @@ export default function CategoriesPage() {
 
   const fetchData = async (page = 1) => {
     const params = new URLSearchParams({ page: String(page), per_page: String(pageData.per_page), search });
-    const res = await fetch(`${endpoint}?${params.toString()}`, { headers: { Accept: "application/json" } });
-    const json = await res.json();
+    const { data: json } = await api.get<Page<Category> | Category[]>(endpoint, { params });
     // accept either paginated shape or raw array
     const normalized: Page<Category> = Array.isArray(json)
       ? { data: json, page, per_page: 10, total: json.length }
@@ -42,27 +39,26 @@ export default function CategoriesPage() {
   const openEdit = (row: Category) => { setEditingId(row.id); setInitialName(row.name); setOpen(true); };
 
   const save = async (name: string) => {
-    const body = JSON.stringify({ name });
-    const headers = { "Content-Type": "application/json", Accept: "application/json" };
+    const payload = { name };
     if (editingId == null) {
-      await fetch(endpoint, { method: "POST", headers, body });
+      await api.post(endpoint, payload);
     } else {
-      await fetch(`${endpoint}/${editingId}`, { method: "PUT", headers, body });
+      await api.put(`${endpoint}/${editingId}`, payload);
     }
     setOpen(false);
     await fetchData(pageData.page);
   };
 
   const remove = async (row: Category) => {
-    if (!confirm(`Delete \"${row.name}\"?`)) return;
-    await fetch(`${endpoint}/${row.id}`, { method: "DELETE", headers: { Accept: "application/json" } });
+    if (!confirm(`Delete "${row.name}"?`)) return;
+    await api.delete(`${endpoint}/${row.id}`);
     await fetchData(pageData.page);
   };
 
   return (
     <AdminLayout>
       <Head title="Categories" />
-      <div className="p-6 space-y-4">
+      <div className="p-6 pt-0 space-y-4">
         <div className="text-2xl font-semibold">Categories</div>
         <div className="flex items-center gap-2">
           <Input placeholder="Search..." value={search} onChange={(e) => setSearch(e.target.value)} className="w-64" />

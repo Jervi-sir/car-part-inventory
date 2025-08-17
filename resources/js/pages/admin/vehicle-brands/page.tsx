@@ -11,6 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ChevronLeft, ChevronRight, Pencil, Trash, Plus } from "lucide-react";
 import { AdminLayout } from "../layout/admin-layout";
 import { Head } from "@inertiajs/react";
+import api from "@/lib/api";
 
 type Id3 = number | string;
 interface VehicleBrand { id: Id3; name: string }
@@ -27,10 +28,11 @@ export default function VehicleBrandsPage() {
   const maxPage = useMemo(() => Math.max(1, Math.ceil(pageData.total / pageData.per_page)), [pageData]);
 
   const fetchData = async (page = 1) => {
-    const params = new URLSearchParams({ page: String(page), per_page: String(pageData.per_page), search });
-    const res = await fetch(`${endpoint3}?${params.toString()}`, { headers: { Accept: "application/json" } });
-    const json = await res.json();
-    const normalized: Page3<VehicleBrand> = Array.isArray(json) ? { data: json, page, per_page: 10, total: json.length } : json;
+    const params = { page: String(page), per_page: String(pageData.per_page), search };
+    const { data: json } = await api.get<Page3<VehicleBrand> | VehicleBrand[]>(endpoint3, { params });
+    const normalized: Page3<VehicleBrand> = Array.isArray(json)
+      ? { data: json, page, per_page: Number(params.per_page) || 10, total: json.length }
+      : json;
     setPageData(normalized);
   };
 
@@ -40,16 +42,19 @@ export default function VehicleBrandsPage() {
   const openEdit = (row: VehicleBrand) => { setEditingId(row.id); setInitialName(row.name); setOpen(true); };
 
   const save = async (name: string) => {
-    const body = JSON.stringify({ name });
-    const headers = { "Content-Type": "application/json", Accept: "application/json" };
-    if (editingId == null) await fetch(endpoint3, { method: "POST", headers, body });
-    else await fetch(`${endpoint3}/${editingId}`, { method: "PUT", headers, body });
-    setOpen(false); await fetchData(pageData.page);
+    const payload = { name };
+    if (editingId == null) {
+      await api.post(endpoint3, payload);
+    } else {
+      await api.put(`${endpoint3}/${editingId}`, payload);
+    }
+    setOpen(false);
+    await fetchData(pageData.page);
   };
 
   const remove = async (row: VehicleBrand) => {
-    if (!confirm(`Delete \"${row.name}\"?`)) return;
-    await fetch(`${endpoint3}/${row.id}`, { method: "DELETE", headers: { Accept: "application/json" } });
+    if (!confirm(`Delete "${row.name}"?`)) return;
+    await api.delete(`${endpoint3}/${row.id}`);
     await fetchData(pageData.page);
   };
 

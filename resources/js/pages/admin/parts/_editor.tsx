@@ -9,6 +9,7 @@ import { Switch } from "@/components/ui/switch";
 import { Plus, Trash, ArrowUp, ArrowDown } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
+import api from "@/lib/api";
 
 type Id = number | string;
 
@@ -16,32 +17,6 @@ interface Category { id: Id; name: string }
 interface Manufacturer { id: Id; name: string }
 interface VehicleBrand { id: number; name: string }
 interface VehicleModel { id: number; name: string; year_from?: number | null; year_to?: number | null }
-
-// --- Minimal http helper with CSRF ---
-const csrf =
-  (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content ?? "";
-
-type Json = Record<string, unknown> | unknown[];
-
-function baseHeaders(json = true) {
-  return {
-    Accept: "application/json",
-    ...(json ? { "Content-Type": "application/json" } : {}),
-    "X-CSRF-TOKEN": csrf,
-    "X-Requested-With": "XMLHttpRequest",
-  };
-}
-
-const http = {
-  get: (url: string) =>
-    fetch(url, { method: "GET", headers: baseHeaders(false), credentials: "same-origin" }),
-  post: (url: string, body?: Json) =>
-    fetch(url, { method: "POST", headers: baseHeaders(), credentials: "same-origin", body: body ? JSON.stringify(body) : undefined }),
-  put: (url: string, body?: Json) =>
-    fetch(url, { method: "PUT", headers: baseHeaders(), credentials: "same-origin", body: body ? JSON.stringify(body) : undefined }),
-  delete: (url: string) =>
-    fetch(url, { method: "DELETE", headers: baseHeaders(false), credentials: "same-origin" }),
-};
 
 // If TypeScript complains about global `route()`, uncomment:
 // declare const route: (name: string, params?: any) => string;
@@ -99,12 +74,11 @@ export default function Editor({
   const [fitments, setFitments] = useState<{ id?: Id; vehicle_brand_id?: string; vehicle_model_id?: string; engine_code?: string; notes?: string }[]>([]);
 
   const loadLookups = async () => {
-    const [cRes, mRes, bRes] = await Promise.all([
-      http.get(endpoints.categories),
-      http.get(endpoints.manufacturers),
-      http.get(endpoints.vehicleBrands),
+    const [{ data: cJson }, { data: mJson }, { data: bJson }] = await Promise.all([
+      api.get(endpoints.categories),
+      api.get(endpoints.manufacturers),
+      api.get(endpoints.vehicleBrands),
     ]);
-    const [cJson, mJson, bJson] = await Promise.all([cRes.json(), mRes.json(), bRes.json()]);
     const ext = (x: any) => (Array.isArray(x?.data) ? x.data : Array.isArray(x) ? x : x?.data ?? []);
     setCats(ext(cJson));
     setMans(ext(mJson));
@@ -113,8 +87,7 @@ export default function Editor({
 
   const loadPart = async () => {
     if (partId == null) return;
-    const res = await http.get(endpoints.part(partId));
-    const json = await res.json();
+    const { data: json } = await api.get(endpoints.part(partId));
     const p = json.part ?? json;
 
     setForm({
@@ -204,9 +177,9 @@ export default function Editor({
     };
 
     if (partId == null) {
-      await http.post(endpoints.parts, payload);
+      await api.post(endpoints.parts, payload);
     } else {
-      await http.put(endpoints.part(partId), payload);
+      await api.put(endpoints.part(partId), payload);
     }
     await onSaved();
   };
@@ -227,8 +200,7 @@ export default function Editor({
     if (!brandId) return;
     const key = String(brandId);
     if (!modelsByBrand[key]) {
-      const res = await http.get(endpoints.vehicleModels(brandId));
-      const json = await res.json();
+      const { data: json } = await api.get(endpoints.vehicleModels(brandId));
       const ext = (x: any) => (Array.isArray(x.data) ? x.data : Array.isArray(x) ? x : x?.data ?? []);
       setModelsByBrand((m) => ({ ...m, [key]: ext(json) }));
     }

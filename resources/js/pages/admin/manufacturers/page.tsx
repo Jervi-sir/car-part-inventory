@@ -1,7 +1,3 @@
-// =============================================================================================================
-// file: app/admin/manufacturers/page.tsx
-"use client";
-import * as React from "react";
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,12 +6,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ChevronLeft, ChevronRight, Pencil, Trash, Plus } from "lucide-react";
 import { AdminLayout } from "../layout/admin-layout";
 import { Head } from "@inertiajs/react";
+import api from "@/lib/api";
 
 type Id2 = number | string;
 interface Manufacturer { id: Id2; name: string; created_at?: string; updated_at?: string }
 interface Page2<T> { data: T[]; total: number; page: number; per_page: number }
 
-const endpoint2 = "/api/manufacturers";
+const endpoint2 = route('admin.manufacturers.api.crud');
 
 export default function ManufacturersPage() {
   const [pageData, setPageData] = useState<Page2<Manufacturer>>({ data: [], total: 0, page: 1, per_page: 10 });
@@ -28,8 +25,7 @@ export default function ManufacturersPage() {
 
   const fetchData = async (page = 1) => {
     const params = new URLSearchParams({ page: String(page), per_page: String(pageData.per_page), search });
-    const res = await fetch(`${endpoint2}?${params.toString()}`, { headers: { Accept: "application/json" } });
-    const json = await res.json();
+    const { data: json } = await api.get<Page2<Manufacturer> | Manufacturer[]>(endpoint2, { params });
     const normalized: Page2<Manufacturer> = Array.isArray(json) ? { data: json, page, per_page: 10, total: json.length } : json;
     setPageData(normalized);
   };
@@ -40,16 +36,19 @@ export default function ManufacturersPage() {
   const openEdit = (row: Manufacturer) => { setEditingId(row.id); setInitialName(row.name); setOpen(true); };
 
   const save = async (name: string) => {
-    const body = JSON.stringify({ name });
-    const headers = { "Content-Type": "application/json", Accept: "application/json" };
-    if (editingId == null) await fetch(endpoint2, { method: "POST", headers, body });
-    else await fetch(`${endpoint2}/${editingId}`, { method: "PUT", headers, body });
-    setOpen(false); await fetchData(pageData.page);
+    const payload = { name };
+    if (editingId == null) {
+      await api.post(endpoint2, payload);
+    } else {
+      await api.put(`${endpoint2}/${editingId}`, payload);
+    }
+    setOpen(false);
+    await fetchData(pageData.page);
   };
 
   const remove = async (row: Manufacturer) => {
-    if (!confirm(`Delete \"${row.name}\"?`)) return;
-    await fetch(`${endpoint2}/${row.id}`, { method: "DELETE", headers: { Accept: "application/json" } });
+    if (!confirm(`Delete "${row.name}"?`)) return;
+    await api.delete(`${endpoint2}/${row.id}`);
     await fetchData(pageData.page);
   };
 

@@ -2,19 +2,12 @@ import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/s
 import React from 'react';
 import { AppSidebar } from './sidebar';
 import { Separator } from '@/components/ui/separator';
-import { Button } from '@/components/ui/button';
+import { ThemeToggleDropdown } from '@/components/theme-toggle-dropdown';
 
 type ClientLayoutProps = {
   children: React.ReactNode;
   title?: string;
 };
-
-/*
-|--------------------------------------------------------------------------
-| How to use it 
-|--------------------------------------------------------------------------
-*/
-//  <ClientLayout title="Orders"> </ClientLayout>
 
 export const ClientLayout = ({ children, title }: ClientLayoutProps) => {
   return (
@@ -54,7 +47,8 @@ function SiteHeader({ title }: { title?: string }) {
         />
         <h1 className="text-base font-medium">{title ?? "Documents"}</h1>
         <div className="ml-auto flex items-center gap-2">
-          <Button variant="ghost" asChild size="sm" className="hidden sm:flex">
+          <ThemeToggleDropdown />
+          {/* <Button variant="ghost" asChild size="sm" className="hidden sm:flex">
             <a
               href="https://github.com/shadcn-ui/ui/tree/main/apps/v4/app/(examples)/dashboard"
               rel="noopener noreferrer"
@@ -63,7 +57,7 @@ function SiteHeader({ title }: { title?: string }) {
             >
               GitHub
             </a>
-          </Button>
+          </Button> */}
         </div>
       </div>
     </header>

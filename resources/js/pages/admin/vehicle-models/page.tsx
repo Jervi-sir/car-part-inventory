@@ -12,6 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ChevronLeft, ChevronRight, Pencil, Trash, Plus } from "lucide-react";
 import { AdminLayout } from "../layout/admin-layout";
 import { Head } from "@inertiajs/react";
+import api from "@/lib/api";
 
 type Id4 = number | string;
 interface VehicleBrand2 { id: Id4; name: string }
@@ -32,23 +33,26 @@ export default function VehicleModelsPage() {
   const maxPage = useMemo(() => Math.max(1, Math.ceil(pageData.total / pageData.per_page)), [pageData]);
 
   const loadBrands = async () => {
-    const res = await fetch(`${endpointBrands}?page=1&per_page=999`, { headers: { Accept: "application/json" } });
-    const json = await res.json();
+    const { data: json } = await api.get<VehicleBrand2[] | { data: VehicleBrand2[] }>(`${endpointBrands}`, {
+      params: { page: 1, per_page: 999 },
+    });
     setBrands(Array.isArray(json) ? json : json.data);
   };
 
   const fetchData = async (page = 1) => {
-    const params = new URLSearchParams({ page: String(page), per_page: String(pageData.per_page) });
-    if (search) params.set("search", search);
-    if (brandFilter) {
-      if(brandFilter !== 'all')
-        params.set("vehicle_brand_id", brandFilter);
+    const params: Record<string, string> = {
+      page: String(page),
+      per_page: String(pageData.per_page),
     };
-    const res = await fetch(`${endpointModels}?${params.toString()}`, { headers: { Accept: "application/json" } });
-    const json = await res.json();
-    const normalized: Page4<VehicleModel> = Array.isArray(json) ? { data: json, page, per_page: 10, total: json.length } : json;
+    if (search) params.search = search;
+    if (brandFilter && brandFilter !== "all") params.vehicle_brand_id = brandFilter;
+    const { data: json } = await api.get<Page4<VehicleModel> | VehicleModel[]>(endpointModels, { params });
+    const normalized: Page4<VehicleModel> = Array.isArray(json)
+      ? { data: json, page, per_page: Number(params.per_page) || 10, total: json.length }
+      : json;
     setPageData(normalized);
   };
+
 
   useEffect(() => { loadBrands(); }, []);
   useEffect(() => { fetchData(1); }, [search, brandFilter]);
@@ -57,21 +61,24 @@ export default function VehicleModelsPage() {
   const openEdit = (row: VehicleModel) => { setEditing(row); setOpen(true); };
 
   const save = async (payload: { name: string; vehicle_brand_id: string; year_from?: string; year_to?: string }) => {
-    const body = JSON.stringify({
+    const body = {
       name: payload.name,
       vehicle_brand_id: parseInt(payload.vehicle_brand_id),
       year_from: payload.year_from ? parseInt(payload.year_from) : null,
       year_to: payload.year_to ? parseInt(payload.year_to) : null,
-    });
-    const headers = { "Content-Type": "application/json", Accept: "application/json" };
-    if (!editing) await fetch(endpointModels, { method: "POST", headers, body });
-    else await fetch(`${endpointModels}/${editing.id}`, { method: "PUT", headers, body });
-    setOpen(false); await fetchData(pageData.page);
+    };
+    if (!editing) {
+      await api.post(endpointModels, body);
+    } else {
+      await api.put(`${endpointModels}/${editing.id}`, body);
+    }
+    setOpen(false);
+    await fetchData(pageData.page);
   };
 
   const remove = async (row: VehicleModel) => {
-    if (!confirm(`Delete model \"${row.name}\"?`)) return;
-    await fetch(`${endpointModels}/${row.id}`, { method: "DELETE", headers: { Accept: "application/json" } });
+    if (!confirm(`Delete model "${row.name}"?`)) return;
+    await api.delete(`${endpointModels}/${row.id}`);
     await fetchData(pageData.page);
   };
 
@@ -170,7 +177,7 @@ function VehicleModelDialog({ open, onOpenChange, brands, initial, onSave }: { o
           <div className="space-y-1">
             <label className="text-sm">Brand</label>
             <Select value={vehicleBrandId} onValueChange={setVehicleBrandId}>
-              <SelectTrigger className="w-full" ><SelectValue placeholder="Select a brand"  /></SelectTrigger>
+              <SelectTrigger className="w-full" ><SelectValue placeholder="Select a brand" /></SelectTrigger>
               <SelectContent >
                 {brands.map(b => (<SelectItem key={String(b.id)} value={String(b.id)}>{b.name}</SelectItem>))}
               </SelectContent>
