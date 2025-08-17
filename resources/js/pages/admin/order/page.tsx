@@ -7,6 +7,9 @@ import { Card } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ArrowLeft, Truck } from "lucide-react";
 import api from "@/lib/api";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea"; // if you have it
 
 declare const route: (name: string, params?: any) => string;
 
@@ -54,11 +57,16 @@ type OrderPayload = {
   grand_total: number;
   created_at?: string | null;
   updated_at?: string | null;
+  notes?: string | null;
+  user?: { id: number; name: string; email: string | null } | null;
 };
 
 const endpoints = {
   orderShow: (id: Id) => route("admin.order.api.show", { order: id }),
   backToList: route("admin.orders.page"),
+  updateStatus: (id: Id) => route("admin.api.orders.status", { order: id }),
+  updateShipping: (id: Id) => route("admin.api.orders.shipping", { order: id }),
+  addNote: (id: Id) => route("admin.api.orders.notes", { order: id }), // reuse name, but it's PATCH now
 };
 
 export default function OrderPage() {
@@ -68,6 +76,10 @@ export default function OrderPage() {
   const [order, setOrder] = useState<OrderPayload | null>(null);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
+  const [shipName, setShipName] = useState(order?.ship_to.name ?? "");
+  const [shipPhone, setShipPhone] = useState(order?.ship_to.phone ?? "");
+  const [shipAddress, setShipAddress] = useState(order?.ship_to.address ?? "");
+  const [note, setNote] = useState("");
 
   const refresh = async () => {
     setErr(null);
@@ -83,6 +95,14 @@ export default function OrderPage() {
   };
 
   useEffect(() => { refresh(); }, [orderId]);
+  useEffect(() => {
+    if (order) {
+      setShipName(order.ship_to.name ?? "");
+      setShipPhone(order.ship_to.phone ?? "");
+      setShipAddress(order.ship_to.address ?? "");
+      setNote(order.notes ?? "");
+    }
+  }, [order]);
 
   const statusLabel = (s: OrderPayload["status"]) => {
     switch (s) {
@@ -179,7 +199,29 @@ export default function OrderPage() {
                     ))}
                   </div>
                 </div>
+
+                {/* 👉 ADD THIS: action buttons */}
+                <div className="mt-3 flex gap-2 flex-wrap">
+                  {['confirmed', 'preparing', 'shipped', 'completed', 'canceled'].map((target) => (
+                    <Button
+                      key={target}
+                      size="sm"
+                      variant="outline"
+                      onClick={async () => {
+                        try {
+                          await api.patch(endpoints.updateStatus(order.id), { status: target });
+                          await refresh();
+                        } catch (e: any) {
+                          alert(e?.response?.data?.message || e.message);
+                        }
+                      }}
+                    >
+                      Set {statusLabel(target as any)}
+                    </Button>
+                  ))}
+                </div>
               </Card>
+
 
               <Card className="p-4 gap-2">
                 <div className="font-semibold mb-1">Summary</div>
@@ -219,6 +261,89 @@ export default function OrderPage() {
                   <Truck className="h-3 w-3" /> Updated: {order.updated_at ? new Date(order.updated_at).toLocaleString() : '—'}
                 </p>
               </Card>
+
+              <Card className="p-4 gap-2">
+                <Label className="font-semibold">Edit Shipping</Label>
+                <div className="flex flex-col gap-2">
+                  <Input
+                    placeholder="Recipient name"
+                    value={shipName}
+                    onChange={(e) => setShipName(e.target.value)}
+                  />
+                  <Input
+                    placeholder="Phone"
+                    value={shipPhone}
+                    onChange={(e) => setShipPhone(e.target.value)}
+                  />
+                  <Input
+                    placeholder="Address"
+                    value={shipAddress}
+                    onChange={(e) => setShipAddress(e.target.value)}
+                  />
+                  <Button
+                    size="sm"
+                    className="self-end"
+                    onClick={async () => {
+                      try {
+                        await api.patch(endpoints.updateShipping(order!.id), {
+                          ship_to_name: shipName,
+                          ship_to_phone: shipPhone,
+                          ship_to_address: shipAddress,
+                        });
+                        // await refresh();
+                      } catch (e: any) {
+                        alert(e?.response?.data?.message || e.message);
+                      }
+                    }}
+                  >
+                    Save Shipping
+                  </Button>
+                </div>
+              </Card>
+
+
+              <Card className="p-4 gap-2">
+                <Label className="font-semibold">Notes</Label>
+                <div className="space-y-2">
+                  <Textarea
+                    placeholder="Internal notes…"
+                    value={note}
+                    onChange={(e) => setNote(e.target.value)}
+                    rows={4}
+                  />
+                  <div className="flex flex-row justify-end">
+                    <Button
+                      size="sm"
+                      className="self-end"
+                      onClick={async () => {
+                        try {
+                          await api.patch(endpoints.addNote(order!.id), { notes: note });
+                          await refresh();
+                        } catch (e: any) {
+                          alert(e?.response?.data?.message || e.message);
+                        }
+                      }}
+                    >
+                      Save Note
+                    </Button>
+                  </div>
+                </div>
+              </Card>
+
+              <Card className="p-4 gap-2">
+                <div className="font-semibold mb-1">Customer</div>
+                {order.user ? (
+                  <div className="text-sm space-y-1">
+                    <div><span className="text-muted-foreground">Name:</span> {order.user.name}</div>
+                    <div><span className="text-muted-foreground">Email:</span> {order.user.email ?? '—'}</div>
+                    <div className="text-xs text-muted-foreground">User ID: {order.user.id}</div>
+                  </div>
+                ) : (
+                  <div className="text-sm text-muted-foreground">—</div>
+                )}
+              </Card>
+
+
             </div>
           </div>
         )}

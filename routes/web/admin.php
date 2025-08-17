@@ -9,6 +9,7 @@ use App\Http\Controllers\Admin\PartFitmentController;
 use App\Http\Controllers\Admin\VehicleBrandController;
 use App\Http\Controllers\Admin\VehicleModelController;
 use App\Http\Controllers\Admin\PartReferenceController;
+use App\Http\Controllers\Admin\UserController;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Route;
 
@@ -98,6 +99,19 @@ Route::prefix('admin')->group(function () {
         Route::get('id/{order}', [OrderController::class, 'showPage'])->name('admin.order.page');
         Route::prefix('api')->group(function () {
             Route::get('{order}', [OrderController::class, 'show'])->name('admin.order.api.show');
+            Route::patch('{order}/status',   [OrderController::class, 'updateStatus'])->name('admin.api.orders.status');
+            Route::patch('{order}/shipping', [OrderController::class, 'updateShipping'])->name('admin.api.orders.shipping');
+            Route::patch('{order}/notes',     [OrderController::class, 'updateNotes'])->name('admin.api.orders.notes');
         });
     });
+
+    Route::prefix('users')->group(function () {
+        Route::get('/', [UserController::class, 'page'])->name('admin.users.page');
+        Route::get('/{user}', [UserController::class, 'userPage'])->name('admin.user.page');
+    });
+    Route::prefix('user')->group(function () {
+        Route::get('/', [UserController::class, 'index'])->name('admin.api.users.index');
+        Route::get('/{user}', [UserController::class, 'show'])->name('admin.api.users.show');
+    });
 });
+

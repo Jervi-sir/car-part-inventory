@@ -10,7 +10,8 @@ class Order extends Model
         'user_id', 'status', 'delivery_method',
         'ship_to_name', 'ship_to_phone', 'ship_to_address',
         'currency', 'subtotal', 'discount_total',
-        'shipping_total', 'tax_total', 'grand_total'
+        'shipping_total', 'tax_total', 'grand_total',
+        'notes',
     ];
 
     public function user()
@@ -21,5 +22,10 @@ class Order extends Model
     public function items()
     {
         return $this->hasMany(OrderItem::class);
+    }
+
+    public function notes()
+    {
+        return $this->hasOne(OrderNote::class);
     }
 }

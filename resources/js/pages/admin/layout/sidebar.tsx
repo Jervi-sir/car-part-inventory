@@ -1,5 +1,5 @@
 import * as React from "react"
-import { CarFront, Command, Component, Factory, Package, Puzzle } from "lucide-react"
+import { BaggageClaim, CarFront, Command, Component, Factory, Package, Puzzle, UserIcon } from "lucide-react"
 import { Link, usePage } from "@inertiajs/react"
 
 import { NavUser } from "@/components/nav-user"
@@ -32,8 +32,9 @@ const data = {
     { title: "Vehicle Brands", url: route("admin.vehicle-brands.page"), icon: CarFront },
     { title: "Vehicle Models", url: route("admin.vehicle-models.page"), icon: Package },
     { title: "Parts", url: route("admin.parts.page"), icon: Puzzle },
-    { title: "Orders", url: route("admin.orders.page"), icon: Puzzle },
-  ],
+    { title: "Orders", url: route("admin.orders.page"), icon: BaggageClaim },
+    { title: "Users", url: route("admin.users.page"), icon: UserIcon },
+],
 }
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {

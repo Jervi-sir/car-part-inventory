@@ -50,7 +50,8 @@ class OrderController extends Controller
         $sortDir  = $validated['sort_dir'] ?? 'desc';
 
         $query = Order::query()
-            ->withCount('items as items_count');
+            ->withCount('items as items_count')
+            ->with(['user:id,name,email']); // 👈 add this
 
         // filters
         if ($status && $status !== 'all') {
@@ -140,10 +141,16 @@ class OrderController extends Controller
                 'grand_total'     => (float)$o->grand_total,
                 'created_at'      => $o->created_at?->toIso8601String(),
                 'updated_at'      => $o->updated_at?->toIso8601String(),
-                // cap brief items to 10 (UI can slice further)
                 'items_brief'     => array_slice($briefs[$o->id] ?? [], 0, 10),
+
+                'user' => $o->user ? [
+                    'id'    => $o->user->id,
+                    'name'  => $o->user->name,
+                    'email' => $o->user->email,
+                ] : null,
             ];
         });
+
 
         return response()->json([
             'data'     => $data,
@@ -156,6 +163,7 @@ class OrderController extends Controller
     // GET /admin/order/api/{order}
     public function show(Order $order)
     {
+        $order->load('user:id,name,email'); // 🔹 add this
         // status pipeline
         $steps = ['cart', 'pending', 'confirmed', 'preparing', 'shipped', 'completed', 'canceled'];
         $statusIndex = array_search($order->status, $steps, true);
@@ -169,6 +177,7 @@ class OrderController extends Controller
                 'order_items.quantity as qty',
                 'order_items.unit_price',
                 'order_items.line_total',
+                'order_items.notes',
                 'p.sku',
                 'p.name',
                 'p.min_order_qty',
@@ -237,6 +246,7 @@ class OrderController extends Controller
                 'qty'        => (int)$it->qty,
                 'unit_price' => (float)$it->unit_price,
                 'line_total' => (float)$it->line_total,
+
             ];
         }
 
@@ -261,6 +271,70 @@ class OrderController extends Controller
             'grand_total'    => (float)$order->grand_total,
             'created_at'     => $order->created_at?->toIso8601String(),
             'updated_at'     => $order->updated_at?->toIso8601String(),
+            'notes'         => $order->notes,
+
+            // 🔹 return user
+            'user' => $order->user ? [
+                'id'    => $order->user->id,
+                'name'  => $order->user->name,
+                'email' => $order->user->email,
+            ] : null,
+        ]);
+    }
+
+    // PATCH /admin/order/api/{order}/status
+    public function updateStatus(Request $req, Order $order)
+    {
+        $data = $req->validate([
+            'status' => ['required', Rule::in(['pending', 'confirmed', 'preparing', 'shipped', 'completed', 'canceled'])],
+        ]);
+
+        $order->update(['status' => $data['status']]);
+
+        return response()->json([
+            'ok'    => true,
+            'order' => ['id' => $order->id, 'status' => $order->status],
+        ]);
+    }
+
+    // PATCH /admin/order/api/{order}/shipping
+    public function updateShipping(Request $req, Order $order)
+    {
+        $data = $req->validate([
+            'delivery_method' => ['nullable', Rule::in(['pickup', 'courier', 'post'])],
+            'ship_to_name'    => ['nullable', 'string', 'max:120'],
+            'ship_to_phone'   => ['nullable', 'string', 'max:40'],
+            'ship_to_address' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $order->fill($data)->save();
+
+        return response()->json(['ok' => true, 'order' => $order->only([
+            'id',
+            'delivery_method',
+            'ship_to_name',
+            'ship_to_phone',
+            'ship_to_address',
+            'status'
+        ])]);
+    }
+
+    // POST /admin/order/api/{order}/notes
+    public function updateNotes(Request $req, Order $order)
+    {
+        $data = $req->validate([
+            'notes' => ['nullable', 'string'],
+        ]);
+
+        $order->update(['notes' => $data['notes'] ?? null]);
+
+        return response()->json([
+            'ok' => true,
+            'order' => [
+                'id' => $order->id,
+                'notes' => $order->notes,
+                'updated_at' => $order->updated_at?->toIso8601String(),
+            ],
         ]);
     }
 }

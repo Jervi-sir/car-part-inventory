@@ -36,13 +36,20 @@ type OrderRow = {
   created_at: string;
   updated_at: string;
   items_brief: BriefItem[];
+  user?: { id: number; name: string; email: string | null } | null; // 👈 add this
 };
 
 type Page<T> = { data: T[]; total: number; page: number; per_page: number };
 
+// Extra data we lazy-load per order when expanded
+type OrderExtra = {
+  user?: { id: number; name: string; email: string | null } | null;
+};
+
 const endpoints = {
   list: route("admin.api.orders.index"),
   view: (id: Id) => route("admin.order.page", { order: id }),
+  show: (id: Id) => route("admin.api.orders.show", { order: id }), // <-- added
 };
 
 const statusOptions = ["all", "cart", "pending", "confirmed", "preparing", "shipped", "completed", "canceled"] as const;
@@ -67,6 +74,10 @@ export default function OrdersPage() {
   const [expandedRows, setExpandedRows] = useState<Record<number, boolean>>({});
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+
+  // cache for extra per-order info (user)
+  const [rowExtra, setRowExtra] = useState<Record<number, OrderExtra>>({});
+  const [rowExtraLoading, setRowExtraLoading] = useState<Record<number, boolean>>({});
 
   const maxPage = useMemo(() => Math.max(1, Math.ceil(pageData.total / pageData.per_page)), [pageData]);
   const reqRef = useRef(0);
@@ -116,6 +127,26 @@ export default function OrdersPage() {
   const statusBadge = (s: OrderRow["status"]) => {
     const label = s[0].toUpperCase() + s.slice(1);
     return <span className="px-2 py-1 rounded bg-muted text-xs">{label}</span>;
+  };
+
+  // Lazy-load extra info (user) when a row is expanded
+  const loadExtra = async (orderId: number) => {
+    if (rowExtra[orderId] || rowExtraLoading[orderId]) return;
+    setRowExtraLoading(prev => ({ ...prev, [orderId]: true }));
+    try {
+      const { data } = await api.get(endpoints.show(orderId));
+      // Expecting backend to include { user: { id, name, email }, ... }
+      setRowExtra(prev => ({
+        ...prev,
+        [orderId]: {
+          user: data?.user ?? null,
+        },
+      }));
+    } catch (_) {
+      setRowExtra(prev => ({ ...prev, [orderId]: { user: null } }));
+    } finally {
+      setRowExtraLoading(prev => ({ ...prev, [orderId]: false }));
+    }
   };
 
   return (
@@ -242,12 +273,11 @@ export default function OrdersPage() {
                         <TableCell>
                           <button
                             className="flex items-center gap-1"
-                            onClick={() =>
-                              setExpandedRows(prev => ({
-                                ...prev,
-                                [o.id]: !expanded
-                              }))
-                            }
+                            onClick={() => {
+                              const next = !expanded;
+                              setExpandedRows(prev => ({ ...prev, [o.id]: next }));
+                              if (next) loadExtra(o.id); // 🔹 fetch user when expanding
+                            }}
                           >
                             {expanded ? (
                               <ChevronDown className="h-4 w-4" />
@@ -279,20 +309,43 @@ export default function OrdersPage() {
                       {expanded && (
                         <TableRow>
                           <TableCell colSpan={9} className="bg-muted/40">
-                            <div className="p-3 space-y-2 text-sm">
-                              <div className="font-semibold">Items</div>
-                              <ul className="list-disc pl-6">
-                                {o.items_brief.map((i, idx) => (
-                                  <li key={idx}>
-                                    {i.name || i.sku || "Item"} ×{i.qty} (
-                                    {i.line_total.toFixed(2)} {o.currency})
-                                  </li>
-                                ))}
-                              </ul>
-                              <div className="flex gap-6 text-muted-foreground">
+                            <div className="p-3 space-y-3 text-sm">
+                              {/* Items brief list (existing) */}
+                              <div>
+                                <div className="font-semibold">Items</div>
+                                <ul className="list-disc pl-4">
+                                  {o.items_brief.map((i, idx) => (
+                                    <li key={idx}>
+                                      {i.name || i.sku || "Item"} ×{i.qty} ({i.line_total.toFixed(2)} {o.currency})
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+
+                              {/* Totals mini-line */}
+                              {/* <div className="flex gap-6 text-muted-foreground pt-1">
                                 <span>Discount: {money(o.discount_total, o.currency)}</span>
                                 <span>Tax: {money(o.tax_total, o.currency)}</span>
-                                <span>Updated: {new Date(o.updated_at).toLocaleString()}</span>
+                              </div> */}
+                              <div>
+
+                                <div className="flex items-center justify-between flex-wrap gap-3">
+                                  <div className="font-semibold">User</div>
+                                  <div className="text-muted-foreground text-xs">
+                                    Updated: {new Date(o.updated_at).toLocaleString()}
+                                  </div>
+                                </div>
+                                <div>
+                                  {o.user ? (
+                                    <div className="space-y-1">
+                                      <div><span className="text-muted-foreground">Name:</span> {o.user.name}</div>
+                                      <div><span className="text-muted-foreground">Email:</span> {o.user.email ?? "—"}</div>
+                                      <div className="text-xs text-muted-foreground">User ID: {o.user.id}</div>
+                                    </div>
+                                  ) : (
+                                    <div className="text-muted-foreground">—</div>
+                                  )}
+                                </div>
                               </div>
                             </div>
                           </TableCell>
