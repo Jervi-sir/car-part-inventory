@@ -157,10 +157,11 @@ export default function CheckoutPage() {
   const isEmpty = cart.items.length === 0;
 
   return (
-    <ClientLayout>
-      <div className="p-6">
+    <ClientLayout title="Checkout">
+      <div className="p-6 pt-0">
         <Head title="Checkout" />
-        <div className="flex items-center justify-between mb-6">
+        
+        <div className="flex items-center justify-between mb-4">
           <h1 className="text-2xl font-semibold">Checkout</h1>
           <Button variant="outline" onClick={refreshCart}>
             <ShoppingCart className="mr-2 h-4 w-4" /> Refresh

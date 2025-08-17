@@ -200,7 +200,7 @@ export default function CatalogPage() {
   };
 
   return (
-    <ClientLayout>
+    <ClientLayout title="Catalog">
       <div className="max-w-7xl mx-auto p-6">
         <Head title="Shop" />
         <div className="flex items-center justify-between mb-4">

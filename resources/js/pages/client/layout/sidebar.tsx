@@ -1,22 +1,12 @@
 
 import * as React from "react"
 import {
-  AudioWaveform,
-  BookOpen,
-  Bot,
-  ChevronRight,
   Command,
-  Frame,
-  GalleryVerticalEnd,
-  Map,
-  PieChart,
+  Container,
   SearchIcon,
-  Settings2,
   ShoppingCartIcon,
-  SquareTerminal,
 } from "lucide-react"
 
-import { NavMain } from "@/components/nav-main"
 import { NavUser } from "@/components/nav-user"
 import {
   Sidebar,
@@ -25,14 +15,11 @@ import {
   SidebarGroup,
   SidebarGroupLabel,
   SidebarHeader,
-  SidebarMenuSub,
-  SidebarMenuSubButton,
-  SidebarMenuSubItem,
   SidebarRail,
 } from "@/components/ui/sidebar"
 import { DropdownMenu, DropdownMenuTrigger, } from "@/components/ui/dropdown-menu"
 import { SidebarMenu, SidebarMenuButton, SidebarMenuItem, } from "@/components/ui/sidebar"
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
+import { Collapsible, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { Link } from "@inertiajs/react"
 
 // This is sample data.
@@ -53,6 +40,11 @@ const data = {
       title: "Cart",
       url: route('client.checkout.page'),
       icon: ShoppingCartIcon,
+    },
+    {
+      title: "Orders",
+      url: route('client.orders.page'),
+      icon: Container,
     },
   ],
 
