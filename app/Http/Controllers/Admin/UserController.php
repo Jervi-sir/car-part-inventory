@@ -42,10 +42,21 @@ class UserController extends Controller
 
         if ($q !== '') {
             $query->where(function ($w) use ($q) {
-                $w->where('name', 'like', "%{$q}%")
-                    ->orWhere('full_name', 'like', "%{$q}%")
-                    ->orWhere('email', 'like', "%{$q}%")
-                    ->orWhere('id', $q);
+                // Case-insensitive search on text fields (use ILIKE on Postgres)
+                $term = '%' . str_replace(['%', '_'], ['\%', '\_'], $q) . '%';
+
+                $w->where('name', 'ILIKE', $term)
+                    ->orWhere('full_name', 'ILIKE', $term)
+                    ->orWhere('email', 'ILIKE', $term);
+
+                // Only hit id if q is strictly digits
+                if (ctype_digit($q)) {
+                    $w->orWhere('id', (int)$q);   // exact id
+                }
+                // If you ALSO want "partial id" search, uncomment this instead:
+                // else {
+                //     $w->orWhereRaw('CAST(id AS TEXT) LIKE ?', [$term]);
+                // }
             });
         }
 
