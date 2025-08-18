@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Head } from "@inertiajs/react";
-import { AdminLayout } from "../layout/admin-layout"; // change if you have an AdminLayout
+import { AdminLayout } from "../layout/admin-layout";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -117,7 +117,7 @@ export default function OrdersPage() {
     if (!arr.length) return "—";
     const first = arr.slice(0, 3).map(i => {
       const title = i.name || i.sku || "Item";
-      return `${title} ×${i.qty} (${i.line_total.toFixed(2)} ${row.currency})`;
+      return `${title} ×${i.qty} (${i.line_total.toFixed(2)} DZD`;
     });
     const extra = arr.length > 3 ? ` +${arr.length - 3} more` : "";
     return first.join(", ") + extra;
@@ -160,7 +160,7 @@ export default function OrdersPage() {
         {/* Filters */}
         <Card className="p-4 mb-4">
           <div className="flex flex-row flex-wrap gap-3">
-            <div className="w-[220px] md:col-span-2 space-y-2">
+            <div className="flex-1 md:col-span-2 space-y-2">
               <Label>Search</Label>
               <Input
                 className="w-full"
@@ -169,8 +169,39 @@ export default function OrdersPage() {
                 onChange={(e) => setFilters({ ...filters, q: e.target.value })}
               />
             </div>
+            <div className="flex-1 flex flex-row gap-4">
+              <div className="w-full space-y-2">
+                <Label>Sort</Label>
+                <div className="flex gap-2">
+                  <Select value={filters.sort_by} onValueChange={(v) => setFilters({ ...filters, sort_by: v })}>
+                    <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {sortOptions.map(opt => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  <Select value={filters.sort_dir} onValueChange={(v) => setFilters({ ...filters, sort_dir: v })}>
+                    <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="desc">Desc</SelectItem>
+                      <SelectItem value="asc">Asc</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
 
-            <div className="w-[140px] space-y-2">
+            </div>
+          </div>
+          <div className="flex flex-row flex-wrap gap-3">
+            <div className="w-[160px] space-y-2">
+              <Label>From</Label>
+              <Input className="w-full" type="date" value={filters.from} onChange={(e) => setFilters({ ...filters, from: e.target.value })} />
+            </div>
+            <div className="w-[160px] space-y-2">
+              <Label>To</Label>
+              <Input className="w-full" type="date" value={filters.to} onChange={(e) => setFilters({ ...filters, to: e.target.value })} />
+            </div>
+
+            <div className="w-[160px] space-y-2">
               <Label>Status</Label>
               <Select value={filters.status} onValueChange={(v) => setFilters({ ...filters, status: v })}>
                 <SelectTrigger className="w-full"><SelectValue placeholder="All" /></SelectTrigger>
@@ -179,8 +210,7 @@ export default function OrdersPage() {
                 </SelectContent>
               </Select>
             </div>
-
-            <div className="w-[140px] space-y-2">
+            <div className="w-[160px] space-y-2">
               <Label>Method</Label>
               <Select value={filters.delivery_method} onValueChange={(v) => setFilters({ ...filters, delivery_method: v })}>
                 <SelectTrigger className="w-full"><SelectValue placeholder="All" /></SelectTrigger>
@@ -190,34 +220,6 @@ export default function OrdersPage() {
               </Select>
             </div>
 
-            <div className="w-[160px] space-y-2">
-              <Label>From</Label>
-              <Input className="w-full" type="date" value={filters.from} onChange={(e) => setFilters({ ...filters, from: e.target.value })} />
-            </div>
-
-            <div className="w-[160px] space-y-2">
-              <Label>To</Label>
-              <Input className="w-full" type="date" value={filters.to} onChange={(e) => setFilters({ ...filters, to: e.target.value })} />
-            </div>
-
-            <div className="w-[280px] space-y-2">
-              <Label>Sort</Label>
-              <div className="flex gap-2">
-                <Select value={filters.sort_by} onValueChange={(v) => setFilters({ ...filters, sort_by: v })}>
-                  <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {sortOptions.map(opt => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-                <Select value={filters.sort_dir} onValueChange={(v) => setFilters({ ...filters, sort_dir: v })}>
-                  <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="desc">Desc</SelectItem>
-                    <SelectItem value="asc">Asc</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
 
             <div className="flex items-end gap-2">
               <Button

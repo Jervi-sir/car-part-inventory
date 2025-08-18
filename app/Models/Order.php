@@ -38,22 +38,26 @@ class Order extends Model
         ];
     }
 
-    // Relations
     public function user()
     {
         return $this->belongsTo(User::class);
     }
-    
+
     public function items()
     {
         return $this->hasMany(OrderItem::class);
     }
-    
+
     public function notes()
     {
-        return $this->hasMany(OrderNote::class);
+        return $this->hasOne(OrderNote::class);
     }
 
+    public function orderItems()
+    {
+        return $this->hasMany(OrderItem::class);
+    }
+    
     // Helpers
     public function recalcTotals(): void
     {
@@ -62,4 +66,5 @@ class Order extends Model
         $this->tax_total = 0; // set if you implement per-item VAT later
         $this->grand_total = $this->subtotal - $this->discount_total + $this->shipping_total + $this->tax_total;
     }
+
 }

@@ -4,11 +4,9 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Part;
-use App\Models\PartReference;
 use App\Models\PartFitment;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
-use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 
 class PartController extends Controller
@@ -19,34 +17,60 @@ class PartController extends Controller
         $page    = (int)($req->integer('page') ?: 1);
 
         $q = Part::query()
-            ->with(['category:id,name', 'manufacturer:id,name'])
-            ->when($req->filled('category_id'), fn($x) => $x->where('category_id', $req->integer('category_id')))
+            ->with(['manufacturer:id,name', 'fitments.model.brand:id,name'])
             ->when($req->filled('manufacturer_id'), fn($x) => $x->where('manufacturer_id', $req->integer('manufacturer_id')))
+            ->when(
+                $req->filled('vehicle_model_id'),
+                fn($x) =>
+                $x->whereHas(
+                    'models',
+                    fn($m) =>
+                    $m->where('vehicle_models.id', $req->integer('vehicle_model_id'))
+                )
+            )
+            ->when(
+                $req->filled('vehicle_brand_id'),
+                fn($x) =>
+                $x->whereHas(
+                    'models.brand',
+                    fn($b) =>
+                    $b->where('vehicle_brands.id', $req->integer('vehicle_brand_id'))
+                )
+            )
             ->when($req->filled('is_active') && $req->is_active !== '', fn($x) => $x->where('is_active', (bool)$req->is_active))
-            ->when($req->filled('sku'), fn($x) => $x->where('sku', 'LIKE', '%' . $req->sku . '%'))
-            ->when($req->filled('reference_code'), function ($x) use ($req) {
-                $x->whereExists(function ($s) use ($req) {
-                    $s->select(DB::raw(1))
-                        ->from('part_references as pr')
-                        ->whereColumn('pr.part_id', 'parts.id')
-                        ->where('pr.code', 'LIKE', '%' . $req->reference_code . '%');
-                });
-            })
+            ->when($req->filled('sku'), fn($x) => $x->where('sku', 'ILIKE', '%' . $req->sku . '%'))
+            ->when($req->filled('reference'), fn($x) => $x->where('reference', 'ILIKE', '%' . $req->reference . '%'))
             ->orderBy('id', 'desc');
+
 
         $total = (clone $q)->count();
         $rows  = $q->forPage($page, $perPage)->get();
 
         // normalize payload
         $data = $rows->map(function (Part $p) {
+            // aggregate fitment brands/models for quick preview
+            $brands = [];
+            $models = [];
+            foreach ($p->fitments as $f) {
+                $b = $f->model?->brand?->name;
+                $m = $f->model?->name;
+                if ($b) $brands[$b] = true;
+                if ($m) $models[$m] = true;
+            }
+
             return [
-                'id'           => $p->id,
-                'sku'          => $p->sku,
-                'name'         => $p->name,
-                'category'     => $p->relationLoaded('category') && $p->category ? ['id' => $p->category->id, 'name' => $p->category->name] : null,
-                'manufacturer' => $p->relationLoaded('manufacturer') && $p->manufacturer ? ['id' => $p->manufacturer->id, 'name' => $p->manufacturer->name] : null,
-                'price_retail' => $p->price_retail,
-                'is_active'    => (bool)$p->is_active,
+                'id'                 => $p->id,
+                'reference'          => $p->reference,
+                'barcode'            => $p->barcode,
+                'sku'                => $p->sku,
+                'name'               => $p->name,
+                'manufacturer'       => $p->relationLoaded('manufacturer') && $p->manufacturer ? ['id' => $p->manufacturer->id, 'name' => $p->manufacturer->name] : null,
+                'price_retail_ttc'   => $p->price_retail_ttc,
+                'is_active'          => (bool)$p->is_active,
+                'stock_real'         => $p->stock_real,
+                'stock_available'    => $p->stock_available,
+                'fitment_brands'     => array_keys($brands),
+                'fitment_models'     => array_keys($models),
             ];
         });
 
@@ -64,46 +88,52 @@ class PartController extends Controller
 
         $part = Part::create($val);
 
+        // handle images array (optional passthrough)
+        if ($req->has('images')) {
+            $part->images = $this->sortedImages($req->input('images', []));
+            $part->save();
+        }
+
+        // handle fitments (optional)
+        if ($req->has('fitments')) {
+            $this->upsertFitments($part, $req->input('fitments', []));
+        }
+
         return response()->json(['id' => $part->id], 201);
     }
 
     public function show(Part $part)
     {
-        $part->load(['references', 'fitments.vehicleModel.vehicleBrand']);
+        $part->load(['manufacturer:id,name', 'fitments.model.brand']);
 
         return response()->json([
             'part' => [
-                'id'               => $part->id,
-                'category_id'      => $part->category_id,
-                'manufacturer_id'  => $part->manufacturer_id,
-                'sku'              => $part->sku,
-                'name'             => $part->name,
-                'description'      => $part->description,
-                'package_qty'      => $part->package_qty,
-                'min_order_qty'    => $part->min_order_qty,
-                'price_retail'     => $part->price_retail,
-                'price_demi_gros'  => $part->price_demi_gros,
-                'price_gros'       => $part->price_gros,
-                'min_qty_gros'     => $part->min_qty_gros,
-                'images'           => $part->images ?? [],
-                'is_active'        => (bool)$part->is_active,
+                'id'                  => $part->id,
+                'manufacturer_id'     => $part->manufacturer_id,
+                'reference'           => $part->reference,
+                'barcode'             => $part->barcode,
+                'sku'                 => $part->sku,
+                'name'                => $part->name,
+                'description'         => $part->description,
+                'price_retail_ttc'    => $part->price_retail_ttc,
+                'price_wholesale_ttc' => $part->price_wholesale_ttc,
+                'tva_rate'            => $part->tva_rate,
+                'stock_real'          => $part->stock_real,
+                'stock_available'     => $part->stock_available,
+                'images'              => $part->images ?? [],
+                'is_active'           => (bool)$part->is_active,
             ],
-            'references' => $part->references->map(fn(PartReference $r) => [
-                'id'          => $r->id,
-                'type'        => $r->type,
-                'code'        => $r->code,
-                'source_brand'=> $r->source_brand,
-            ]),
             'fitments' => $part->fitments->map(function (PartFitment $f) {
                 return [
                     'id'               => $f->id,
-                    'vehicle_model_id' => $f->vehicle_model_id,
+                    'vehicle_brand_id' => $f->model?->brand?->id, // for preloading models
+                    'vehicle_model_id' => $f->model?->id,
                     'engine_code'      => $f->engine_code,
                     'notes'            => $f->notes,
-                    'vehicle_brand'    => $f->vehicleModel?->vehicleBrand?->name,
-                    'vehicle_model'    => $f->vehicleModel?->name,
-                    'year_from'        => $f->vehicleModel?->year_from,
-                    'year_to'          => $f->vehicleModel?->year_to,
+                    'vehicle_brand'    => $f->model?->brand?->name,
+                    'vehicle_model'    => $f->model?->name,
+                    'year_from'        => $f->model?->year_from,
+                    'year_to'          => $f->model?->year_to,
                 ];
             }),
         ]);
@@ -113,6 +143,15 @@ class PartController extends Controller
     {
         $val = $this->validated($req, $part->id);
         $part->update($val);
+
+        if ($req->has('images')) {
+            $part->images = $this->sortedImages($req->input('images', []));
+            $part->save();
+        }
+
+        if ($req->has('fitments')) {
+            $this->upsertFitments($part, $req->input('fitments', []));
+        }
 
         return response()->json(['ok' => true]);
     }
@@ -144,41 +183,90 @@ class PartController extends Controller
             'images.*.sort_order' => ['nullable', 'integer'],
         ]);
 
-        $sorted = collect($data['images'])
-            ->map(fn($i) => ['url' => $i['url'], 'sort_order' => $i['sort_order'] ?? 0])
-            ->sortBy('sort_order')
-            ->values()
-            ->all();
-
+        $sorted = $this->sortedImages($data['images']);
         $part->images = $sorted;
         $part->save();
 
         return response()->json(['ok' => true, 'images' => $sorted]);
     }
 
+    public function updateActive(Request $req, Part $part)
+    {
+        $req->validate(['is_active' => ['required', 'boolean']]);
+        $part->is_active = (bool)$req->boolean('is_active');
+        $part->save();
+        return response()->json(['ok' => true]);
+    }
+
     private function validated(Request $req, ?int $id = null): array
     {
         return $req->validate([
-            'manufacturer_id'  => ['nullable', 'integer', 'exists:manufacturers,id'],
-            'category_id'      => ['required', 'integer', 'exists:categories,id'],
-            'sku'              => [
-                'nullable',
-                'string',
-                'max:80',
-                Rule::unique('parts', 'sku')->ignore($id),
-            ],
-            'name'             => ['required', 'string', 'max:255'],
-            'description'      => ['nullable', 'string'],
-            'package_qty'      => ['required', 'integer', 'min:1'],
-            'min_order_qty'    => ['required', 'integer', 'min:1'],
-            'price_retail'     => ['nullable', 'numeric', 'min:0'],
-            'price_demi_gros'  => ['nullable', 'numeric', 'min:0'],
-            'price_gros'       => ['nullable', 'numeric', 'min:0'],
-            'min_qty_gros'     => ['required', 'integer', 'min:1'],
-            'is_active'        => ['required', 'boolean'],
+            'manufacturer_id'     => ['nullable', 'integer', 'exists:manufacturers,id'],
+            'reference'           => ['nullable', 'string', 'max:120'],
+            'barcode'             => ['nullable', 'string', 'max:64'],
+            'sku'                 => ['nullable', 'string', 'max:80', Rule::unique('parts', 'sku')->ignore($id)],
+            'name'                => ['required', 'string', 'max:255'],
+            'description'         => ['nullable', 'string'],
+
+            'price_retail_ttc'    => ['nullable', 'numeric', 'min:0'],
+            'price_wholesale_ttc' => ['nullable', 'numeric', 'min:0'],
+            'tva_rate'            => ['nullable', 'numeric', 'min:0'],
+
+            'stock_real'          => ['nullable', 'integer'],
+            'stock_available'     => ['nullable', 'integer'],
+
+            'images'              => ['sometimes', 'array'],
+            'is_active'           => ['required', 'boolean'],
+
+            // fitments are handled separately, but allow passthrough
+            'fitments'                     => ['sometimes', 'array'],
+            'fitments.*.id'                => ['nullable', 'integer', 'exists:part_fitments,id'],
+            'fitments.*.vehicle_model_id'  => ['required_with:fitments', 'integer', 'exists:vehicle_models,id'],
+            'fitments.*.engine_code'       => ['nullable', 'string', 'max:64'],
+            'fitments.*.notes'             => ['nullable', 'string', 'max:255'],
         ]);
     }
 
+    private function sortedImages(array $images): array
+    {
+        return collect($images)
+            ->map(fn($i) => ['url' => $i['url'], 'sort_order' => $i['sort_order'] ?? 0])
+            ->sortBy('sort_order')
+            ->values()
+            ->all();
+    }
 
-    
+    private function upsertFitments(Part $part, array $fitments): void
+    {
+        $incoming = collect($fitments);
+        $keepIds = [];
+
+        foreach ($incoming as $f) {
+            if (!empty($f['id'])) {
+                $model = PartFitment::where('part_id', $part->id)->where('id', $f['id'])->firstOrFail();
+                $model->update([
+                    'vehicle_model_id' => $f['vehicle_model_id'],
+                    'engine_code'      => $f['engine_code'] ?? null,
+                    'notes'            => $f['notes'] ?? null,
+                ]);
+                $keepIds[] = $model->id;
+            } else {
+                $model = PartFitment::firstOrCreate(
+                    [
+                        'part_id'          => $part->id,
+                        'vehicle_model_id' => $f['vehicle_model_id'],
+                        'engine_code'      => $f['engine_code'] ?? null,
+                    ],
+                    [
+                        'notes' => $f['notes'] ?? null,
+                    ]
+                );
+                $keepIds[] = $model->id;
+            }
+        }
+
+        PartFitment::where('part_id', $part->id)
+            ->whereNotIn('id', $keepIds)
+            ->delete();
+    }
 }

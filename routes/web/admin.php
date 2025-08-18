@@ -63,27 +63,21 @@ Route::middleware(['auth', 'role:ADMIN,MODERATOR'])->prefix('admin')->group(func
         Route::prefix('api')->group(function () {
             Route::get('/', [PartController::class, 'index'])->name('admin.parts.api.crud');     // list with filters + pagination
             Route::post('/', [PartController::class, 'store']);    // create
-            Route::get('/{part}', [PartController::class, 'show']); // show (with references, fitments)
+            Route::get('/{part}', [PartController::class, 'show']); // show (with fitments)
             Route::put('/{part}', [PartController::class, 'update']); // update
             Route::delete('/{part}', [PartController::class, 'destroy']); // delete
             Route::patch('/{part}/active', [PartController::class, 'updateActive'])->name('admin.parts.api.active');
+            
+            Route::post('/bulk-status', [PartController::class, 'bulkStatus'])->name('admin.parts.api.bulk-status');
 
-            Route::post('/bulk-status', [PartController::class, 'bulkStatus'])->name('admin.parts.api.bulk-status'); // {ids:[], is_active:boolean}
-            // JSON images updater (array of {url, sort_order})
             Route::put('/{part}/images', [PartController::class, 'updateImages']);
-            // References upsert (enum type, code, source_brand)
-            Route::get('/{part}/references', [PartReferenceController::class, 'index']);
-            Route::put('/{part}/references', [PartReferenceController::class, 'upsert']);
-            // Fitments upsert (vehicle_model_id, engine_code?, notes?)
             Route::get('/{part}/fitments', [PartFitmentController::class, 'index']);
             Route::put('/{part}/fitments', [PartFitmentController::class, 'upsert']);
-            Route::put('/{part}/relations', [PartController::class, 'upsert'])->name('admin.parts.api.relations');
         });
     });
     Route::prefix('lookup')->group(function () {
         Route::get('/vehicle-brands', [LookupController::class, 'vehicleBrands'])->name('lookup.api.vehicle-brands');
         Route::get('/vehicle-models', [LookupController::class, 'vehicleModels'])->name('lookup.api.vehicle-models'); // ?vehicle_brand_id=ID
-        Route::get('/categories', [LookupController::class, 'categories'])->name('lookup.api.categories');
         Route::get('/manufacturers', [LookupController::class, 'manufacturers'])->name('lookup.api.manufacturers');
     });
 
@@ -119,6 +113,4 @@ Route::middleware(['auth', 'role:ADMIN,MODERATOR'])->prefix('admin')->group(func
         Route::post('parse', [ImportPartsController::class, 'parse'])->name('admin.import.parts.parse');
         Route::post('commit', [ImportPartsController::class, 'commit'])->name('admin.import.parts.commit');
     });
-
 });
-

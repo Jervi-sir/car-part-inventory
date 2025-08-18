@@ -27,7 +27,6 @@ const data = {
     avatar: "/avatars/shadcn.jpg",
   },
   navMain: [
-    { title: "Categories", url: route("admin.categories.page"), icon: Component },
     { title: "Manufacturers", url: route("admin.manufacturers.page"), icon: Factory },
     { title: "Vehicle Brands", url: route("admin.vehicle-brands.page"), icon: CarFront },
     { title: "Vehicle Models", url: route("admin.vehicle-models.page"), icon: Package },

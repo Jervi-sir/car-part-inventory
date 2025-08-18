@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\Category;
 use App\Models\Manufacturer;
 use App\Models\VehicleBrand;
 use App\Models\VehicleModel;
@@ -11,13 +10,6 @@ use Illuminate\Http\Request;
 
 class LookupController extends Controller
 {
-    public function categories(Request $req)
-    {
-        $q = Category::query()->orderBy('name');
-        $data = $q->get(['id','name']);
-        return response()->json(['data' => $data]);
-    }
-
     public function manufacturers(Request $req)
     {
         $q = Manufacturer::query()->orderBy('name');

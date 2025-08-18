@@ -20,20 +20,15 @@ type Ref = { type: string; code: string; source_brand?: string | null };
 type OrderItem = {
   id: number;
   sku?: string | null;
+  reference?: string | null;   // NEW (parts.reference)
+  barcode?: string | null;     // NEW (parts.barcode)
   name: string;
+
   image?: string | null;
   manufacturer?: Mini | null;
-  category?: Mini | null;
-
-  min_order_qty: number;
-  min_qty_gros: number;
-  price_retail?: number | null;
-  price_demi_gros?: number | null;
-  price_gros?: number | null;
 
   fitment_models: string[];
   fitment_brands: string[];
-  references: Ref[];
 
   qty: number;
   unit_price: number;
@@ -174,8 +169,8 @@ export default function OrderPage() {
                         <TableCell className="font-medium">{it.name}</TableCell>
                         <TableCell>{it.manufacturer?.name || "—"}</TableCell>
                         <TableCell>{it.qty}</TableCell>
-                        <TableCell>{it.unit_price.toFixed(2)} {order.currency}</TableCell>
-                        <TableCell className="font-semibold">{it.line_total.toFixed(2)} {order.currency}</TableCell>
+                        <TableCell>{it.unit_price.toFixed(2)} DZD</TableCell>
+                        <TableCell className="font-semibold">{it.line_total.toFixed(2)} DZD</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -228,23 +223,23 @@ export default function OrderPage() {
                 <div className="space-y-2 text-sm">
                   <div className="flex items-center justify-between">
                     <span>Subtotal</span>
-                    <span>{order.subtotal.toFixed(2)} {order.currency}</span>
+                    <span>{order.subtotal.toFixed(2)} DZD</span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span>Discount</span>
-                    <span>- {order.discount_total.toFixed(2)} {order.currency}</span>
+                    <span>- {order.discount_total.toFixed(2)} DZD</span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span>Shipping</span>
-                    <span>{order.shipping_total.toFixed(2)} {order.currency}</span>
+                    <span>{order.shipping_total.toFixed(2)} DZD</span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span>Tax</span>
-                    <span>{order.tax_total.toFixed(2)} {order.currency}</span>
+                    <span>{order.tax_total.toFixed(2)} DZD</span>
                   </div>
                   <div className="border-t pt-2 flex items-center justify-between">
                     <span className="font-semibold">Grand Total</span>
-                    <span className="font-semibold">{order.grand_total.toFixed(2)} {order.currency}</span>
+                    <span className="font-semibold">{order.grand_total.toFixed(2)} DZD</span>
                   </div>
                 </div>
               </Card>

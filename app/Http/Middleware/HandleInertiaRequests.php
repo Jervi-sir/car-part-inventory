@@ -2,6 +2,8 @@
 
 namespace App\Http\Middleware;
 
+use App\Enums\OrderStatus;
+use App\Models\Order;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
@@ -47,12 +49,14 @@ class HandleInertiaRequests extends Middleware
                 'user' => $request->user(),
             ],
             'cart' => fn() => $request->user()
-                ? $request->user()
-                ->currentCart()
-                ->withCount(['orderItems as lines_count'])                 // distinct lines
-                ->withSum('orderItems as qty_total', 'quantity')           // total quantity across lines
-                ->withSum('orderItems as amount_total', 'line_total')      // money total (optional)
-                ->first(['id', 'currency', 'grand_total'])                 // pick what you need
+                ? Order::query()
+                ->where('user_id', $request->user()->id)
+                ->where('status', OrderStatus::CART)
+                ->select(['id', 'grand_total'])
+                ->withCount(['items as lines_count'])
+                ->withSum('items as qty_total', 'quantity')
+                ->withSum('items as amount_total', 'line_total')
+                ->first()?->withoutRelations()?->toArray()
                 : null,
             'ziggy' => fn(): array => [
                 ...(new Ziggy)->toArray(),

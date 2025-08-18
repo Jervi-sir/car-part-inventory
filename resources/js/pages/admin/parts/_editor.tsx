@@ -1,5 +1,4 @@
-// resources/js/Pages/Parts/_editor.tsx
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,26 +12,18 @@ import api from "@/lib/api";
 
 type Id = number | string;
 
-interface Category { id: Id; name: string }
 interface Manufacturer { id: Id; name: string }
 interface VehicleBrand { id: number; name: string }
 interface VehicleModel { id: number; name: string; year_from?: number | null; year_to?: number | null }
 
-// If TypeScript complains about global `route()`, uncomment:
-// declare const route: (name: string, params?: any) => string;
-
 const endpoints = {
   parts: route("admin.parts.api.crud"),
   part: (id: Id) => `${route("admin.parts.api.crud")}/${id}`,
-  categories: route("lookup.api.categories"),
-  manufacturers: route("lookup.api.manufacturers"),
-
-  // keep images as a dedicated endpoint
+  // images remain
   partImages: (partId: Id) => `${route("admin.parts.api.crud")}/${partId}/images`,
-
-  // NEW merged endpoint for references + fitments
-  partRelations: (partId: Id) => `${route("admin.parts.api.crud")}/${partId}/relations`,
-
+  // fitments remain
+  partFitments: (partId: Id) => `${route("admin.parts.api.crud")}/${partId}/fitments`,
+  manufacturers: route("lookup.api.manufacturers"),
   vehicleBrands: route("lookup.api.vehicle-brands"),
   vehicleModels: (brandId: Id) => `${route("lookup.api.vehicle-models")}?vehicle_brand_id=${brandId}`,
 };
@@ -46,41 +37,35 @@ export default function Editor({
   onSaved: () => void | Promise<void>;
   onCancel: () => void;
 }) {
-  const [cats, setCats] = useState<Category[]>([]);
   const [mans, setMans] = useState<Manufacturer[]>([]);
   const [brands, setBrands] = useState<VehicleBrand[]>([]);
   const [modelsByBrand, setModelsByBrand] = useState<Record<string, VehicleModel[]>>({});
 
   const [form, setForm] = useState({
-    category_id: "",
     manufacturer_id: "",
+    reference: "",
+    barcode: "",
     sku: "",
     name: "",
     description: "",
-    package_qty: 1,
-    min_order_qty: 1,
-    price_retail: "",
-    price_demi_gros: "",
-    price_gros: "",
-    min_qty_gros: 1,
+    price_retail_ttc: "",
+    price_wholesale_ttc: "",
+    tva_rate: "",
+    stock_real: 0,
+    stock_available: 0,
     is_active: true,
   });
 
-  // images
   const [images, setImages] = useState<{ url: string; sort_order: number }[]>([]);
 
-  // merged relations state
-  const [refs, setRefs] = useState<{ id?: Id; type: "OEM" | "AFTERMARKET" | "SUPPLIER" | "EAN_UPC" | "OTHER"; code: string; source_brand?: string }[]>([]);
   const [fitments, setFitments] = useState<{ id?: Id; vehicle_brand_id?: string; vehicle_model_id?: string; engine_code?: string; notes?: string }[]>([]);
 
   const loadLookups = async () => {
-    const [{ data: cJson }, { data: mJson }, { data: bJson }] = await Promise.all([
-      api.get(endpoints.categories),
+    const [{ data: mJson }, { data: bJson }] = await Promise.all([
       api.get(endpoints.manufacturers),
       api.get(endpoints.vehicleBrands),
     ]);
     const ext = (x: any) => (Array.isArray(x?.data) ? x.data : Array.isArray(x) ? x : x?.data ?? []);
-    setCats(ext(cJson));
     setMans(ext(mJson));
     setBrands(ext(bJson));
   };
@@ -91,33 +76,24 @@ export default function Editor({
     const p = json.part ?? json;
 
     setForm({
-      category_id: String(p.category_id ?? ""),
       manufacturer_id: p.manufacturer_id ? String(p.manufacturer_id) : "",
+      reference: p.reference ?? "",
+      barcode: p.barcode ?? "",
       sku: p.sku ?? "",
       name: p.name ?? "",
       description: p.description ?? "",
-      package_qty: p.package_qty ?? 1,
-      min_order_qty: p.min_order_qty ?? 1,
-      price_retail: p.price_retail ?? "",
-      price_demi_gros: p.price_demi_gros ?? "",
-      price_gros: p.price_gros ?? "",
-      min_qty_gros: p.min_qty_gros ?? 1,
+      price_retail_ttc: p.price_retail_ttc ?? "",
+      price_wholesale_ttc: p.price_wholesale_ttc ?? "",
+      tva_rate: p.tva_rate ?? "",
+      stock_real: p.stock_real ?? 0,
+      stock_available: p.stock_available ?? 0,
       is_active: !!p.is_active,
     });
 
     setImages((p.images ?? []).map((x: any, i: number) => ({ url: x.url ?? x, sort_order: x.sort_order ?? i })));
 
-    // if your show endpoint already returns references & fitments, keep using it:
-    setRefs((json.references ?? []).map((r: any) => ({ id: r.id, type: r.type, code: r.code, source_brand: r.source_brand || "" })));
     const rawFits: any[] = json.fitments ?? [];
-    const brandIds = Array.from(
-      new Set(
-        rawFits
-          .map(f => f.vehicle_brand_id)
-          .filter((v: any) => v != null)
-          .map((v: any) => String(v))
-      )
-    );
+    const brandIds = Array.from(new Set(rawFits.map(f => f.vehicle_brand_id).filter((v: any) => v != null).map((v: any) => String(v))));
     await Promise.all(brandIds.map((bid) => ensureModelsLoaded(bid)));
     setFitments(
       rawFits.map((f: any) => ({
@@ -134,38 +110,27 @@ export default function Editor({
   useEffect(() => { loadPart(); }, [partId]);
 
   const onSaveAll = async () => {
-    if (!form.name.trim() || !form.category_id) {
-      alert("Name and Category are required");
+    if (!form.name.trim()) {
+      alert("Name is required");
       return;
     }
 
     const payload = {
-      // core
-      category_id: form.category_id ? Number(form.category_id) : null,
       manufacturer_id: form.manufacturer_id ? Number(form.manufacturer_id) : null,
+      reference: form.reference || null,
+      barcode: form.barcode || null,
       sku: form.sku || null,
       name: form.name,
       description: form.description || null,
-      package_qty: Number(form.package_qty) || 1,
-      min_order_qty: Number(form.min_order_qty) || 1,
-      price_retail: form.price_retail === "" ? null : Number(form.price_retail),
-      price_demi_gros: form.price_demi_gros === "" ? null : Number(form.price_demi_gros),
-      price_gros: form.price_gros === "" ? null : Number(form.price_gros),
-      min_qty_gros: Number(form.min_qty_gros) || 1,
+      price_retail_ttc: form.price_retail_ttc === "" ? null : Number(form.price_retail_ttc),
+      price_wholesale_ttc: form.price_wholesale_ttc === "" ? null : Number(form.price_wholesale_ttc),
+      tva_rate: form.tva_rate === "" ? null : Number(form.tva_rate),
+      stock_real: Number(form.stock_real) || 0,
+      stock_available: Number(form.stock_available) || 0,
       is_active: !!form.is_active,
 
-      // images
       images: images.map((img, i) => ({ url: img.url, sort_order: i })),
 
-      // references
-      references: refs.map(r => ({
-        id: r.id ?? null,
-        type: r.type,
-        code: r.code,
-        source_brand: r.source_brand || null,
-      })),
-
-      // fitments
       fitments: fitments
         .filter(f => f.vehicle_model_id)
         .map(f => ({
@@ -183,7 +148,6 @@ export default function Editor({
     }
     await onSaved();
   };
-
 
   const moveImage = (idx: number, dir: -1 | 1) =>
     setImages((arr) => {
@@ -213,23 +177,22 @@ export default function Editor({
         <h3 className="text-lg font-semibold">Details</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
-            <Label>Category *</Label>
-            <Select value={form.category_id} onValueChange={(v) => setForm({ ...form, category_id: v })}>
-              <SelectTrigger><SelectValue placeholder="Select category" /></SelectTrigger>
-              <SelectContent>
-                {cats.map((c) => <SelectItem key={String(c.id)} value={String(c.id)}>{c.name}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2">
             <Label>Manufacturer</Label>
             <Select value={form.manufacturer_id} onValueChange={(v) => setForm({ ...form, manufacturer_id: v })}>
-              <SelectTrigger><SelectValue placeholder="Optional" /></SelectTrigger>
+              <SelectTrigger className="w-full"><SelectValue placeholder="Optional" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="">— None —</SelectItem>
                 {mans.map((m) => <SelectItem key={String(m.id)} value={String(m.id)}>{m.name}</SelectItem>)}
               </SelectContent>
             </Select>
+          </div>
+          <div className="space-y-2">
+            <Label>Reference</Label>
+            <Input value={form.reference} onChange={(e) => setForm({ ...form, reference: e.target.value })} placeholder="e.g. 1K0615301" />
+          </div>
+          <div className="space-y-2">
+            <Label>Barcode</Label>
+            <Input value={form.barcode} onChange={(e) => setForm({ ...form, barcode: e.target.value })} placeholder="EAN/UPC (optional)" />
           </div>
           <div className="space-y-2">
             <Label>SKU</Label>
@@ -243,37 +206,38 @@ export default function Editor({
             <Label>Description</Label>
             <Textarea className="w-full border rounded-md p-2 min-h-[100px]" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
           </div>
+
           <div className="space-y-2">
-            <Label>Package Qty</Label>
-            <Input type="number" min={1} value={form.package_qty} onChange={(e) => setForm({ ...form, package_qty: Number(e.target.value) || 1 })} />
+            <Label>Retail TTC</Label>
+            <Input type="number" step="0.01" value={form.price_retail_ttc} onChange={(e) => setForm({ ...form, price_retail_ttc: e.target.value })} />
           </div>
           <div className="space-y-2">
-            <Label>Min Order Qty</Label>
-            <Input type="number" min={1} value={form.min_order_qty} onChange={(e) => setForm({ ...form, min_order_qty: Number(e.target.value) || 1 })} />
+            <Label>Wholesale TTC</Label>
+            <Input type="number" step="0.01" value={form.price_wholesale_ttc} onChange={(e) => setForm({ ...form, price_wholesale_ttc: e.target.value })} />
           </div>
           <div className="space-y-2">
-            <Label>Retail Price</Label>
-            <Input type="number" step="0.01" value={form.price_retail} onChange={(e) => setForm({ ...form, price_retail: e.target.value })} />
+            <Label>TVA %</Label>
+            <Input type="number" step="0.01" value={form.tva_rate} onChange={(e) => setForm({ ...form, tva_rate: e.target.value })} />
+          </div>
+
+          <div className="space-y-2">
+            <Label>Stock Real</Label>
+            <Input type="number" value={form.stock_real} onChange={(e) => setForm({ ...form, stock_real: Number(e.target.value) || 0 })} />
           </div>
           <div className="space-y-2">
-            <Label>Demi-gros Price</Label>
-            <Input type="number" step="0.01" value={form.price_demi_gros} onChange={(e) => setForm({ ...form, price_demi_gros: e.target.value })} />
+            <Label>Stock Available</Label>
+            <Input type="number" value={form.stock_available} onChange={(e) => setForm({ ...form, stock_available: Number(e.target.value) || 0 })} />
           </div>
-          <div className="space-y-2">
-            <Label>Gros Price</Label>
-            <Input type="number" step="0.01" value={form.price_gros} onChange={(e) => setForm({ ...form, price_gros: e.target.value })} />
-          </div>
-          <div className="space-y-2">
-            <Label>Min Qty (Gros)</Label>
-            <Input type="number" min={1} value={form.min_qty_gros} onChange={(e) => setForm({ ...form, min_qty_gros: Number(e.target.value) || 1 })} />
-          </div>
-          <div className="flex items-center gap-4">
+
+          <div className="flex items-end gap-4 pb-3">
             <Label>Active</Label>
             <Switch checked={!!form.is_active} onCheckedChange={(v) => setForm({ ...form, is_active: v })} />
           </div>
         </div>
       </section>
+
       <Separator />
+
       {/* Images */}
       <section className="space-y-3">
         <h3 className="text-lg font-semibold">Images</h3>
@@ -294,53 +258,9 @@ export default function Editor({
           ))}
         </div>
       </section>
+
       <Separator />
-      {/* References */}
-      <section className="space-y-3">
-        <h3 className="text-lg font-semibold">References</h3>
-        <Button size="sm" variant="outline" onClick={() => setRefs((r) => [...r, { type: "OTHER", code: "", source_brand: "" }])}>
-          <Plus className="h-4 w-4 mr-1" /> Add Reference
-        </Button>
-        <div className="rounded-md border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-[220px]">Type</TableHead>
-                <TableHead>Code</TableHead>
-                <TableHead className="w-[220px]">Source Brand</TableHead>
-                <TableHead className="w-[80px]">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {refs.length === 0 && (
-                <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground">No references</TableCell></TableRow>
-              )}
-              {refs.map((r, idx) => (
-                <TableRow key={idx}>
-                  <TableCell>
-                    <Select value={String(r.type)} onValueChange={(v: any) => setRefs((arr) => arr.map((x, i) => (i === idx ? { ...x, type: v } : x)))}>
-                      <SelectTrigger><SelectValue placeholder="Select type" /></SelectTrigger>
-                      <SelectContent>
-                        {["OEM", "AFTERMARKET", "SUPPLIER", "EAN_UPC", "OTHER"].map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  </TableCell>
-                  <TableCell>
-                    <Input value={r.code} onChange={(e) => setRefs((arr) => arr.map((x, i) => (i === idx ? { ...x, code: e.target.value } : x)))} placeholder="e.g. 1K0615301" />
-                  </TableCell>
-                  <TableCell>
-                    <Input value={r.source_brand || ""} onChange={(e) => setRefs((arr) => arr.map((x, i) => (i === idx ? { ...x, source_brand: e.target.value } : x)))} placeholder="e.g. VW / Bosch" />
-                  </TableCell>
-                  <TableCell>
-                    <Button variant="destructive" size="icon" onClick={() => setRefs((arr) => arr.filter((_, i) => i !== idx))}><Trash className="h-4 w-4" /></Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
-      </section>
-      <Separator />
+
       {/* Fitments */}
       <section className="space-y-3">
         <h3 className="text-lg font-semibold">Fitments</h3>
@@ -354,7 +274,6 @@ export default function Editor({
                 <TableHead className="w-[200px]">Brand</TableHead>
                 <TableHead className="w-[260px]">Model</TableHead>
                 <TableHead className="w-[160px]">Engine Code</TableHead>
-                <TableHead>Notes</TableHead>
                 <TableHead className="w-[80px]">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -366,47 +285,51 @@ export default function Editor({
                 const brandId = f.vehicle_brand_id ? String(f.vehicle_brand_id) : "";
                 const models = brandId ? (modelsByBrand[brandId] || []) : [];
                 return (
-                  <TableRow key={idx}>
-                    <TableCell>
-                      <Select
-                        value={brandId}
-                        onValueChange={async (v) => {
-                          const newState = { ...f, vehicle_brand_id: v, vehicle_model_id: undefined };
-                          setFitments((arr) => arr.map((x, i) => (i === idx ? newState : x)));
-                          await ensureModelsLoaded(v);
-                        }}
-                      >
-                        <SelectTrigger><SelectValue placeholder="Select brand" /></SelectTrigger>
-                        <SelectContent>
-                          {brands.map((b) => <SelectItem key={b.id} value={String(b.id)}>{b.name}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
-                    </TableCell>
-                    <TableCell>
-                      <Select
-                        value={f.vehicle_model_id ? String(f.vehicle_model_id) : ""}
-                        onValueChange={(v) => setFitments((arr) => arr.map((x, i) => (i === idx ? { ...x, vehicle_model_id: v } : x)))}
-                      >
-                        <SelectTrigger><SelectValue placeholder={brandId ? "Select model" : "Select brand first"} /></SelectTrigger>
-                        <SelectContent>
-                          {models.map((m) => (
-                            <SelectItem key={m.id} value={String(m.id)}>
-                              {m.name}{m.year_from ? ` (${m.year_from}${m.year_to ? `–${m.year_to}` : ""})` : ""}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </TableCell>
-                    <TableCell>
-                      <Input value={f.engine_code || ""} onChange={(e) => setFitments((arr) => arr.map((x, i) => (i === idx ? { ...x, engine_code: e.target.value } : x)))} placeholder="e.g. 1.9 TDI AXR" />
-                    </TableCell>
-                    <TableCell>
-                      <Input value={f.notes || ""} onChange={(e) => setFitments((arr) => arr.map((x, i) => (i === idx ? { ...x, notes: e.target.value } : x)))} placeholder="Notes" />
-                    </TableCell>
-                    <TableCell>
-                      <Button variant="destructive" size="icon" onClick={() => setFitments((arr) => arr.filter((_, i) => i !== idx))}><Trash className="h-4 w-4" /></Button>
-                    </TableCell>
-                  </TableRow>
+                  <React.Fragment key={idx}>
+                    <TableRow className="border-b-0">
+                      <TableCell>
+                        <Select
+                          value={brandId}
+                          onValueChange={async (v) => {
+                            const newState = { ...f, vehicle_brand_id: v, vehicle_model_id: undefined };
+                            setFitments((arr) => arr.map((x, i) => (i === idx ? newState : x)));
+                            await ensureModelsLoaded(v);
+                          }}
+                        >
+                          <SelectTrigger><SelectValue placeholder="Select brand" /></SelectTrigger>
+                          <SelectContent>
+                            {brands.map((b) => <SelectItem key={b.id} value={String(b.id)}>{b.name}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </TableCell>
+                      <TableCell>
+                        <Select
+                          value={f.vehicle_model_id ? String(f.vehicle_model_id) : ""}
+                          onValueChange={(v) => setFitments((arr) => arr.map((x, i) => (i === idx ? { ...x, vehicle_model_id: v } : x)))}
+                        >
+                          <SelectTrigger><SelectValue placeholder={brandId ? "Select model" : "Select brand first"} /></SelectTrigger>
+                          <SelectContent>
+                            {models.map((m) => (
+                              <SelectItem key={m.id} value={String(m.id)}>
+                                {m.name}{m.year_from ? ` (${m.year_from}${m.year_to ? `–${m.year_to}` : ""})` : ""}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </TableCell>
+                      <TableCell>
+                        <Input value={f.engine_code || ""} onChange={(e) => setFitments((arr) => arr.map((x, i) => (i === idx ? { ...x, engine_code: e.target.value } : x)))} placeholder="e.g. 1.9 TDI AXR" />
+                      </TableCell>
+                      <TableCell>
+                        <Button variant="destructive" size="icon" onClick={() => setFitments((arr) => arr.filter((_, i) => i !== idx))}><Trash className="h-4 w-4" /></Button>
+                      </TableCell>
+                    </TableRow>
+                    <TableRow key={idx}>
+                       <TableCell colSpan={3}>
+                        <Input value={f.notes || ""} onChange={(e) => setFitments((arr) => arr.map((x, i) => (i === idx ? { ...x, notes: e.target.value } : x)))} placeholder="Notes" />
+                      </TableCell>
+                    </TableRow>
+                  </React.Fragment>
                 );
               })}
             </TableBody>

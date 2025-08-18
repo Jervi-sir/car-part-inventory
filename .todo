@@ -8,4 +8,9 @@
 - 
 - 
 - Rafiki Motors
-- 
+
+
+- manufacturer CRUD @done
+- vehicle brand CRUD @done
+- vehicle models CRUD @done
+- parts CRUD @done

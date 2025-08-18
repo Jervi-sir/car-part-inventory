@@ -13,7 +13,13 @@ use Inertia\Inertia;
 
 class OrderController extends Controller
 {
+    private const BRIEF_LIMIT = 10; // how many items to show in "items_brief"
 
+    /*
+    |--------------------------------------------------------------------------
+    | Pages
+    |--------------------------------------------------------------------------
+    */
     public function page()
     {
         return Inertia::render('admin/orders/page', []);
@@ -21,12 +27,18 @@ class OrderController extends Controller
 
     public function showPage($orderId)
     {
-        return Inertia::render('admin/order/page', ['orderId' => (int)$orderId]);
+        return Inertia::render('admin/order/page', ['orderId' => (int) $orderId]);
     }
 
-    // GET /admin/order/api
+    /*
+    |--------------------------------------------------------------------------
+    | API: List
+    |--------------------------------------------------------------------------
+    | GET /admin/orders/api
+    */
     public function index(Request $request)
     {
+        // 1) Validate + read params
         $validated = $request->validate([
             'page'            => 'nullable|integer|min:1',
             'per_page'        => 'nullable|integer|min:1|max:200',
@@ -48,110 +60,153 @@ class OrderController extends Controller
         $to       = $validated['to'] ?? null;
         $sortBy   = $validated['sort_by'] ?? 'created_at';
         $sortDir  = $validated['sort_dir'] ?? 'desc';
+        $qIsNumeric = $q !== '' && ctype_digit($q);
 
-        $query = Order::query()
-            ->withCount('items as items_count')
-            ->with(['user:id,name,email']); // 👈 add this
+        // 2) Base list query — Query Builder (NO Eloquent hydration)
+        $base = DB::table('orders')
+            ->select([
+                'orders.id',
+                'orders.user_id',
+                'orders.status',
+                'orders.delivery_method',
+                'orders.subtotal',
+                'orders.discount_total',
+                'orders.shipping_total',
+                'orders.tax_total',
+                'orders.grand_total',
+                'orders.created_at',
+                'orders.updated_at',
+            ]);
 
-        // filters
-        if ($status && $status !== 'all') {
-            $query->where('status', $status);
+        // Filters
+        if ($status !== 'all') {
+            $base->where('orders.status', $status);
         }
-
-        if ($method && $method !== 'all') {
-            $query->where('delivery_method', $method);
+        if ($method !== 'all') {
+            $base->where('orders.delivery_method', $method);
         }
-
         if ($from) {
-            $query->whereDate('created_at', '>=', Carbon::parse($from)->toDateString());
+            $base->whereDate('orders.created_at', '>=', Carbon::parse($from)->toDateString());
         }
         if ($to) {
-            $query->whereDate('created_at', '<=', Carbon::parse($to)->toDateString());
+            $base->whereDate('orders.created_at', '<=', Carbon::parse($to)->toDateString());
         }
 
-        // q: search by order id, SKU, part name, or reference code
+        // Search: group everything to avoid OR exploding the table
         if ($q !== '') {
-            $query->where(function ($w) use ($q) {
-                $w->where('id', $q) // exact id
-                    ->orWhere('ship_to_name', 'like', "%{$q}%")
-                    ->orWhere('ship_to_phone', 'like', "%{$q}%")
+            $base->where(function ($w) use ($q, $qIsNumeric) {
+                if ($qIsNumeric) {
+                    $w->orWhere('orders.id', (int)$q);
+                }
+                $w->orWhere('orders.ship_to_name',  'like', "%{$q}%")
+                    ->orWhere('orders.ship_to_phone', 'like', "%{$q}%")
                     ->orWhereExists(function ($sub) use ($q) {
                         $sub->from('order_items as oi')
                             ->join('parts as p', 'p.id', '=', 'oi.part_id')
                             ->whereColumn('oi.order_id', 'orders.id')
                             ->where(function ($x) use ($q) {
-                                $x->where('p.sku', 'like', "%{$q}%")
-                                    ->orWhere('p.name', 'like', "%{$q}%");
+                                $x->where('p.sku',       'like', "%{$q}%")
+                                    ->orWhere('p.name',     'like', "%{$q}%")
+                                    ->orWhere('p.reference', 'like', "%{$q}%")
+                                    ->orWhere('p.barcode',  'like', "%{$q}%");
                             });
-                    })
-                    ->orWhereExists(function ($sub) use ($q) {
-                        $sub->from('order_items as oi')
-                            ->join('part_references as pr', 'pr.part_id', '=', 'oi.part_id')
-                            ->whereColumn('oi.order_id', 'orders.id')
-                            ->where('pr.code', 'like', "%{$q}%");
                     });
             });
         }
 
-        $query->orderBy($sortBy, $sortDir);
+        // Sort
+        $base->orderBy($sortBy, $sortDir);
 
-        // paginate
-        $paginator = $query->paginate($perPage, ['*'], 'page', $page);
+        // 3) Paginate (DB builder paginate hydrates only current page rows)
+        $paginator = $base->paginate($perPage, ['*'], 'page', $page);
 
-        // Load brief items for the orders returned (efficient 2nd query)
-        $orderIds = $paginator->pluck('id')->all();
+        // Grab page rows as simple arrays (small)
+        $rows = collect($paginator->items());
+
+        if ($rows->isEmpty()) {
+            return response()->json([
+                'data'     => [],
+                'total'    => $paginator->total(),
+                'page'     => $paginator->currentPage(),
+                'per_page' => $paginator->perPage(),
+            ]);
+        }
+
+        // 4) items_count via subquery (no relation hydration)
+        // Build a map: order_id => count
+        $orderIds = $rows->pluck('id')->all();
+        $counts = DB::table('order_items')
+            ->select('order_id', DB::raw('COUNT(*) as c'))
+            ->whereIn('order_id', $orderIds)
+            ->groupBy('order_id')
+            ->pluck('c', 'order_id'); // returns [order_id => count]
+
+        // 5) Load users in one small query
+        $userIds = $rows->pluck('user_id')->filter()->unique()->values()->all();
+        $usersMap = [];
+        if (!empty($userIds)) {
+            $usersMap = DB::table('users')
+                ->whereIn('id', $userIds)
+                ->get(['id', 'name', 'email'])
+                ->keyBy('id')
+                ->map(fn($u) => ['id' => (int)$u->id, 'name' => $u->name, 'email' => $u->email])
+                ->all();
+        }
+
+        // 6) Brief items (strict LIMIT per order; no chance to explode)
+        $BRIEF_LIMIT = 10; // match your UI expectations
         $briefs = [];
-        if (!empty($orderIds)) {
-            $rows = OrderItem::query()
-                ->select([
-                    'order_items.order_id',
-                    DB::raw('p.sku as sku'),
-                    DB::raw('p.name as name'),
-                    'order_items.quantity as qty',
-                    'order_items.unit_price',
-                    'order_items.line_total',
-                ])
-                ->join('parts as p', 'p.id', '=', 'order_items.part_id')
-                ->whereIn('order_items.order_id', $orderIds)
-                ->orderBy('order_items.id', 'asc')
-                ->get();
 
-            foreach ($rows as $r) {
-                $briefs[$r->order_id][] = [
+        foreach ($orderIds as $oid) {
+            $briefRows = DB::table('order_items as oi')
+                ->join('parts as p', 'p.id', '=', 'oi.part_id')
+                ->where('oi.order_id', $oid)
+                ->orderBy('oi.id', 'asc')
+                ->limit($BRIEF_LIMIT)
+                ->get([
+                    'p.sku',
+                    'p.name',
+                    DB::raw('oi.quantity as qty'),
+                    'oi.unit_price',
+                    'oi.line_total',
+                ]);
+
+            if ($briefRows->isNotEmpty()) {
+                $briefs[$oid] = $briefRows->map(fn($r) => [
                     'sku'        => $r->sku,
                     'name'       => $r->name,
                     'qty'        => (int)$r->qty,
                     'unit_price' => (float)$r->unit_price,
                     'line_total' => (float)$r->line_total,
-                ];
+                ])->all();
+            } else {
+                $briefs[$oid] = [];
             }
         }
 
-        $data = $paginator->getCollection()->map(function ($o) use ($briefs) {
+        // 7) Build payload
+        $data = $rows->map(function ($o) use ($counts, $briefs, $usersMap) {
+            $oid = (int)$o->id;
+            $uid = $o->user_id;
+
             return [
-                'id'              => $o->id,
+                'id'              => $oid,
                 'status'          => $o->status,
                 'delivery_method' => $o->delivery_method,
-                'currency'        => $o->currency,
-                'items_count'     => (int)$o->items_count,
+                'items_count'     => (int)($counts[$oid] ?? 0),
                 'subtotal'        => (float)$o->subtotal,
                 'discount_total'  => (float)$o->discount_total,
                 'shipping_total'  => (float)$o->shipping_total,
                 'tax_total'       => (float)$o->tax_total,
                 'grand_total'     => (float)$o->grand_total,
-                'created_at'      => $o->created_at?->toIso8601String(),
-                'updated_at'      => $o->updated_at?->toIso8601String(),
-                'items_brief'     => array_slice($briefs[$o->id] ?? [], 0, 10),
-
-                'user' => $o->user ? [
-                    'id'    => $o->user->id,
-                    'name'  => $o->user->name,
-                    'email' => $o->user->email,
-                ] : null,
+                'created_at'      => $o->created_at ? (new \DateTime($o->created_at))->format(DATE_ATOM) : null,
+                'updated_at'      => $o->updated_at ? (new \DateTime($o->updated_at))->format(DATE_ATOM) : null,
+                'items_brief'     => $briefs[$oid] ?? [],
+                'user'            => $uid && isset($usersMap[$uid]) ? $usersMap[$uid] : null,
             ];
-        });
+        })->values();
 
-
+        // 8) Return
         return response()->json([
             'data'     => $data,
             'total'    => $paginator->total(),
@@ -160,16 +215,20 @@ class OrderController extends Controller
         ]);
     }
 
-    // GET /admin/order/api/{order}
+    /*
+    |--------------------------------------------------------------------------
+    | API: Show
+    |--------------------------------------------------------------------------
+    | GET /admin/order/api/{order}
+    */
     public function show(Order $order)
     {
-        $order->load('user:id,name,email'); // 🔹 add this
-        // status pipeline
+        $order->load('user:id,name,email');
+
         $steps = ['cart', 'pending', 'confirmed', 'preparing', 'shipped', 'completed', 'canceled'];
         $statusIndex = array_search($order->status, $steps, true);
         if ($statusIndex === false) $statusIndex = 0;
 
-        // load items + part relations needed in your TS shape
         $items = OrderItem::query()
             ->select([
                 'order_items.id',
@@ -178,75 +237,50 @@ class OrderController extends Controller
                 'order_items.unit_price',
                 'order_items.line_total',
                 'order_items.notes',
+
                 'p.sku',
+                'p.reference',
+                'p.barcode',
                 'p.name',
-                'p.min_order_qty',
-                'p.min_qty_gros',
-                'p.price_retail',
-                'p.price_demi_gros',
-                'p.price_gros',
+
                 'm.id as manu_id',
                 'm.name as manu_name',
-                'c.id as cat_id',
-                'c.name as cat_name',
             ])
             ->join('parts as p', 'p.id', '=', 'order_items.part_id')
             ->leftJoin('manufacturers as m', 'm.id', '=', 'p.manufacturer_id')
-            ->leftJoin('categories as c', 'c.id', '=', 'p.category_id')
             ->where('order_items.order_id', $order->id)
             ->orderBy('order_items.id', 'asc')
             ->get();
 
-        // references and fitments (optional arrays)
         $partIds = $items->pluck('part_id')->unique()->values()->all();
-        $partIdsForParts = OrderItem::where('order_id', $order->id)->pluck('part_id')->all();
-
-        $refs = DB::table('part_references')
-            ->select('part_id', 'type', 'code', 'source_brand')
-            ->whereIn('part_id', $partIds)
-            ->get()
-            ->groupBy('part_id');
-
-
-        $fits = DB::table('part_fitments as pf')
-            ->join('vehicle_models as vm', 'vm.id', '=', 'pf.vehicle_model_id')
-            ->leftJoin('vehicle_brands as vb', 'vb.id', '=', 'vm.vehicle_brand_id') // <-- correct column
-            ->whereIn('pf.part_id', $partIds)
-            ->select('pf.part_id', 'vm.name as model_name', 'vb.name as brand_name')
-            ->get()
-            ->groupBy('part_id');
-
+        $fits = collect();
+        if (!empty($partIds)) {
+            $fits = DB::table('part_fitments as pf')
+                ->join('vehicle_models as vm', 'vm.id', '=', 'pf.vehicle_model_id')
+                ->leftJoin('vehicle_brands as vb', 'vb.id', '=', 'vm.vehicle_brand_id')
+                ->whereIn('pf.part_id', $partIds)
+                ->select('pf.part_id', 'vm.name as model_name', 'vb.name as brand_name')
+                ->get()
+                ->groupBy('part_id');
+        }
 
         $itemsPayload = [];
         foreach ($items as $it) {
-            $pId = (int)$it->part_id;
-
+            $pId = (int) $it->part_id;
+            $fitRows = collect($fits[$pId] ?? []);
             $itemsPayload[] = [
-                'id'              => (int)$it->id,
-                'sku'             => $it->sku,
-                'name'            => $it->name,
-                'image'           => null,
-                'manufacturer'    => $it->manu_id ? ['id' => (int)$it->manu_id, 'name' => $it->manu_name] : null,
-                'category'        => $it->cat_id ? ['id' => (int)$it->cat_id, 'name' => $it->cat_name] : null,
-
-                'min_order_qty'   => (int)$it->min_order_qty,
-                'min_qty_gros'    => (int)$it->min_qty_gros,
-                'price_retail'    => $it->price_retail !== null ? (float)$it->price_retail : null,
-                'price_demi_gros' => $it->price_demi_gros !== null ? (float)$it->price_demi_gros : null,
-                'price_gros'      => $it->price_gros !== null ? (float)$it->price_gros : null,
-
-                'fitment_models'  => collect($fits[$pId] ?? [])->pluck('model_name')->filter()->unique()->values()->all(),
-                'fitment_brands'  => collect($fits[$pId] ?? [])->pluck('brand_name')->filter()->unique()->values()->all(),
-                'references'      => collect($refs[$pId] ?? [])->map(fn($r) => [
-                    'type' => $r->type,
-                    'code' => $r->code,
-                    'source_brand' => $r->source_brand
-                ])->values()->all(),
-
-                'qty'        => (int)$it->qty,
-                'unit_price' => (float)$it->unit_price,
-                'line_total' => (float)$it->line_total,
-
+                'id'             => (int) $it->id,
+                'sku'            => $it->sku,
+                'reference'      => $it->reference,
+                'barcode'        => $it->barcode,
+                'name'           => $it->name,
+                'image'          => null,
+                'manufacturer'   => $it->manu_id ? ['id' => (int) $it->manu_id, 'name' => $it->manu_name] : null,
+                'fitment_models' => $fitRows->pluck('model_name')->filter()->unique()->values()->all(),
+                'fitment_brands' => $fitRows->pluck('brand_name')->filter()->unique()->values()->all(),
+                'qty'            => (int) $it->qty,
+                'unit_price'     => (float) $it->unit_price,
+                'line_total'     => (float) $it->line_total,
             ];
         }
 
@@ -261,20 +295,17 @@ class OrderController extends Controller
                 'phone'   => $order->ship_to_phone,
                 'address' => $order->ship_to_address,
             ],
-            'currency'       => $order->currency,
             'items'          => $itemsPayload,
-            'items_count'    => (int)$order->items()->count(),
-            'subtotal'       => (float)$order->subtotal,
-            'discount_total' => (float)$order->discount_total,
-            'shipping_total' => (float)$order->shipping_total,
-            'tax_total'      => (float)$order->tax_total,
-            'grand_total'    => (float)$order->grand_total,
+            'items_count'    => (int) $order->items()->count(),
+            'subtotal'       => (float) $order->subtotal,
+            'discount_total' => (float) $order->discount_total,
+            'shipping_total' => (float) $order->shipping_total,
+            'tax_total'      => (float) $order->tax_total,
+            'grand_total'    => (float) $order->grand_total,
             'created_at'     => $order->created_at?->toIso8601String(),
             'updated_at'     => $order->updated_at?->toIso8601String(),
-            'notes'         => $order->notes,
-
-            // 🔹 return user
-            'user' => $order->user ? [
+            'notes'          => $order->notes,
+            'user'           => $order->user ? [
                 'id'    => $order->user->id,
                 'name'  => $order->user->name,
                 'email' => $order->user->email,
@@ -282,7 +313,12 @@ class OrderController extends Controller
         ]);
     }
 
-    // PATCH /admin/order/api/{order}/status
+    /*
+    |--------------------------------------------------------------------------
+    | API: Update Status
+    |--------------------------------------------------------------------------
+    | PATCH /admin/order/api/{order}/status
+    */
     public function updateStatus(Request $req, Order $order)
     {
         $data = $req->validate([
@@ -297,7 +333,12 @@ class OrderController extends Controller
         ]);
     }
 
-    // PATCH /admin/order/api/{order}/shipping
+    /*
+    |--------------------------------------------------------------------------
+    | API: Update Shipping
+    |--------------------------------------------------------------------------
+    | PATCH /admin/order/api/{order}/shipping
+    */
     public function updateShipping(Request $req, Order $order)
     {
         $data = $req->validate([
@@ -309,17 +350,25 @@ class OrderController extends Controller
 
         $order->fill($data)->save();
 
-        return response()->json(['ok' => true, 'order' => $order->only([
-            'id',
-            'delivery_method',
-            'ship_to_name',
-            'ship_to_phone',
-            'ship_to_address',
-            'status'
-        ])]);
+        return response()->json([
+            'ok'    => true,
+            'order' => $order->only([
+                'id',
+                'delivery_method',
+                'ship_to_name',
+                'ship_to_phone',
+                'ship_to_address',
+                'status',
+            ]),
+        ]);
     }
 
-    // POST /admin/order/api/{order}/notes
+    /*
+    |--------------------------------------------------------------------------
+    | API: Update Notes
+    |--------------------------------------------------------------------------
+    | PATCH /admin/order/api/{order}/notes
+    */
     public function updateNotes(Request $req, Order $order)
     {
         $data = $req->validate([
@@ -329,10 +378,10 @@ class OrderController extends Controller
         $order->update(['notes' => $data['notes'] ?? null]);
 
         return response()->json([
-            'ok' => true,
+            'ok'    => true,
             'order' => [
-                'id' => $order->id,
-                'notes' => $order->notes,
+                'id'         => $order->id,
+                'notes'      => $order->notes,
                 'updated_at' => $order->updated_at?->toIso8601String(),
             ],
         ]);
