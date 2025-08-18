@@ -202,7 +202,7 @@ export default function CatalogPage() {
           <div className="flex items-center gap-2">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline">Columns</Button>
+                <Button size={'sm'} variant="outline">Columns</Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent className="w-56">
                 <DropdownMenuLabel>Table Columns</DropdownMenuLabel>
@@ -597,7 +597,7 @@ function CartWidget({ cart, refreshCart }: { cart: { items: CartItem[]; subtotal
 
   return (
     <div className="relative">
-      <Button variant="outline" onClick={() => setOpen(o => !o)}>
+      <Button size={'sm'} variant="outline" onClick={() => setOpen(o => !o)}>
         <ShoppingCart className="h-4 w-4 mr-2" /> {cart.count} items
       </Button>
 

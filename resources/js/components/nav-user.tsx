@@ -26,19 +26,19 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar"
-import { Link } from "@inertiajs/react"
+import { Link, router, usePage } from "@inertiajs/react"
+import { useMobileNavigation } from "@/hooks/use-mobile-navigation"
 
-export function NavUser({
-  user,
-}: {
-  user: {
-    name: string
-    email: string
-    avatar: string
-  }
-}) {
+export function NavUser() {
   const { isMobile } = useSidebar()
+  const cleanup = useMobileNavigation();
+  const { auth }: any = usePage().props;
+  const user = auth?.user;
 
+  const handleLogout = () => {
+    cleanup();
+    router.flushAll();
+  };
   return (
     <SidebarMenu>
       <SidebarMenuItem>
@@ -82,19 +82,25 @@ export function NavUser({
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuGroup>
-              <Link href={route('admin.categories.page')}>
-                <DropdownMenuItem>
-                  <IconUserCircle />
-                  Dashboard
-                </DropdownMenuItem>
-              </Link>
-            </DropdownMenuGroup>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem>
-              <IconLogout />
-              Log out
-            </DropdownMenuItem>
+            {(user.role_key === 'ADMIN' || user.role_key === 'MODERATOR')
+              && <>
+                <DropdownMenuGroup>
+                  <Link href={route('admin.categories.page')}>
+                    <DropdownMenuItem>
+                      <IconUserCircle />
+                      Dashboard
+                    </DropdownMenuItem>
+                  </Link>
+                </DropdownMenuGroup>
+                <DropdownMenuSeparator />
+              </>
+            }
+            <Link className="block w-full" method="post" href={route('logout')} as="button" onClick={handleLogout}>
+              <DropdownMenuItem>
+                <IconLogout className="mr-2" />
+                Log out
+              </DropdownMenuItem>
+            </Link>
           </DropdownMenuContent>
         </DropdownMenu>
       </SidebarMenuItem>

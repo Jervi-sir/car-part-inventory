@@ -209,7 +209,7 @@ export default function CheckoutPage() {
 
         <div className="flex items-center justify-between mb-4">
           <h1 className="text-2xl font-semibold">Checkout</h1>
-          <Button variant="outline" onClick={refreshCart}>
+          <Button size={'sm'} variant="outline" onClick={refreshCart}>
             <ShoppingCart className="mr-2 h-4 w-4" /> Refresh
           </Button>
         </div>

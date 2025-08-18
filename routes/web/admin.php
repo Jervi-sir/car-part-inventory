@@ -13,8 +13,8 @@ use App\Http\Controllers\Admin\UserController;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Route;
 
-
-Route::prefix('admin')->group(function () {
+// role:ADMIN,MODERATOR
+Route::middleware(['auth', 'role:ADMIN,MODERATOR'])->prefix('admin')->group(function () {
     // Categories
     Route::prefix('categories')->group(function () {
         Route::get('/', fn()  => Inertia::render('admin/categories/page'))->name('admin.categories.page');          // [done]
