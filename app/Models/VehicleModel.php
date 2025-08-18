@@ -23,4 +23,9 @@ class VehicleModel extends Model
     {
         return $this->hasMany(PartFitment::class);
     }
+
+    public function vehicleBrand()
+    {
+        return $this->belongsTo(VehicleBrand::class, 'vehicle_brand_id');
+    }
 }

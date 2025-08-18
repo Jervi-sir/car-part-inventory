@@ -5,16 +5,18 @@ namespace App\Http\Controllers\Client;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Models\OrderItem;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use App\Models\Part;
 use App\Models\UserShippingAddress;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 class CartController extends Controller
 {
-    // Always work on the authenticated user's single open cart
+    /**
+     * Always work on the authenticated user's single open cart (status='cart').
+     */
     private function getOrCreateCartOrder(int $userId): Order
     {
         /** @var Order|null $order */
@@ -23,12 +25,13 @@ class CartController extends Controller
             ->where('status', 'cart')
             ->first();
 
-        if ($order) return $order;
+        if ($order) {
+            return $order;
+        }
 
         return Order::create([
             'user_id'        => $userId,
             'status'         => 'cart',
-            'currency'       => 'DZD',
             'subtotal'       => 0,
             'discount_total' => 0,
             'shipping_total' => 0,
@@ -37,140 +40,25 @@ class CartController extends Controller
         ]);
     }
 
+    /**
+     * Recalculate order totals from items.
+     */
     private function recalcTotals(Order $order): void
     {
-        // Recalculate subtotal from items and set grand_total (no shipping/tax yet)
-        $subtotal = $order->items()->sum('line_total');
+        $subtotal = (float)$order->items()->sum('line_total');
+
         $order->subtotal    = $subtotal;
-        $order->grand_total = $subtotal; // adjust later when shipping/tax exist
+        // Keep existing discount/shipping/tax; grand_total is derived
+        $order->grand_total = $order->subtotal - ($order->discount_total ?? 0)
+                            + ($order->shipping_total ?? 0)
+                            + ($order->tax_total ?? 0);
         $order->save();
     }
 
-
-    public function quickPreview(Request $request)
-    {
-        $data = $request->validate([
-            'q'               => ['nullable','string'],
-            'category_id'     => ['nullable','integer'],
-            'manufacturer_id' => ['nullable','integer'],
-            'is_active'       => ['nullable','in:0,1'],
-            'min_price'       => ['nullable','numeric'],
-            'max_price'       => ['nullable','numeric'],
-            'price_tier'      => ['nullable','in:retail,demi_gros,gros'],
-            'sort'            => ['nullable','string'], // e.g. "name,-created_at,price"
-            'per_page'        => ['nullable','integer','min:1','max:100'],
-        ]);
-
-        $priceColumn = match($data['price_tier'] ?? 'retail') {
-            'demi_gros' => 'price_demi_gros',
-            'gros'      => 'price_gros',
-            default     => 'price_retail',
-        };
-
-        $query = Part::query()
-            ->with([
-                'category:id,name,is_special,icon_url',
-                'manufacturer:id,name',
-            ])
-            ->select([
-                'id','manufacturer_id','category_id',
-                'sku','name','description',
-                'package_qty','min_order_qty',
-                'price_retail','price_demi_gros','price_gros',
-                'images','min_qty_gros','is_active','created_at',
-            ])
-            ->search($data['q'] ?? null);
-
-        if (isset($data['category_id'])) {
-            $query->where('category_id', $data['category_id']);
-        }
-        if (isset($data['manufacturer_id'])) {
-            $query->where('manufacturer_id', $data['manufacturer_id']);
-        }
-        if (isset($data['is_active'])) {
-            $query->where('is_active', (bool)$data['is_active']);
-        } else {
-            $query->where('is_active', true); // default: only active
-        }
-
-        // Price range on chosen tier
-        if (isset($data['min_price'])) {
-            $query->where($priceColumn, '>=', $data['min_price']);
-        }
-        if (isset($data['max_price'])) {
-            $query->where($priceColumn, '<=', $data['max_price']);
-        }
-
-        // Sorting
-        // alias "price" to the chosen tier; support "-field" DESC
-        $sorts = array_filter(array_map('trim', explode(',', $data['sort'] ?? '')));
-        if (empty($sorts)) {
-            // sensible default
-            $query->orderBy('created_at', 'desc');
-        } else {
-            foreach ($sorts as $s) {
-                $dir = str_starts_with($s, '-') ? 'desc' : 'asc';
-                $col = ltrim($s, '-');
-                if ($col === 'price') $col = $priceColumn;
-                if (in_array($col, [
-                    'id','name','sku','created_at',
-                    'price_retail','price_demi_gros','price_gros'
-                ], true)) {
-                    $query->orderBy($col, $dir);
-                }
-            }
-        }
-
-        $perPage = $data['per_page'] ?? 15;
-        $paginator = $query->paginate($perPage)->appends($request->query());
-
-        // Transform (lightweight)
-        $items = collect($paginator->items())->map(function (Part $p) use ($priceColumn) {
-            return [
-                'id' => $p->id,
-                'sku' => $p->sku,
-                'name' => $p->name,
-                'description' => $p->description,
-                'package_qty' => $p->package_qty,
-                'min_order_qty' => $p->min_order_qty,
-                'prices' => [
-                    'retail' => $p->price_retail,
-                    'demi_gros' => $p->price_demi_gros,
-                    'gros' => $p->price_gros,
-                    'active' => $p->{$priceColumn},
-                    'tier' => $priceColumn, // for the UI to know which tier was used
-                ],
-                'image' => $p->primary_image, // first image only for list
-                'images' => $p->images,       // full if needed
-                'min_qty_gros' => $p->min_qty_gros,
-                'is_active' => $p->is_active,
-                'category' => [
-                    'id' => $p->category?->id,
-                    'name' => $p->category?->name,
-                    'is_special' => $p->category?->is_special,
-                    'icon_url' => $p->category?->icon_url,
-                ],
-                'manufacturer' => [
-                    'id' => $p->manufacturer?->id,
-                    'name' => $p->manufacturer?->name,
-                ],
-                'created_at' => $p->created_at,
-            ];
-        });
-
-        return response()->json([
-            'items' => $items,
-            'meta' => [
-                'total'      => $paginator->total(),
-                'per_page'   => $paginator->perPage(),
-                'current'    => $paginator->currentPage(),
-                'last_page'  => $paginator->lastPage(),
-                'has_more'   => $paginator->hasMorePages(),
-            ],
-        ]);
-    }
-
-
+    /**
+     * GET /cart
+     * Returns the current cart content for the authenticated user.
+     */
     public function show(Request $req)
     {
         $user = Auth::user();
@@ -185,13 +73,10 @@ class CartController extends Controller
 
         $order = $this->getOrCreateCartOrder($user->id);
 
-        // Load parts in one go
         $items = $order->items()
             ->with([
                 'part.manufacturer:id,name',
-                'part.category:id,name',
                 'part.fitments.vehicleModel.vehicleBrand:id,name',
-                'part.references:id,part_id,type,code,source_brand',
             ])
             ->get();
 
@@ -202,12 +87,12 @@ class CartController extends Controller
             $p = $it->part;
             if (!$p) continue;
 
-            // image
+            // image (first in JSON array)
             $image = is_array($p->images ?? null) && !empty($p->images)
                 ? ($p->images[0]['url'] ?? $p->images[0])
                 : null;
 
-            // models & brands
+            // fitment models/brands
             $models = [];
             $brands = [];
             foreach ($p->fitments as $f) {
@@ -219,12 +104,6 @@ class CartController extends Controller
                 }
             }
 
-            $refs = $p->references->map(fn($r) => [
-                'type' => $r->type,
-                'code' => $r->code,
-                'source_brand' => $r->source_brand,
-            ])->values();
-
             $qty = (int)$it->quantity;
             $count += $qty;
 
@@ -234,32 +113,37 @@ class CartController extends Controller
                 'name'            => $p->name,
                 'image'           => $image,
                 'manufacturer'    => $p->manufacturer?->only(['id', 'name']),
-                'category'        => $p->category?->only(['id', 'name']),
-                'min_order_qty'   => $p->min_order_qty,
-                'min_qty_gros'    => $p->min_qty_gros,
-                'price_retail'    => (float)$p->price_retail,
-                'price_demi_gros' => (float)$p->price_demi_gros,
-                'price_gros'      => (float)$p->price_gros,
+                'category'        => null, // no category in current schema
+                'min_order_qty'   => 1,    // synthesized (not in schema)
+                'min_qty_gros'    => 1,    // synthesized (not in schema)
+                'price_retail'    => (float)($p->price_retail_ttc ?? 0),
+                'price_demi_gros' => null,
+                'price_gros'      => (float)($p->price_wholesale_ttc ?? 0),
                 'fitment_models'  => array_values($models),
                 'fitment_brands'  => array_keys($brands),
-                'references'      => $refs,
+                'references'      => [],   // no part_references table
                 'qty'             => $qty,
             ];
         }
 
         return response()->json([
             'items'    => $payloadItems,
-            'currency' => $order->currency ?? 'DZD',
+            'currency' => 'DZD', // static for frontend; no currency column in schema
             'count'    => $count,
             'subtotal' => (float)($order->subtotal ?? 0),
         ]);
     }
 
-
+    /**
+     * POST /cart/items
+     * Add a part to cart (or increase qty).
+     */
     public function add(Request $req)
     {
         $user = Auth::user();
-        if (!$user) return response()->json(['message' => 'Unauthenticated'], 401);
+        if (!$user) {
+            return response()->json(['message' => 'Unauthenticated'], 401);
+        }
 
         $data = $req->validate([
             'part_id'  => ['required', 'integer', 'exists:parts,id'],
@@ -274,8 +158,8 @@ class CartController extends Controller
             /** @var Part $part */
             $part = Part::query()->where('is_active', true)->findOrFail($data['part_id']);
 
-            // Enforce min order qty on ADD
-            $baseMin = max(1, (int)$part->min_order_qty);
+            // Schema no longer stores min order qty; enforce base min=1.
+            $baseMin = 1;
 
             /** @var OrderItem|null $line */
             $line = OrderItem::query()
@@ -285,20 +169,18 @@ class CartController extends Controller
                 ->first();
 
             if ($line) {
-                $line->quantity  = max($baseMin, $line->quantity + $qty);
-                $line->unit_price = (float)($part->price_retail ?? $line->unit_price ?? 0);
+                $line->quantity   = max($baseMin, $line->quantity + $qty);
+                $line->unit_price = (float)($part->price_retail_ttc ?? $line->unit_price ?? 0);
                 $line->line_total = $line->quantity * $line->unit_price;
-                $line->currency   = $order->currency ?? 'DZD';
                 $line->save();
             } else {
-                $unit = (float)($part->price_retail ?? 0);
+                $unit = (float)($part->price_retail_ttc ?? 0);
                 $quantity = max($baseMin, $qty);
                 OrderItem::create([
                     'order_id'   => $order->id,
                     'part_id'    => $part->id,
                     'quantity'   => $quantity,
                     'unit_price' => $unit,
-                    'currency'   => $order->currency ?? 'DZD',
                     'line_total' => $quantity * $unit,
                 ]);
             }
@@ -310,10 +192,16 @@ class CartController extends Controller
         });
     }
 
+    /**
+     * PUT /cart/items/{part}
+     * Set quantity for a specific part in cart (0 removes line).
+     */
     public function update(Request $req, Part $part)
     {
         $user = Auth::user();
-        if (!$user) return response()->json(['message' => 'Unauthenticated'], 401);
+        if (!$user) {
+            return response()->json(['message' => 'Unauthenticated'], 401);
+        }
 
         $data = $req->validate([
             'quantity' => ['required', 'integer', 'min:0'],
@@ -331,7 +219,9 @@ class CartController extends Controller
 
             // If setting to 0 => remove line
             if ((int)$data['quantity'] === 0) {
-                if ($line) $line->delete();
+                if ($line) {
+                    $line->delete();
+                }
                 $this->recalcTotals($order);
                 return $this->show(request());
             }
@@ -341,20 +231,18 @@ class CartController extends Controller
                 $line = new OrderItem([
                     'order_id'   => $order->id,
                     'part_id'    => $part->id,
-                    'unit_price' => (float)($part->price_retail ?? 0),
-                    'currency'   => $order->currency ?? 'DZD',
+                    'unit_price' => (float)($part->price_retail_ttc ?? 0),
                     'quantity'   => 0,
                     'line_total' => 0,
                 ]);
             }
 
-            $baseMin = max(1, (int)($part->min_order_qty ?? 1));
+            $baseMin = 1; // synthesized
             $qty = max($baseMin, (int)$data['quantity']);
 
-            $line->unit_price = (float)($part->price_retail ?? $line->unit_price ?? 0);
+            $line->unit_price = (float)($part->price_retail_ttc ?? $line->unit_price ?? 0);
             $line->quantity   = $qty;
             $line->line_total = $qty * $line->unit_price;
-            $line->currency   = $order->currency ?? 'DZD';
             $line->save();
 
             $this->recalcTotals($order);
@@ -363,10 +251,16 @@ class CartController extends Controller
         });
     }
 
+    /**
+     * DELETE /cart/items/{part}
+     * Remove a part line from the cart.
+     */
     public function remove(Part $part)
     {
         $user = Auth::user();
-        if (!$user) return response()->json(['message' => 'Unauthenticated'], 401);
+        if (!$user) {
+            return response()->json(['message' => 'Unauthenticated'], 401);
+        }
 
         return DB::transaction(function () use ($user, $part) {
             $order = $this->getOrCreateCartOrder($user->id);
@@ -382,10 +276,16 @@ class CartController extends Controller
         });
     }
 
+    /**
+     * DELETE /cart/clear
+     * Clear all items from the cart, keep the cart order row.
+     */
     public function clear()
     {
         $user = Auth::user();
-        if (!$user) return response()->json(['message' => 'Unauthenticated'], 401);
+        if (!$user) {
+            return response()->json(['message' => 'Unauthenticated'], 401);
+        }
 
         return DB::transaction(function () use ($user) {
             $order = $this->getOrCreateCartOrder($user->id);
@@ -393,7 +293,7 @@ class CartController extends Controller
             // Fast clear
             OrderItem::where('order_id', $order->id)->delete();
 
-            // Reset totals but keep the cart order row
+            // Reset totals
             $order->update([
                 'subtotal'       => 0,
                 'discount_total' => 0,
@@ -406,10 +306,16 @@ class CartController extends Controller
         });
     }
 
+    /**
+     * POST /checkout/submit
+     * Submit the cart into a pending order with delivery method + shipping info.
+     */
     public function submit(Request $req)
     {
-        $user = \Illuminate\Support\Facades\Auth::user();
-        if (!$user) return response()->json(['message' => 'Unauthenticated'], 401);
+        $user = Auth::user();
+        if (!$user) {
+            return response()->json(['message' => 'Unauthenticated'], 401);
+        }
 
         $data = $req->validate([
             'full_name'       => ['required', 'string', 'min:2', 'max:120'],
@@ -419,7 +325,6 @@ class CartController extends Controller
             'delivery_method' => ['required', Rule::in(['pickup', 'courier', 'post'])],
         ]);
 
-        // For courier/post: must have either address_id (owned by user) or address text
         $needsAddress = in_array($data['delivery_method'], ['courier', 'post'], true);
 
         $chosenAddress = null;
@@ -427,10 +332,11 @@ class CartController extends Controller
             $chosenAddress = UserShippingAddress::where('id', $data['address_id'])
                 ->where('user_id', $user->id)
                 ->first();
+
             if (!$chosenAddress) {
                 return response()->json([
                     'message' => 'Invalid address.',
-                    'errors'  => ['address_id' => ['Address not found']]
+                    'errors'  => ['address_id' => ['Address not found']],
                 ], 422);
             }
         }
@@ -438,7 +344,7 @@ class CartController extends Controller
         if ($needsAddress && !$chosenAddress && empty($data['address'])) {
             return response()->json([
                 'message' => 'Address is required for this delivery method.',
-                'errors'  => ['address' => ['Address is required for courier/post']]
+                'errors'  => ['address' => ['Address is required for courier/post']],
             ], 422);
         }
 
@@ -449,7 +355,7 @@ class CartController extends Controller
             if ($itemsCount === 0) {
                 return response()->json([
                     'message' => 'Cart is empty.',
-                    'errors'  => ['cart' => ['No items in cart']]
+                    'errors'  => ['cart' => ['No items in cart']],
                 ], 422);
             }
 
@@ -462,13 +368,12 @@ class CartController extends Controller
 
             $subtotal = (float)$order->items()->sum('line_total');
 
-            // Fill shipping contact + address: prioritize saved address if provided
-            $shipToName  = $data['full_name'];
-            $shipToPhone = $data['phone'];
+            // Fill shipping contact + address
+            $shipToName    = $data['full_name'];
+            $shipToPhone   = $data['phone'];
             $shipToAddress = null;
 
             if ($chosenAddress) {
-                // You can format it however you store it in one field:
                 $shipToAddress = trim(implode(', ', array_filter([
                     $chosenAddress->address_line1,
                     $chosenAddress->address_line2,
@@ -477,11 +382,10 @@ class CartController extends Controller
                     $chosenAddress->postal_code,
                     $chosenAddress->country,
                 ])));
-                // Optionally override contact from saved address:
-                if (!empty($chosenAddress->recipient_name)) $shipToName = $chosenAddress->recipient_name;
+
+                if (!empty($chosenAddress->recipient_name)) $shipToName  = $chosenAddress->recipient_name;
                 if (!empty($chosenAddress->phone))          $shipToPhone = $chosenAddress->phone;
             } else {
-                // Free-text (optional for pickup)
                 $shipToAddress = $data['address'] ?? null;
             }
 
@@ -504,7 +408,7 @@ class CartController extends Controller
                 'ok'          => true,
                 'order_id'    => $order->id,
                 'status'      => $order->status,
-                'currency'    => $order->currency,
+                'currency'    => 'DZD', // static for UI compatibility
                 'items_count' => $itemsCount,
                 'subtotal'    => (float)$order->subtotal,
                 'shipping'    => (float)$order->shipping_total,

@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\Order;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Route;
 
@@ -18,3 +19,8 @@ require __DIR__ . '/web/admin.php';
 require __DIR__ . '/web/client.php';
 
 require __DIR__ . '/auth.php';
+
+Route::get('test/{order}', function(int $order) {
+    $row = Order::find($order);
+    dd($row);
+});

@@ -33,7 +33,7 @@ class OrderListController extends Controller
         $sortWhitelist = ['created_at','grand_total','status'];
         if (!in_array($sortBy, $sortWhitelist, true)) $sortBy = 'created_at';
 
-        // Subquery: brief items as JSON
+        // Subquery: brief items as JSON (sku, name, qty, unit_price, line_total)
         $briefSql = DB::table('order_items as oi')
             ->selectRaw("
                 oi.order_id,
@@ -54,7 +54,7 @@ class OrderListController extends Controller
         $base = DB::table('orders as o')
             ->leftJoinSub($briefSql, 'x', 'x.order_id', '=', 'o.id')
             ->selectRaw("
-                o.id, o.user_id, o.status, o.delivery_method, o.currency,
+                o.id, o.user_id, o.status, o.delivery_method,
                 o.subtotal, o.discount_total, o.shipping_total, o.tax_total, o.grand_total,
                 o.created_at, o.updated_at,
                 COALESCE(x.items_brief, '[]'::json) as items_brief,
@@ -76,6 +76,7 @@ class OrderListController extends Controller
             $base->whereDate('o.created_at', '<=', $to);
         }
         if ($q !== '') {
+            // note: match id, part name or SKU inside this user's orders
             $term = '%' . str_replace(['%', '_'], ['\\%','\\_'], $q) . '%';
             $base->where(function ($w) use ($term) {
                 $w->whereRaw('CAST(o.id AS TEXT) ILIKE ?', [$term])
@@ -83,12 +84,10 @@ class OrderListController extends Controller
                       $s->select(DB::raw(1))
                         ->from('order_items as oi2')
                         ->join('parts as p2', 'p2.id', '=', 'oi2.part_id')
-                        ->leftJoin('part_references as pr2', 'pr2.part_id', '=', 'p2.id')
                         ->whereColumn('oi2.order_id', 'o.id')
                         ->where(function ($x) use ($term) {
                             $x->where('p2.name', 'ILIKE', $term)
-                              ->orWhere('p2.sku', 'ILIKE', $term)
-                              ->orWhere('pr2.code', 'ILIKE', $term);
+                              ->orWhere('p2.sku', 'ILIKE', $term);
                         });
                   });
             });
@@ -107,7 +106,6 @@ class OrderListController extends Controller
                 'id'              => (int)$r->id,
                 'status'          => $r->status,
                 'delivery_method' => $r->delivery_method,
-                'currency'        => $r->currency,
                 'items_count'     => (int)$r->items_count,
                 'subtotal'        => (float)$r->subtotal,
                 'discount_total'  => (float)$r->discount_total,
@@ -116,7 +114,7 @@ class OrderListController extends Controller
                 'grand_total'     => (float)$r->grand_total,
                 'created_at'      => $r->created_at,
                 'updated_at'      => $r->updated_at,
-                // brief items (client can truncate further)
+                // brief items (client may truncate)
                 'items_brief'     => array_map(function ($it) {
                     return [
                         'sku'        => $it['sku'] ?? null,
@@ -137,4 +135,3 @@ class OrderListController extends Controller
         ]);
     }
 }
-

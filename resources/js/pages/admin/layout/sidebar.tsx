@@ -1,5 +1,5 @@
 import * as React from "react"
-import { BaggageClaim, CarFront, Command, Component, Factory, Package, Puzzle, UserIcon } from "lucide-react"
+import { BaggageClaim, CarFront, Command, Component, Factory, ImportIcon, Package, Puzzle, UserIcon } from "lucide-react"
 import { Link, usePage } from "@inertiajs/react"
 
 import { NavUser } from "@/components/nav-user"
@@ -33,6 +33,7 @@ const data = {
     { title: "Parts", url: route("admin.parts.page"), icon: Puzzle },
     { title: "Orders", url: route("admin.orders.page"), icon: BaggageClaim },
     { title: "Users", url: route("admin.users.page"), icon: UserIcon },
+    { title: "Imports", url: route("admin.import.parts.index"), icon: ImportIcon },
 ],
 }
 

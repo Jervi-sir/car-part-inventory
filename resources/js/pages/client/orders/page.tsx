@@ -1,3 +1,4 @@
+// resources/js/pages/client/orders/page.tsx
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Head } from "@inertiajs/react";
 import { ClientLayout } from "../layout/client-layout";
@@ -7,8 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ChevronLeft, ChevronRight } from "lucide-react";
-import { ChevronDown } from "lucide-react";
+import { ChevronLeft, ChevronRight, ChevronDown, ChevronRight as ChevronRightIcon } from "lucide-react";
+import api from "@/lib/api";
 
 declare const route: (name: string, params?: any) => string;
 
@@ -40,21 +41,6 @@ type OrderRow = {
 
 type Page<T> = { data: T[]; total: number; page: number; per_page: number };
 
-const csrf =
-  (typeof document !== "undefined" &&
-    (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content) ||
-  "";
-
-const baseHeaders = (json = true) => ({
-  Accept: "application/json",
-  ...(json ? { "Content-Type": "application/json" } : {}),
-  "X-CSRF-TOKEN": csrf,
-  "X-Requested-With": "XMLHttpRequest",
-});
-const http = {
-  get: (url: string) => fetch(url, { method: "GET", headers: baseHeaders(false), credentials: "same-origin" }),
-};
-
 const endpoints = {
   list: route("shop.api.orders.index"),
   view: (id: Id) => route("client.order.page", { order: id }),
@@ -80,42 +66,53 @@ export default function OrdersPage() {
   });
   const [pageData, setPageData] = useState<Page<OrderRow>>({ data: [], total: 0, page: 1, per_page: 12 });
   const [expandedRows, setExpandedRows] = useState<Record<number, boolean>>({});
+  const [loading, setLoading] = useState(false);
 
   const maxPage = useMemo(() => Math.max(1, Math.ceil(pageData.total / pageData.per_page)), [pageData]);
   const reqRef = useRef(0);
 
   const refresh = async (page = 1) => {
     const myReq = ++reqRef.current;
-    const params = new URLSearchParams({
+    setLoading(true);
+
+    const params = {
       page: String(page),
       per_page: String(pageData.per_page),
-      q: filters.q,
+      q: filters.q || undefined,
       status: filters.status,
       delivery_method: filters.delivery_method,
-      from: filters.from,
-      to: filters.to,
+      from: filters.from || undefined,
+      to: filters.to || undefined,
       sort_by: filters.sort_by,
       sort_dir: filters.sort_dir,
-    });
-    const res = await http.get(`${endpoints.list}?${params.toString()}`);
-    const js = await res.json();
+    };
+
+    const { data } = await api.get<Page<OrderRow>>(endpoints.list, { params });
     if (myReq !== reqRef.current) return;
-    setPageData(js);
+
+    setPageData(data);
+    setLoading(false);
   };
 
-  useEffect(() => { refresh(1); }, []); // initial
-  useEffect(() => { refresh(1); }, [filters.q, filters.status, filters.delivery_method, filters.from, filters.to, filters.sort_by, filters.sort_dir]);
+  useEffect(() => {
+    refresh(1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    refresh(1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters.q, filters.status, filters.delivery_method, filters.from, filters.to, filters.sort_by, filters.sort_dir]);
 
   const briefText = (row: OrderRow) => {
     const arr = row.items_brief || [];
     if (!arr.length) return "—";
-    const first = arr.slice(0, 3).map(i => {
+    const first = arr.slice(0, 3).map((i) => {
       const title = i.name || i.sku || "Item";
       return `${title} ×${i.qty} (${i.line_total.toFixed(2)} ${row.currency})`;
     });
     const extra = arr.length > 3 ? ` +${arr.length - 3} more` : "";
     return first.join(", ") + extra;
-    // You can show brand/model later if needed by expanding the payload
   };
 
   const money = (n: number, c: string) => `${Number(n).toFixed(2)} ${c}`;
@@ -131,6 +128,7 @@ export default function OrdersPage() {
         <div className="flex items-center justify-between mb-4">
           <h1 className="text-2xl font-semibold">My Orders</h1>
         </div>
+
         {/* Filters */}
         <Card className="p-4 mb-4">
           <div className="flex flex-row flex-wrap gap-3">
@@ -143,53 +141,83 @@ export default function OrdersPage() {
                   value={filters.q}
                   onChange={(e) => setFilters({ ...filters, q: e.target.value })}
                 />
-                {/* <Button variant="outline" onClick={() => refresh(1)}>
-                  <Search className="h-4 w-4" />
-                </Button> */}
               </div>
             </div>
 
             <div className="w-[120px] space-y-2">
               <Label>Status</Label>
               <Select value={filters.status} onValueChange={(v) => setFilters({ ...filters, status: v })}>
-                <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
                 <SelectContent>
-                  {statusOptions.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                  {statusOptions.map((s) => (
+                    <SelectItem key={s} value={s}>
+                      {s}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
 
             <div className="w-[120px] space-y-2">
               <Label>Method</Label>
-              <Select value={filters.delivery_method} onValueChange={(v) => setFilters({ ...filters, delivery_method: v })}>
-                <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+              <Select
+                value={filters.delivery_method}
+                onValueChange={(v) => setFilters({ ...filters, delivery_method: v })}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
                 <SelectContent>
-                  {methodOptions.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
+                  {methodOptions.map((m) => (
+                    <SelectItem key={m} value={m}>
+                      {m}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
 
             <div className="w-[150px] space-y-2">
               <Label>From</Label>
-              <Input className="w-full" type="date" value={filters.from} onChange={(e) => setFilters({ ...filters, from: e.target.value })} />
+              <Input
+                className="w-full"
+                type="date"
+                value={filters.from}
+                onChange={(e) => setFilters({ ...filters, from: e.target.value })}
+              />
             </div>
 
             <div className="w-[150px] space-y-2">
               <Label>To</Label>
-              <Input className="w-full" type="date" value={filters.to} onChange={(e) => setFilters({ ...filters, to: e.target.value })} />
+              <Input
+                className="w-full"
+                type="date"
+                value={filters.to}
+                onChange={(e) => setFilters({ ...filters, to: e.target.value })}
+              />
             </div>
 
             <div className="w-[240px] space-y-2">
               <Label>Sort</Label>
               <div className="flex gap-2">
                 <Select value={filters.sort_by} onValueChange={(v) => setFilters({ ...filters, sort_by: v })}>
-                  <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
                   <SelectContent>
-                    {sortOptions.map(opt => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}
+                    {sortOptions.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
                 <Select value={filters.sort_dir} onValueChange={(v) => setFilters({ ...filters, sort_dir: v })}>
-                  <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="desc">Desc</SelectItem>
                     <SelectItem value="asc">Asc</SelectItem>
@@ -199,7 +227,20 @@ export default function OrdersPage() {
             </div>
 
             <div className="flex items-end">
-              <Button variant="ghost" onClick={() => { setFilters({ q: "", status: "all", delivery_method: "all", from: "", to: "", sort_by: "created_at", sort_dir: "desc" }); }}>
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  setFilters({
+                    q: "",
+                    status: "all",
+                    delivery_method: "all",
+                    from: "",
+                    to: "",
+                    sort_by: "created_at",
+                    sort_dir: "desc",
+                  });
+                }}
+              >
                 Clear
               </Button>
             </div>
@@ -222,15 +263,22 @@ export default function OrdersPage() {
                 <TableHead className="w-[100px]">Action</TableHead>
               </TableRow>
             </TableHeader>
+
             <TableBody>
-              {pageData.data.length === 0 ? (
+              {loading ? (
+                <TableRow>
+                  <TableCell colSpan={9} className="text-center text-muted-foreground">
+                    Loading…
+                  </TableCell>
+                </TableRow>
+              ) : pageData.data.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={9} className="text-center text-muted-foreground">
                     No orders found
                   </TableCell>
                 </TableRow>
               ) : (
-                pageData.data.map(o => {
+                pageData.data.map((o) => {
                   const expanded = expandedRows[o.id] || false;
 
                   return (
@@ -240,16 +288,16 @@ export default function OrdersPage() {
                           <button
                             className="flex items-center gap-1"
                             onClick={() =>
-                              setExpandedRows(prev => ({
+                              setExpandedRows((prev) => ({
                                 ...prev,
-                                [o.id]: !expanded
+                                [o.id]: !expanded,
                               }))
                             }
                           >
                             {expanded ? (
                               <ChevronDown className="h-4 w-4" />
                             ) : (
-                              <ChevronRight className="h-4 w-4" />
+                              <ChevronRightIcon className="h-4 w-4" />
                             )}
                             #{o.id}
                           </button>
@@ -260,14 +308,9 @@ export default function OrdersPage() {
                         <TableCell>{o.items_count}</TableCell>
                         <TableCell>{money(o.subtotal, o.currency)}</TableCell>
                         <TableCell>{money(o.shipping_total, o.currency)}</TableCell>
-                        <TableCell className="font-semibold">
-                          {money(o.grand_total, o.currency)}
-                        </TableCell>
+                        <TableCell className="font-semibold">{money(o.grand_total, o.currency)}</TableCell>
                         <TableCell>
-                          <Button
-                            size="sm"
-                            onClick={() => (window.location.href = endpoints.view(o.id))}
-                          >
+                          <Button size="sm" onClick={() => (window.location.href = endpoints.view(o.id))}>
                             View
                           </Button>
                         </TableCell>
@@ -281,8 +324,7 @@ export default function OrdersPage() {
                               <ul className="list-disc pl-6">
                                 {o.items_brief.map((i, idx) => (
                                   <li key={idx}>
-                                    {i.name || i.sku || "Item"} ×{i.qty} (
-                                    {i.line_total.toFixed(2)} {o.currency})
+                                    {i.name || i.sku || "Item"} ×{i.qty} ({i.line_total.toFixed(2)} {o.currency})
                                   </li>
                                 ))}
                               </ul>
@@ -300,33 +342,59 @@ export default function OrdersPage() {
                 })
               )}
             </TableBody>
-
-
           </Table>
         </div>
 
         {/* Pagination */}
         <div className="flex items-center justify-between mt-4">
           <div className="text-sm text-muted-foreground">
-            {pageData.total ? `${(pageData.page - 1) * pageData.per_page + 1}-${Math.min(pageData.total, pageData.page * pageData.per_page)} of ${pageData.total}` : "0"}
+            {pageData.total
+              ? `${(pageData.page - 1) * pageData.per_page + 1}-${Math.min(
+                  pageData.total,
+                  pageData.page * pageData.per_page
+                )} of ${pageData.total}`
+              : "0"}
           </div>
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2">
               <Label htmlFor="per">Per page</Label>
-              <Select value={String(pageData.per_page)} onValueChange={(v) => setPageData((p) => ({ ...p, per_page: Number(v) }))}>
-                <SelectTrigger className="w-[84px]"><SelectValue /></SelectTrigger>
+              <Select
+                value={String(pageData.per_page)}
+                onValueChange={(v) => setPageData((p) => ({ ...p, per_page: Number(v) }))}
+              >
+                <SelectTrigger className="w-[84px]">
+                  <SelectValue />
+                </SelectTrigger>
                 <SelectContent>
-                  {[10, 12, 20, 30, 50, 100].map(n => <SelectItem key={n} value={String(n)}>{n}</SelectItem>)}
+                  {[10, 12, 20, 30, 50, 100].map((n) => (
+                    <SelectItem key={n} value={String(n)}>
+                      {n}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
-              <Button variant="outline" size="sm" onClick={() => refresh(1)}>Apply</Button>
+              <Button variant="outline" size="sm" onClick={() => refresh(1)}>
+                Apply
+              </Button>
             </div>
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="icon" onClick={() => refresh(Math.max(1, pageData.page - 1))} disabled={pageData.page <= 1}>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => refresh(Math.max(1, pageData.page - 1))}
+                disabled={pageData.page <= 1}
+              >
                 <ChevronLeft className="h-4 w-4" />
               </Button>
-              <div className="text-sm">Page {pageData.page} / {maxPage}</div>
-              <Button variant="outline" size="icon" onClick={() => refresh(Math.min(maxPage, pageData.page + 1))} disabled={pageData.page >= maxPage}>
+              <div className="text-sm">
+                Page {pageData.page} / {maxPage}
+              </div>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => refresh(Math.min(maxPage, pageData.page + 1))}
+                disabled={pageData.page >= maxPage}
+              >
                 <ChevronRight className="h-4 w-4" />
               </Button>
             </div>

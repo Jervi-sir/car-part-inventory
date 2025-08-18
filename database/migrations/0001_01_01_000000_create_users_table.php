@@ -21,6 +21,11 @@ return new class extends Migration
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
             $table->string('password_plaintext')->nullable();
+
+            $table->string('id_card_url')->nullable();
+            $table->string('commercial_register_url')->nullable();
+            $table->boolean('is_verified')->default(false);
+
             $table->rememberToken();
             $table->timestamps();
         });

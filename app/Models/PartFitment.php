@@ -20,4 +20,9 @@ class PartFitment extends Model
     {
         return $this->belongsTo(VehicleModel::class, 'vehicle_model_id');
     }
+
+    public function vehicleModel() 
+    {
+        return $this->belongsTo(VehicleModel::class, 'vehicle_model_id');
+    }
 }

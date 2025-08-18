@@ -8,23 +8,19 @@ use Inertia\Inertia;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
 
-use App\Models\Category;
 use App\Models\Manufacturer;
-use App\Models\Warehouse;
 use App\Models\VehicleBrand;
 use App\Models\VehicleModel;
 use App\Models\Part;
-use App\Models\PartReference;
-use App\Models\PartStock;
 
 class ImportPartsController extends Controller
 {
     public function index()
     {
         return Inertia::render('admin/imports/page', [
-            'guessMap'   => $this->guessingDictionary(),
-            'warehouses' => Warehouse::select('id', 'name')->orderBy('name')->get(),
-            'flash'      => [
+            'guessMap' => $this->guessingDictionary(),
+            'manufacturers' => Manufacturer::select('id', 'name')->orderBy('name')->get(),
+            'flash' => [
                 'parsed' => session('parsed'),
                 'result' => session('result'),
             ],
@@ -34,10 +30,10 @@ class ImportPartsController extends Controller
     public function parse(Request $request)
     {
         $request->validate([
-            'file'        => ['required', 'file'],
-            'delimiter'   => ['nullable', 'in:,;|\t'],
-            'encoding'    => ['nullable', 'string'],
-            'has_header'  => ['nullable', 'boolean'],
+            'file'       => ['required', 'file'],
+            'delimiter'  => ['nullable', 'in:,;|\t'],
+            'encoding'   => ['nullable', 'string'],
+            'has_header' => ['nullable', 'boolean'],
         ]);
 
         $file = $request->file('file');
@@ -62,45 +58,39 @@ class ImportPartsController extends Controller
             ]);
     }
 
-
     public function commit(Request $request)
     {
         $request->validate([
             'uploaded' => ['required', 'array'], // { headers, rows, delimiter, hasHeader }
-            'mapping' => ['required', 'array'],  // columnIndex => targetField
-            'options.default_category' => ['nullable', 'string', 'max:80'],
+            'mapping'  => ['required', 'array'], // columnIndex => targetField
+
+            // options
             'options.default_manufacturer' => ['nullable', 'string', 'max:120'],
-            'options.reference_type' => ['nullable', 'in:OEM,AFTERMARKET,SUPPLIER,EAN_UPC,OTHER'],
-            'options.create_missing_vehicle' => ['nullable', 'boolean'],
+            'options.tva_rate_default'     => ['nullable', 'numeric'], // allows overriding if CSV lacks it
         ]);
 
         $uploaded = $request->input('uploaded');
-        $mapping = $request->input('mapping');
-        $options = $request->input('options', []);
+        $mapping  = $request->input('mapping');
+        $options  = $request->input('options', []);
 
-        $headers = $uploaded['headers'] ?? [];
         $rows = $uploaded['rows'] ?? [];
 
-        // Resolve defaults
-        $defaultCategoryName = trim((string)($options['default_category'] ?? ''));
         $defaultManufacturerName = trim((string)($options['default_manufacturer'] ?? ''));
-        $referenceType = $options['reference_type'] ?? 'OTHER';
-        $createMissingVehicle = (bool)($options['create_missing_vehicle'] ?? true);
+        $defaultManufacturerId   = $defaultManufacturerName
+            ? Manufacturer::firstOrCreate(['name' => $defaultManufacturerName])->id
+            : null;
 
-        $defaultCategoryId = $defaultCategoryName ? Category::firstOrCreate(['name' => $defaultCategoryName])->id : null;
-        $defaultManufacturerId = $defaultManufacturerName ? Manufacturer::firstOrCreate(['name' => $defaultManufacturerName])->id : null;
+        $tvaDefault = $this->toMoney($options['tva_rate_default'] ?? null); // e.g. 19.00
 
         $created = 0;
         $updated = 0;
-        $errors = [];
+        $errors  = [];
 
         DB::transaction(function () use (
             $rows,
             $mapping,
-            $referenceType,
-            $defaultCategoryId,
             $defaultManufacturerId,
-            $createMissingVehicle,
+            $tvaDefault,
             &$created,
             &$updated,
             &$errors
@@ -109,91 +99,93 @@ class ImportPartsController extends Controller
                 try {
                     $data = $this->applyMapping($row, $mapping);
 
-                    // Core fields
-                    $sku = $data['sku'] ?? null;
-                    $name = $data['name'] ?? null;
-                    $categoryName = $data['category'] ?? null;
+                    // Core identifiers / fields
+                    $reference = $data['reference'] ?? null;
+                    $sku       = $data['sku'] ?? null;
+                    $barcode   = $data['barcode'] ?? null;
+                    $name      = $data['name'] ?? null;
+                    $desc      = $data['description'] ?? null;
+
+                    // Manufacturer
                     $manufacturerName = $data['manufacturer'] ?? null;
-
-                    // Price/qty
-                    $priceRetail = $this->toMoney($data['price_retail'] ?? $data['price_gros'] ?? null);
-                    $priceDemi = $this->toMoney($data['price_demi_gros'] ?? null);
-                    $priceGros = $this->toMoney($data['price_gros'] ?? null);
-                    $qty = $this->toInt($data['qty'] ?? $data['stock_qty'] ?? null);
-
-                    // References
-                    $referenceCode = $data['reference_code'] ?? $data['oem_reference'] ?? null;
-                    $refType = !empty($data['reference_type']) ? $data['reference_type'] : $referenceType;
-                    $sourceBrand = $data['source_brand'] ?? null;
-
-                    // Vehicle fitment (optional)
-                    $vehicleBrandName = $data['vehicle_brand'] ?? $data['marque_vehicule'] ?? null;
-                    $vehicleModelRaw  = $data['vehicle_model'] ?? $data['model'] ?? null;
-                    $yearFrom = $this->toInt($data['year_from'] ?? null);
-                    $yearTo = $this->toInt($data['year_to'] ?? null);
-                    $engineCode = $data['engine_code'] ?? null;
-
-                    // Category / Manufacturer
-                    $categoryId = $defaultCategoryId;
-                    if ($categoryName) {
-                        $categoryId = Category::firstOrCreate(['name' => trim($categoryName)])->id;
-                    }
-
-                    $manufacturerId = $defaultManufacturerId;
+                    $manufacturerId   = $defaultManufacturerId;
                     if ($manufacturerName) {
                         $manufacturerId = Manufacturer::firstOrCreate(['name' => trim($manufacturerName)])->id;
                     }
 
-                    // Upsert Part by SKU if present, else by (name, category)
+                    // Prices / VAT
+                    $priceRetailTtc    = $this->toMoney($data['price_retail_ttc'] ?? $data['price_retail'] ?? null);
+                    $priceWholesaleTtc = $this->toMoney($data['price_wholesale_ttc'] ?? $data['price_gros'] ?? null);
+                    $tvaRate           = $this->toMoney($data['tva_rate'] ?? $data['tva'] ?? null);
+                    if (is_null($tvaRate) && !is_null($tvaDefault)) {
+                        $tvaRate = $tvaDefault; // fallback option
+                    }
+
+                    // Stock (single-site global)
+                    $stockReal       = $this->toInt($data['stock_real'] ?? $data['qty'] ?? $data['stock_qty'] ?? null) ?? 0;
+                    $stockAvailable  = $this->toInt($data['stock_available'] ?? null);
+                    if (is_null($stockAvailable)) {
+                        // default to stock_real if not provided
+                        $stockAvailable = $stockReal;
+                    }
+
+                    // Vehicle fitment (optional)
+                    $vehicleBrandName = $data['vehicle_brand'] ?? $data['marque_vehicule'] ?? null;
+                    $vehicleModelRaw  = $data['vehicle_model'] ?? $data['model'] ?? null;
+                    $yearFrom         = $this->toInt($data['year_from'] ?? null);
+                    $yearTo           = $this->toInt($data['year_to'] ?? null);
+                    $engineCode       = $data['engine_code'] ?? null;
+
+                    // Upsert Part:
+                    // Priority: by unique SKU if present, else by (reference + manufacturer) as a pragmatic fallback,
+                    // else create new.
                     $part = null;
                     if ($sku) {
                         $part = Part::where('sku', $sku)->first();
                     }
-                    if (!$part && $name) {
-                        $part = Part::where('name', $name)->where('category_id', $categoryId)->first();
+                    if (!$part && $reference) {
+                        $q = Part::query()->where('reference', $reference);
+                        if ($manufacturerId) $q->where('manufacturer_id', $manufacturerId);
+                        $part = $q->first();
                     }
 
                     if (!$part) {
                         $part = new Part();
-                        $part->sku = $sku;
-                        $part->category_id = $categoryId; // may be null
-                        $part->manufacturer_id = $manufacturerId;
-                        $part->name = $name ?: $sku ?: 'Unnamed Part';
-                        $part->package_qty = !is_null($qty) ? $qty : 1; // <-- here
-                        $part->min_order_qty = 1;
-                        $part->price_retail = $priceRetail;
-                        $part->price_demi_gros = $priceDemi;
-                        $part->price_gros = $priceGros;
-                        $part->is_active = true;
+                        $part->reference          = $reference;
+                        $part->sku                = $sku;
+                        $part->barcode            = $barcode;
+                        $part->name               = $name ?: ($sku ?: $reference ?: 'Unnamed Part');
+                        $part->description        = $desc;
+                        $part->manufacturer_id    = $manufacturerId;
+                        $part->price_retail_ttc   = $priceRetailTtc;
+                        $part->price_wholesale_ttc= $priceWholesaleTtc;
+                        $part->tva_rate           = $tvaRate;
+                        $part->stock_real         = $stockReal;
+                        $part->stock_available    = $stockAvailable;
+                        $part->is_active          = true;
                         $part->save();
                         $created++;
                     } else {
                         $dirty = false;
+                        $assign = function($field, $val) use ($part, &$dirty) {
+                            if (!is_null($val) && $part->{$field} !== $val) {
+                                $part->{$field} = $val;
+                                $dirty = true;
+                            }
+                        };
 
+                        $assign('reference', $reference);
+                        $assign('barcode', $barcode);
+                        $assign('name', $name);
+                        $assign('description', $desc);
                         if ($manufacturerId && $part->manufacturer_id !== $manufacturerId) {
-                            $part->manufacturer_id = $manufacturerId;
-                            $dirty = true;
+                            $part->manufacturer_id = $manufacturerId; $dirty = true;
                         }
-                        if ($name && $part->name !== $name) {
-                            $part->name = $name;
-                            $dirty = true;
-                        }
-                        if (!is_null($priceRetail)) {
-                            $part->price_retail = $priceRetail;
-                            $dirty = true;
-                        }
-                        if (!is_null($priceDemi)) {
-                            $part->price_demi_gros = $priceDemi;
-                            $dirty = true;
-                        }
-                        if (!is_null($priceGros)) {
-                            $part->price_gros = $priceGros;
-                            $dirty = true;
-                        }
-                        if (!is_null($qty) && $part->package_qty !== $qty) { // <-- update package_qty if provided
-                            $part->package_qty = $qty;
-                            $dirty = true;
-                        }
+                        $assign('price_retail_ttc', $priceRetailTtc);
+                        $assign('price_wholesale_ttc', $priceWholesaleTtc);
+                        if (!is_null($tvaRate)) $assign('tva_rate', $tvaRate);
+                        $assign('stock_real', $stockReal);
+                        $assign('stock_available', $stockAvailable);
 
                         if ($dirty) {
                             $part->save();
@@ -201,45 +193,31 @@ class ImportPartsController extends Controller
                         }
                     }
 
-                    // Reference
-                    if ($referenceCode) {
-                        PartReference::firstOrCreate([
-                            'part_id' => $part->id,
-                            'type' => $refType,
-                            'code' => trim($referenceCode),
-                        ], [
-                            'source_brand' => $sourceBrand ? trim($sourceBrand) : null,
-                        ]);
-                    }
+                    // Fitment (optional)
                     $vehicleModelName = $vehicleModelRaw ? trim(preg_replace('/\s+/', ' ', $vehicleModelRaw)) : null;
                     $vehicleModelNotes = null;
                     if ($vehicleModelName && mb_strlen($vehicleModelName) > 120) {
-                        $vehicleModelNotes = $vehicleModelName;                  // keep full original for notes
-                        $vehicleModelName  = mb_substr($vehicleModelName, 0, 120); // truncate to column limit
+                        $vehicleModelNotes = $vehicleModelName;
+                        $vehicleModelName  = mb_substr($vehicleModelName, 0, 120);
                     }
 
-                    $yearFrom = $this->toInt($data['year_from'] ?? null);
-                    $yearTo   = $this->toInt($data['year_to'] ?? null);
-                    $engineCode = $data['engine_code'] ?? null;
-
-                    // Fitment (optional)
-                    if ($vehicleBrandName && $vehicleModelName && $createMissingVehicle) {
+                    if ($vehicleBrandName && $vehicleModelName) {
                         $vb = VehicleBrand::firstOrCreate(['name' => trim($vehicleBrandName)]);
                         $vm = VehicleModel::firstOrCreate([
                             'vehicle_brand_id' => $vb->id,
-                            'name' => $vehicleModelName,
-                            'year_from' => $yearFrom,
-                            'year_to'   => $yearTo,
+                            'name'             => $vehicleModelName,
+                            'year_from'        => $yearFrom,
+                            'year_to'          => $yearTo,
                         ]);
 
                         DB::table('part_fitments')->updateOrInsert(
                             [
-                                'part_id' => $part->id,
+                                'part_id'          => $part->id,
                                 'vehicle_model_id' => $vm->id,
-                                'engine_code' => $engineCode,
+                                'engine_code'      => $engineCode,
                             ],
                             [
-                                'notes' => $vehicleModelNotes, // store the full long string here if we truncated
+                                'notes'      => $vehicleModelNotes,
                                 'created_at' => now(),
                                 'updated_at' => now(),
                             ]
@@ -247,7 +225,7 @@ class ImportPartsController extends Controller
                     }
                 } catch (\Throwable $e) {
                     $errors[] = [
-                        'row' => $i + 1,
+                        'row'     => $i + 1,
                         'message' => $e->getMessage(),
                     ];
                 }
@@ -310,7 +288,7 @@ class ImportPartsController extends Controller
     private function normalizeHeader(?string $h): string
     {
         $h = Str::lower(trim((string)$h));
-        $h = str_replace(['°', 'é', 'è', 'ê', 'à', 'â', 'î', 'ï', 'ô', 'ö', 'û', 'ü'], ['o', 'e', 'e', 'e', 'a', 'a', 'i', 'i', 'o', 'o', 'u', 'u'], $h);
+        $h = str_replace(['°','é','è','ê','à','â','î','ï','ô','ö','û','ü'], ['o','e','e','e','a','a','i','i','o','o','u','u'], $h);
         $h = preg_replace('/\s+/', ' ', $h);
         $h = str_replace(['/', '\\', '-', '.', ',', ':'], ' ', $h);
         return trim($h);
@@ -318,58 +296,69 @@ class ImportPartsController extends Controller
 
     private function guessingDictionary(): array
     {
-        // normalized header => target field
-        // target fields recognized by our importer
+        // normalized header => target field (schema-aligned)
         return [
-            // SKU / Reference
-            'reference' => 'sku',
-            'ref' => 'sku',
-            'référence' => 'sku',
-            'ref origine' => 'oem_reference',
-            'oem' => 'oem_reference',
+            // identifiers
+            'sku' => 'sku',
+            'reference' => 'reference',
+            'référence' => 'reference',
+            'barcode' => 'barcode',
+            'ean' => 'barcode',
+            'ean upc' => 'barcode',
+            'upc' => 'barcode',
 
-            // Name / Designation
+            // name/description
+            'name' => 'name',
             'designation' => 'name',
             'désignation' => 'name',
             'libelle' => 'name',
-            'designation produit' => 'name',
+            'description' => 'description',
+            'desc' => 'description',
 
-            // Quantities
-            'qte' => 'qty',
-            'quantite' => 'qty',
-            'quantité' => 'qty',
-            'stock' => 'stock_qty',
-
-            // Prices
-            'pu vente' => 'price_retail',
-            'prix' => 'price_retail',
-            'gros ttc' => 'price_gros',
-            'prix_g' => 'price_gros',
-            'prix demi gros' => 'price_demi_gros',
-            'prix_demi_gros' => 'price_demi_gros',
-
-            // Category / Manufacturer
-            'categorie' => 'category',
-            'catégorie' => 'category',
+            // manufacturer
+            'manufacturer' => 'manufacturer',
             'marque fabriquant' => 'manufacturer',
             'marque_fabriquant' => 'manufacturer',
             'marque fabricant' => 'manufacturer',
 
-            // Vehicle / Fitment
-            'affectation vehicule' => 'vehicle_model',
-            'affectation véhicule' => 'vehicle_model',
-            'model' => 'vehicle_model',
-            'modele' => 'vehicle_model',
+            // pricing TTC
+            'price retail ttc' => 'price_retail_ttc',
+            'pu vente' => 'price_retail_ttc',
+            'prix ttc' => 'price_retail_ttc',
+            'prix' => 'price_retail_ttc',
+            'price wholesale ttc' => 'price_wholesale_ttc',
+            'gros ttc' => 'price_wholesale_ttc',
+            'prix_g' => 'price_wholesale_ttc',
+
+            // tva
+            'tva' => 'tva_rate',
+            'tva rate' => 'tva_rate',
+            'vat' => 'tva_rate',
+
+            // stock (global)
+            'stock reel' => 'stock_real',
+            'stock réel' => 'stock_real',
+            'stock' => 'stock_real',
+            'qte' => 'stock_real',
+            'quantite' => 'stock_real',
+            'quantité' => 'stock_real',
+            'stock disponible' => 'stock_available',
+            'stock dispo' => 'stock_available',
+
+            // vehicle / fitment
             'marque' => 'vehicle_brand',
             'marque_vehicule' => 'vehicle_brand',
+            'vehicle brand' => 'vehicle_brand',
+            'model' => 'vehicle_model',
+            'modele' => 'vehicle_model',
+            'affectation vehicule' => 'vehicle_model',
+            'affectation véhicule' => 'vehicle_model',
             'annee de' => 'year_from',
             'annee a' => 'year_to',
+            'year from' => 'year_from',
+            'year to'   => 'year_to',
             'engine' => 'engine_code',
             'engine code' => 'engine_code',
-
-            // Warehouse
-            'entrepot' => 'warehouse',
-            'warehouse' => 'warehouse',
         ];
     }
 
@@ -396,16 +385,12 @@ class ImportPartsController extends Controller
     private function toMoney($raw): ?float
     {
         if ($raw === null || $raw === '') return null;
-        // Handle "6 500.00", "0,00", etc.
         $s = trim((string)$raw);
-        // If comma as decimal and dot as thousand: "10.274,72"
         if (preg_match('/^\d{1,3}(\.\d{3})+,\d{2}$/', $s)) {
             $s = str_replace('.', '', $s);
             $s = str_replace(',', '.', $s);
         } else {
-            // Remove spaces and thousands commas; keep last dot/comma as decimal
             $s = str_replace([' '], '', $s);
-            // If there's a comma but no dot, assume comma decimal
             if (strpos($s, ',') !== false && strpos($s, '.') === false) {
                 $s = str_replace(',', '.', $s);
             } else {
@@ -422,27 +407,4 @@ class ImportPartsController extends Controller
         if ($s === '' || $s === '-') return null;
         return (int)$s;
     }
-
-    private function resolveWarehouseId(?string $nameOrId): ?int
-    {
-        if (!$nameOrId) return null;
-        if (ctype_digit((string)$nameOrId)) {
-            return Warehouse::where('id', (int)$nameOrId)->value('id');
-        }
-        $w = Warehouse::where('name', trim($nameOrId))->first();
-        return $w?->id;
-    }
-
-    private function normalizeModelName(?string $raw, int $max = 120): array
-    {
-        if (!$raw) return [null, null];
-        $name = trim(preg_replace('/\s+/', ' ', $raw));
-        if ($name === '') return [null, null];
-        if (mb_strlen($name) > $max) {
-            return [mb_substr($name, 0, $max), $name]; // [short, full]
-        }
-        return [$name, null];
-    }
-
-
 }

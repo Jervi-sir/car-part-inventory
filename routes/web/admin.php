@@ -16,16 +16,6 @@ use Illuminate\Support\Facades\Route;
 
 // role:ADMIN,MODERATOR
 Route::middleware(['auth', 'role:ADMIN,MODERATOR'])->prefix('admin')->group(function () {
-    // Categories
-    Route::prefix('categories')->group(function () {
-        Route::get('/', fn()  => Inertia::render('admin/categories/page'))->name('admin.categories.page');          // [done]
-        Route::prefix('api')->group(function () {
-            Route::get('/', [CategoryController::class, 'index'])->name('admin.categories.api.crud');               // [done]
-            Route::post('/', [CategoryController::class, 'store']);                                                 // [done]
-            Route::put('{category}', [CategoryController::class, 'update']);                                        // [done]
-            Route::delete('{category}', [CategoryController::class, 'destroy']);                                    // [done]
-        });
-    });
     // Vehicle Brands
     Route::prefix('manufacturers')->group(function () {
         Route::get('/', fn()  => Inertia::render('admin/manufacturers/page'))->name('admin.manufacturers.page');

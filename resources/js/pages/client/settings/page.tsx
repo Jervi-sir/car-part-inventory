@@ -1,33 +1,12 @@
 import { useState, useEffect, useMemo } from "react";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
-  CardFooter,
-} from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import { ClientLayout } from "../layout/client-layout";
 import api from "@/lib/api";
-import { Appearance, useAppearance } from "@/hooks/use-appearance";
-import { LucideIcon, Monitor, Moon, Sun } from "lucide-react";
-import { cn } from "@/lib/utils";
 import { AddressDialog } from "./address-dialog";
 import { ShippingAddressesCard } from "./shipping-addresses-card";
 import { AppearanceCard } from "./appearance-card";
 import { Address, User } from "./types";
 import { ProfileCard } from "./profile-card";
+import { DocumentsCard } from "./documents-card";
 
 
 export default function SettingsPage() {
@@ -121,25 +100,31 @@ export default function SettingsPage() {
     <ClientLayout title="Settings">
       <div className="p-6 pt-0 space-y-4">
         <h1 className="text-2xl font-semibold">User Settings</h1>
-        <div className="grid grid-cols-2 items-start gap-4">
-          <ShippingAddressesCard
-            addresses={addresses}
-            hasAddresses={hasAddresses}
-            loading={loading}
-            onDeleteAddress={onDeleteAddress}
-            openCreateDialog={openCreateDialog}
-            openEditDialog={openEditDialog}
-          />
-          <ProfileCard 
-            user={user} 
-            setUser={setUser} 
-            saveUser={saveUser} 
-          />
-          <div></div>
-          <AppearanceCard />
+        <div className="columns-1 md:columns-2 gap-4 [column-fill:_balance]">
+          <div className="break-inside-avoid mb-4 w-full">
+            <ProfileCard
+              user={user}
+              setUser={setUser}
+              saveUser={saveUser}
+            />
+          </div>
+          <div className="break-inside-avoid mb-4 w-full">
+            <AppearanceCard />
+          </div>
+          <div className="break-inside-avoid mb-4 w-full">
+            <ShippingAddressesCard
+              addresses={addresses}
+              hasAddresses={hasAddresses}
+              loading={loading}
+              onDeleteAddress={onDeleteAddress}
+              openCreateDialog={openCreateDialog}
+              openEditDialog={openEditDialog}
+            />
+          </div>
+          <div className="break-inside-avoid mb-4 w-full">
+            <DocumentsCard user={user} setUser={setUser} saveUser={saveUser} />
+          </div>
         </div>
-
-        {/* Create/Edit Dialog */}
         <AddressDialog
           open={addrDialogOpen}
           onOpenChange={setAddrDialogOpen}

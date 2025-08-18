@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Head, useForm, usePage } from "@inertiajs/react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,30 +15,34 @@ type OptionItem = { id: number; name: string };
 
 const TARGET_FIELDS = [
   { v: "", label: "— Ignore —" },
-  { v: "sku", label: "SKU / Référence" },
-  { v: "oem_reference", label: "OEM Reference" },
+  // identifiers
+  { v: "sku", label: "SKU" },
+  { v: "reference", label: "Reference" },
+  { v: "barcode", label: "Barcode (EAN/UPC)" },
+  // name/desc
   { v: "name", label: "Name / Désignation" },
-  { v: "qty", label: "Quantity" },
-  { v: "stock_qty", label: "Stock Qty" },
-  { v: "price_retail", label: "Price (Retail / PU Vente)" },
-  { v: "price_demi_gros", label: "Price (Demi-Gros)" },
-  { v: "price_gros", label: "Price (Gros TTC)" },
-  { v: "category", label: "Category" },
+  { v: "description", label: "Description" },
+  // manufacturer
   { v: "manufacturer", label: "Manufacturer" },
+  // pricing TTC + TVA
+  { v: "price_retail_ttc", label: "Price Retail TTC" },
+  { v: "price_wholesale_ttc", label: "Price Wholesale TTC" },
+  { v: "tva_rate", label: "TVA %" },
+  // stock (global)
+  { v: "stock_real", label: "Stock Réel" },
+  { v: "stock_available", label: "Stock Disponible" },
+  // fitment
   { v: "vehicle_brand", label: "Vehicle Brand / Marque" },
   { v: "vehicle_model", label: "Vehicle Model / Affectation" },
   { v: "year_from", label: "Year From" },
   { v: "year_to", label: "Year To" },
   { v: "engine_code", label: "Engine Code" },
-  { v: "reference_type", label: "Reference Type (OEM/AFTERMARKET/...)" },
-  { v: "source_brand", label: "Reference Source Brand" },
-  { v: "warehouse", label: "Warehouse (name or id)" },
 ];
 
 export default function ImportParts() {
   const { props }: any = usePage();
   const guessMap = props.guessMap || {};
-  const warehouses = props.warehouses || [];
+  const manufacturers = props.manufacturers || [];
 
   const flashParsed = props.flash?.parsed;
   const flashResult = props.flash?.result;
@@ -47,43 +51,6 @@ export default function ImportParts() {
   const [file, setFile] = useState<File | null>(null);
   const [delimiter, setDelimiter] = useState<string>("");
   const [hasHeader, setHasHeader] = useState<boolean>(true);
-  const [catOptions, setCatOptions] = useState<OptionItem[]>([]);
-  const [manOptions, setManOptions] = useState<OptionItem[]>([]);
-  const [selectedCategoryId, setSelectedCategoryId] = useState<string>("");
-  const [selectedManufacturerId, setSelectedManufacturerId] = useState<string>("");
-
-  // fetch on mount
-  useEffect(() => {
-    (async () => {
-      try {
-        const [catsRes, mansRes] = await Promise.all([
-          fetch(route("lookup.api.categories")),
-          fetch(route("lookup.api.manufacturers")),
-        ]);
-        const catsJson = await catsRes.json();
-        const mansJson = await mansRes.json();
-        setCatOptions(catsJson?.data ?? []);
-        setManOptions(mansJson?.data ?? []);
-      } catch (e) {
-        console.error("Lookup fetch failed:", e);
-      }
-    })();
-  }, []);
-
-  // if page reloads with existing defaults (names), preselect matching ids
-  useEffect(() => {
-    if (commitForm?.data?.options?.default_category && catOptions.length) {
-      const match = catOptions.find(c => c.name === commitForm.data.options.default_category);
-      if (match) setSelectedCategoryId(String(match.id));
-    }
-  }, [catOptions]);
-
-  useEffect(() => {
-    if (commitForm?.data?.options?.default_manufacturer && manOptions.length) {
-      const match = manOptions.find(m => m.name === commitForm.data.options.default_manufacturer);
-      if (match) setSelectedManufacturerId(String(match.id));
-    }
-  }, [manOptions]);
 
   const uploadForm = useForm({
     file: null as any,
@@ -105,11 +72,8 @@ export default function ImportParts() {
   const parsed = flashParsed || null;
 
   useEffect(() => {
-    if (parsed?.autoMap) {
-      setMapping(parsed.autoMap);
-    } else {
-      setMapping({});
-    }
+    if (parsed?.autoMap) setMapping(parsed.autoMap);
+    else setMapping({});
   }, [parsed?.autoMap]);
 
   const headers: string[] = parsed?.headers || [];
@@ -119,22 +83,21 @@ export default function ImportParts() {
     setMapping((m) => ({ ...m, [idx]: value || "" }));
   };
 
-  // 3) Commit form
+  // 3) Commit form (schema-aligned options)
   const commitForm = useForm({
-    uploaded: parsed ? {
-      headers: parsed.headers,
-      rows: parsed.rows,
-      delimiter: parsed.delimiter,
-      hasHeader: parsed.hasHeader,
-    } : null,
+    uploaded: parsed
+      ? {
+          headers: parsed.headers,
+          rows: parsed.rows,
+          delimiter: parsed.delimiter,
+          hasHeader: parsed.hasHeader,
+        }
+      : null,
     mapping: mapping,
     options: {
-      default_category: "",
       default_manufacturer: "",
-      reference_type: "OTHER",
-      default_warehouse_id: "",
-      create_missing_vehicle: true,
-    }
+      tva_rate_default: "", // optional fallback (e.g. 19.00)
+    },
   });
 
   useEffect(() => {
@@ -149,6 +112,14 @@ export default function ImportParts() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [parsed, mapping]);
+
+  const [selectedManufacturerId, setSelectedManufacturerId] = useState<string>("");
+  useEffect(() => {
+    if (commitForm?.data?.options?.default_manufacturer && manufacturers.length) {
+      const match = manufacturers.find((m: OptionItem) => m.name === commitForm.data.options.default_manufacturer);
+      if (match) setSelectedManufacturerId(String(match.id));
+    }
+  }, [manufacturers]);
 
   const onCommit = () => {
     commitForm.post(route("admin.import.parts.commit"));
@@ -173,7 +144,6 @@ export default function ImportParts() {
                 <Select value={delimiter} onValueChange={setDelimiter}>
                   <SelectTrigger><SelectValue placeholder="Auto-detect" /></SelectTrigger>
                   <SelectContent>
-                    {/* empty string means auto-detect */}
                     <SelectItem value="">Auto-detect</SelectItem>
                     <SelectItem value=",">Comma (,)</SelectItem>
                     <SelectItem value=";">Semicolon (;)</SelectItem>
@@ -214,7 +184,6 @@ export default function ImportParts() {
                       {headers.map((h, i) => (
                         <TableHead key={i} className="min-w-[220px]">
                           <div className="space-y-2">
-                            {/* <div className="text-xs text-muted-foreground">CSV Header</div> */}
                             <div className="font-medium">{h}</div>
                             <Select value={mapping[i] ?? ""} onValueChange={(v) => changeMap(i, v)}>
                               <SelectTrigger className="h-8">
@@ -248,38 +217,12 @@ export default function ImportParts() {
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
-                  <Label>Default Category (if missing)</Label>
-                  <Select
-                    value={selectedCategoryId}
-                    onValueChange={(v) => {
-                      setSelectedCategoryId(v);
-                      const name = v ? (catOptions.find(c => String(c.id) === v)?.name ?? "") : "";
-                      commitForm.setData("options", { ...commitForm.data.options, default_category: name });
-                    }}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="— none —" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="">— none —</SelectItem>
-                      {catOptions.map((c) => (
-                        <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {/* Optional tiny helper showing what will be sent */}
-                  <div className="text-xs text-muted-foreground">
-                    Will send: {commitForm.data.options.default_category || "— none —"}
-                  </div>
-                </div>
-
-                <div className="space-y-2">
                   <Label>Default Manufacturer (if missing)</Label>
                   <Select
                     value={selectedManufacturerId}
                     onValueChange={(v) => {
                       setSelectedManufacturerId(v);
-                      const name = v ? (manOptions.find(m => String(m.id) === v)?.name ?? "") : "";
+                      const name = v ? (manufacturers.find((m: OptionItem) => String(m.id) === v)?.name ?? "") : "";
                       commitForm.setData("options", { ...commitForm.data.options, default_manufacturer: name });
                     }}
                   >
@@ -288,7 +231,7 @@ export default function ImportParts() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="">— none —</SelectItem>
-                      {manOptions.map((m) => (
+                      {manufacturers.map((m: OptionItem) => (
                         <SelectItem key={m.id} value={String(m.id)}>{m.name}</SelectItem>
                       ))}
                     </SelectContent>
@@ -299,49 +242,18 @@ export default function ImportParts() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Reference Type</Label>
-                  <Select
-                    value={commitForm.data.options.reference_type}
-                    onValueChange={(v) => commitForm.setData('options', { ...commitForm.data.options, reference_type: v })}
-                  >
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="OTHER">OTHER</SelectItem>
-                      <SelectItem value="OEM">OEM</SelectItem>
-                      <SelectItem value="AFTERMARKET">AFTERMARKET</SelectItem>
-                      <SelectItem value="SUPPLIER">SUPPLIER</SelectItem>
-                      <SelectItem value="EAN_UPC">EAN_UPC</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Default Warehouse</Label>
-                  <Select
-                    value={String(commitForm.data.options.default_warehouse_id || '')}
-                    onValueChange={(v) =>
-                      commitForm.setData('options', { ...commitForm.data.options, default_warehouse_id: v ? Number(v) : '' })
+                  <Label>Default TVA % (if column missing)</Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    placeholder="e.g. 19.00"
+                    value={commitForm.data.options.tva_rate_default}
+                    onChange={(e) =>
+                      commitForm.setData('options', { ...commitForm.data.options, tva_rate_default: e.target.value })
                     }
-                  >
-                    <SelectTrigger><SelectValue placeholder="— none —" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="">— none —</SelectItem> {/* was "Auto" */}
-                      {warehouses.map((w: any) => (
-                        <SelectItem key={w.id} value={String(w.id)}>{w.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-
-                </div>
-                <div className="flex items-end gap-2">
-                  <div className="space-y-2">
-                    <Label className="block">Create missing vehicle brands/models</Label>
-                    <div className="flex items-center gap-2">
-                      <Switch
-                        checked={!!commitForm.data.options.create_missing_vehicle}
-                        onCheckedChange={(val) => commitForm.setData('options', { ...commitForm.data.options, create_missing_vehicle: val })}
-                      />
-                      <span className="text-sm">{commitForm.data.options.create_missing_vehicle ? 'Yes' : 'No'}</span>
-                    </div>
+                  />
+                  <div className="text-xs text-muted-foreground">
+                    Used only if CSV has no TVA column.
                   </div>
                 </div>
               </div>

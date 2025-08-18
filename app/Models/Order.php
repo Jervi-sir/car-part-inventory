@@ -22,7 +22,7 @@ class Order extends Model
         'shipping_total',
         'tax_total',
         'grand_total',
-        'notes',
+        'notes'
     ];
 
     protected function casts(): array
@@ -46,11 +46,6 @@ class Order extends Model
     public function items()
     {
         return $this->hasMany(OrderItem::class);
-    }
-
-    public function notes()
-    {
-        return $this->hasOne(OrderNote::class);
     }
 
     public function orderItems()

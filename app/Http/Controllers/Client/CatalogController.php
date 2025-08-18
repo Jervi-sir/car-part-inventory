@@ -14,26 +14,20 @@ class CatalogController extends Controller
         $perPage = max(1, min((int)$req->integer('per_page') ?: 12, 60));
         $page    = max(1, (int)$req->integer('page') ?: 1);
 
+        // NOTE: parts table no longer has category_id or references; prices are TTC.
         $q = Part::query()
             ->with([
                 'manufacturer:id,name',
-                'category:id,name',
-                // fitments -> vehicleModel -> vehicleBrand to build models/brands lists
+                // for fitments -> models -> brands
                 'fitments.vehicleModel.vehicleBrand:id,name',
-                // references for the list
-                'references:id,part_id,type,code,source_brand',
             ])
             ->where('is_active', true)
-            ->when(
-                $req->filled('category_id') && $req->category_id !== 'all',
-                fn($x) =>
-                $x->where('category_id', (int)$req->category_id)
-            )
+            // manufacturer filter
             ->when(
                 $req->filled('manufacturer_id') && $req->manufacturer_id !== 'all',
-                fn($x) =>
-                $x->where('manufacturer_id', (int)$req->manufacturer_id)
+                fn($x) => $x->where('manufacturer_id', (int)$req->manufacturer_id)
             )
+            // brand filter (via fitments)
             ->when($req->filled('vehicle_brand_id') && $req->vehicle_brand_id !== 'all', function ($x) use ($req) {
                 $brandId = (int)$req->vehicle_brand_id;
                 $x->whereExists(function ($s) use ($brandId) {
@@ -44,6 +38,7 @@ class CatalogController extends Controller
                         ->where('vm.vehicle_brand_id', $brandId);
                 });
             })
+            // model filter (via fitments)
             ->when($req->filled('vehicle_model_id') && $req->vehicle_model_id !== 'all', function ($x) use ($req) {
                 $modelId = (int)$req->vehicle_model_id;
                 $x->whereExists(function ($s) use ($modelId) {
@@ -53,17 +48,14 @@ class CatalogController extends Controller
                         ->where('pf.vehicle_model_id', $modelId);
                 });
             })
+            // search by name/sku/barcode/reference (reference is a column on parts in new schema)
             ->when($req->filled('q'), function ($x) use ($req) {
                 $term = trim($req->q);
                 $x->where(function ($w) use ($term) {
                     $w->where('parts.name', 'like', "%{$term}%")
                         ->orWhere('parts.sku', 'like', "%{$term}%")
-                        ->orWhereExists(function ($s) use ($term) {
-                            $s->select(DB::raw(1))
-                                ->from('part_references as pr')
-                                ->whereColumn('pr.part_id', 'parts.id')
-                                ->where('pr.code', 'like', "%{$term}%");
-                        });
+                        ->orWhere('parts.barcode', 'like', "%{$term}%")
+                        ->orWhere('parts.reference', 'like', "%{$term}%");
                 });
             })
             ->orderByDesc('id');
@@ -72,49 +64,54 @@ class CatalogController extends Controller
         $rows  = $q->forPage($page, $perPage)->get();
 
         $data = $rows->map(function (Part $p) {
-            // image
-            $img = is_array($p->images ?? null) && !empty($p->images) ? ($p->images[0]['url'] ?? $p->images[0]) : null;
+            // image: first from JSON
+            $img = is_array($p->images ?? null) && !empty($p->images)
+                ? ($p->images[0]['url'] ?? $p->images[0])
+                : null;
 
             // models & brands
             $models = [];
-            $brands = [];
+            $brandsAssoc = [];
             foreach ($p->fitments as $f) {
-                $vm = $f->vehicleModel;
-                if ($vm) {
+                if ($vm = $f->vehicleModel) {
                     $models[] = $vm->name;
-                    $brandName = $vm->vehicleBrand?->name;
-                    if ($brandName) $brands[$brandName] = true; // unique
+                    if ($b = $vm->vehicleBrand?->name) $brandsAssoc[$b] = true; // unique
                 }
             }
 
-            // references
-            $refs = $p->references->map(fn($r) => [
-                'type' => $r->type,
-                'code' => $r->code,
-                'source_brand' => $r->source_brand,
-            ])->values();
+            // map TTC prices to UI fields the frontend expects
+            $priceRetail = $p->price_retail_ttc !== null ? (float)$p->price_retail_ttc : null;
+            $priceGros   = $p->price_wholesale_ttc !== null ? (float)$p->price_wholesale_ttc : null;
+
+            // synthesize min quantities since schema no longer has them
+            $minOrderQty = 1;
+            $minQtyGros  = 1;
 
             return [
                 'id'              => $p->id,
                 'sku'             => $p->sku,
                 'name'            => $p->name,
                 'image'           => $img,
-                'manufacturer'    => $p->manufacturer?->only(['id', 'name']),
-                'category'        => $p->category?->only(['id', 'name']),
 
-                // quantities & prices
-                'min_order_qty'   => $p->min_order_qty,
-                'min_qty_gros'    => $p->min_qty_gros,
-                'price_retail'    => $p->price_retail,
-                'price_demi_gros' => $p->price_demi_gros,
-                'price_gros'      => $p->price_gros,
+                // keep manufacturer; no category in new schema
+                'manufacturer'    => $p->manufacturer?->only(['id', 'name']),
+                'category'        => null,
+
+                // quantities & prices as expected by React table
+                'min_order_qty'   => $minOrderQty,
+                'min_qty_gros'    => $minQtyGros,
+                'price_retail'    => $priceRetail,
+                'price_demi_gros' => null,      // not in schema
+                'price_gros'      => $priceGros,
 
                 // lists
                 'fitment_models'  => array_values($models),
-                'fitment_brands'  => array_keys($brands),
-                'references'      => $refs,
+                'fitment_brands'  => array_keys($brandsAssoc),
+
+                // references array removed (no part_references table); keep empty list for UI
+                'references'      => [],
             ];
-        });
+        })->values();
 
         return response()->json([
             'data'     => $data,

@@ -50,6 +50,7 @@ Route::middleware(['auth'])->group(function () {
         Route::prefix('api')->group(function () {
             Route::get('settings', [UserSettingsController::class, 'show'])->name('client.settings.api');
             Route::put('settings', [UserSettingsController::class, 'update']);
+            Route::post('upload',   [UserSettingsController::class, 'upload'])->name('client.settings.api.upload'); // ← add this
 
             Route::prefix('shipping-addresses')->group(function () {
                 Route::get('/', [ShippingAddressController::class, 'index'])->name('client.settings.api.shipping-addresses.crud');
