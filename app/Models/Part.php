@@ -61,4 +61,23 @@ class Part extends Model
         return $this->hasMany(OrderItem::class);
     }
 
+    // Convenience: first image
+    public function getPrimaryImageAttribute(): ?string
+    {
+        $imgs = $this->images ?? [];
+        return is_array($imgs) && count($imgs) ? ($imgs[0]['url'] ?? $imgs[0]) : null;
+    }
+    
+    // Optional search scope
+    public function scopeSearch($q, ?string $term)
+    {
+        if (!$term) return $q;
+        $term = trim($term);
+        return $q->where(function ($qq) use ($term) {
+            $qq->where('name', 'like', "%{$term}%")
+               ->orWhere('sku', 'like', "%{$term}%")
+               ->orWhere('description', 'like', "%{$term}%");
+        });
+    }
+
 }

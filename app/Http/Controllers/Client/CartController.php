@@ -47,6 +47,130 @@ class CartController extends Controller
     }
 
 
+    public function quickPreview(Request $request)
+    {
+        $data = $request->validate([
+            'q'               => ['nullable','string'],
+            'category_id'     => ['nullable','integer'],
+            'manufacturer_id' => ['nullable','integer'],
+            'is_active'       => ['nullable','in:0,1'],
+            'min_price'       => ['nullable','numeric'],
+            'max_price'       => ['nullable','numeric'],
+            'price_tier'      => ['nullable','in:retail,demi_gros,gros'],
+            'sort'            => ['nullable','string'], // e.g. "name,-created_at,price"
+            'per_page'        => ['nullable','integer','min:1','max:100'],
+        ]);
+
+        $priceColumn = match($data['price_tier'] ?? 'retail') {
+            'demi_gros' => 'price_demi_gros',
+            'gros'      => 'price_gros',
+            default     => 'price_retail',
+        };
+
+        $query = Part::query()
+            ->with([
+                'category:id,name,is_special,icon_url',
+                'manufacturer:id,name',
+            ])
+            ->select([
+                'id','manufacturer_id','category_id',
+                'sku','name','description',
+                'package_qty','min_order_qty',
+                'price_retail','price_demi_gros','price_gros',
+                'images','min_qty_gros','is_active','created_at',
+            ])
+            ->search($data['q'] ?? null);
+
+        if (isset($data['category_id'])) {
+            $query->where('category_id', $data['category_id']);
+        }
+        if (isset($data['manufacturer_id'])) {
+            $query->where('manufacturer_id', $data['manufacturer_id']);
+        }
+        if (isset($data['is_active'])) {
+            $query->where('is_active', (bool)$data['is_active']);
+        } else {
+            $query->where('is_active', true); // default: only active
+        }
+
+        // Price range on chosen tier
+        if (isset($data['min_price'])) {
+            $query->where($priceColumn, '>=', $data['min_price']);
+        }
+        if (isset($data['max_price'])) {
+            $query->where($priceColumn, '<=', $data['max_price']);
+        }
+
+        // Sorting
+        // alias "price" to the chosen tier; support "-field" DESC
+        $sorts = array_filter(array_map('trim', explode(',', $data['sort'] ?? '')));
+        if (empty($sorts)) {
+            // sensible default
+            $query->orderBy('created_at', 'desc');
+        } else {
+            foreach ($sorts as $s) {
+                $dir = str_starts_with($s, '-') ? 'desc' : 'asc';
+                $col = ltrim($s, '-');
+                if ($col === 'price') $col = $priceColumn;
+                if (in_array($col, [
+                    'id','name','sku','created_at',
+                    'price_retail','price_demi_gros','price_gros'
+                ], true)) {
+                    $query->orderBy($col, $dir);
+                }
+            }
+        }
+
+        $perPage = $data['per_page'] ?? 15;
+        $paginator = $query->paginate($perPage)->appends($request->query());
+
+        // Transform (lightweight)
+        $items = collect($paginator->items())->map(function (Part $p) use ($priceColumn) {
+            return [
+                'id' => $p->id,
+                'sku' => $p->sku,
+                'name' => $p->name,
+                'description' => $p->description,
+                'package_qty' => $p->package_qty,
+                'min_order_qty' => $p->min_order_qty,
+                'prices' => [
+                    'retail' => $p->price_retail,
+                    'demi_gros' => $p->price_demi_gros,
+                    'gros' => $p->price_gros,
+                    'active' => $p->{$priceColumn},
+                    'tier' => $priceColumn, // for the UI to know which tier was used
+                ],
+                'image' => $p->primary_image, // first image only for list
+                'images' => $p->images,       // full if needed
+                'min_qty_gros' => $p->min_qty_gros,
+                'is_active' => $p->is_active,
+                'category' => [
+                    'id' => $p->category?->id,
+                    'name' => $p->category?->name,
+                    'is_special' => $p->category?->is_special,
+                    'icon_url' => $p->category?->icon_url,
+                ],
+                'manufacturer' => [
+                    'id' => $p->manufacturer?->id,
+                    'name' => $p->manufacturer?->name,
+                ],
+                'created_at' => $p->created_at,
+            ];
+        });
+
+        return response()->json([
+            'items' => $items,
+            'meta' => [
+                'total'      => $paginator->total(),
+                'per_page'   => $paginator->perPage(),
+                'current'    => $paginator->currentPage(),
+                'last_page'  => $paginator->lastPage(),
+                'has_more'   => $paginator->hasMorePages(),
+            ],
+        ]);
+    }
+
+
     public function show(Request $req)
     {
         $user = Auth::user();

@@ -1,5 +1,3 @@
-"use client";
-
 import { Appearance, useAppearance } from "@/hooks/use-appearance";
 import { Button } from "@/components/ui/button";
 import {

@@ -10,6 +10,7 @@ use Inertia\Inertia;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth'])->group(function () {
+
     Route::prefix('catalog')->group(function () {
         Route::get('/', fn() => Inertia::render('client/catalog/page'))->name('client.parts.page');
         Route::get('/parts', [CatalogController::class, 'index'])->name('shop.api.parts');
@@ -26,6 +27,10 @@ Route::middleware(['auth'])->group(function () {
             Route::get('{order}', [OrderController::class, 'show'])->name('shop.api.orders.show');
         });
     });
+
+    Route::prefix('cart')->middleware(['throttle:60,1'])
+        ->get('/quick-preview', [OrderController::class, 'quickPreview'])
+        ->name('client.cart.quick-preview');
 
     Route::prefix('checkout')->group(function () {
         Route::get('/', fn() => Inertia::render('client/checkout/page'))->name('client.checkout.page');

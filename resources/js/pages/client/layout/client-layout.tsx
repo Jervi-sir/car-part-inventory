@@ -3,6 +3,10 @@ import React from 'react';
 import { AppSidebar } from './sidebar';
 import { Separator } from '@/components/ui/separator';
 import { ThemeToggleDropdown } from '@/components/theme-toggle-dropdown';
+import { Link, usePage } from '@inertiajs/react';
+import { Button } from '@/components/ui/button';
+import { ShoppingCart } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 
 type ClientLayoutProps = {
   children: React.ReactNode;
@@ -47,21 +51,45 @@ function SiteHeader({ title }: { title?: string }) {
         />
         <h1 className="text-base font-medium">{title ?? "Documents"}</h1>
         <div className="ml-auto flex items-center gap-2">
+          <CartSummary  />
           <ThemeToggleDropdown />
-          {/* <Button variant="ghost" asChild size="sm" className="hidden sm:flex">
-            <a
-              href="https://github.com/shadcn-ui/ui/tree/main/apps/v4/app/(examples)/dashboard"
-              rel="noopener noreferrer"
-              target="_blank"
-              className="dark:text-foreground"
-            >
-              GitHub
-            </a>
-          </Button> */}
         </div>
       </div>
     </header>
   );
 }
 
+type CartShared = {
+  id: number;
+  lines_count: number;
+  qty_total: number;
+  subtotal: string;
+  grand_total: string;
+} | null;
 
+
+function CartSummary() {
+  const { props } = usePage<{ cart: CartShared }>();
+  const cart = props.cart;
+  function formatDZD(amount: number) {
+    return `${amount.toLocaleString("fr-DZ")} DZD`;
+  }
+
+  // If no cart yet, show nothing (or a subtle placeholder)
+  if (!cart) return null;
+
+  const count = cart.lines_count ?? 0;
+  const qty_total = cart.qty_total ?? 0;
+  const total = Number(cart.grand_total ?? 0);
+
+  return (
+    <Link href={route('client.checkout.page')}>
+      <Button variant="outline" size="default" className="gap-2">
+        <ShoppingCart className="h-4 w-4" />
+        <span className="hidden sm:inline">Cart</span>
+        <Badge variant="secondary" className="ml-1">{qty_total}</Badge>
+        <span className="ml-2 text-muted-foreground">{formatDZD(total)}</span>
+      </Button>
+    </Link>
+  );
+}

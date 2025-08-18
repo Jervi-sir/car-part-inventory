@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from "react";
-import { Head } from "@inertiajs/react";
+import { Head, router } from "@inertiajs/react";
 import { ClientLayout } from "../layout/client-layout";
 
 import { Button } from "@/components/ui/button";
@@ -91,6 +91,12 @@ export default function CheckoutPage() {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [placed, setPlaced] = useState<{ order_id: number; grand_total: number } | null>(null);
 
+  const [expanded, setExpanded] = useState<Record<number, boolean>>({});
+  const toggleRow = (id: number) =>
+    setExpanded(prev => ({ ...prev, [id]: !prev[id] }));
+  const fmt = (v?: number | null) =>
+    v == null ? "–" : `${Number(v).toFixed(2)} ${cart.currency}`;
+
   const refreshCart = async () => {
     setLoading(true);
     const { data: js } = await http.get(endpoints.cartShow);
@@ -131,6 +137,11 @@ export default function CheckoutPage() {
     await http.put(endpoints.cartUpdate(id), { quantity: qty });
     await refreshCart();
     setBusyRow(null);
+    await router.reload({
+      only: ["cart"],
+      preserveState: true,
+      preserveScroll: true,
+    });
   };
 
   const remove = async (id: Id) => {
@@ -138,6 +149,11 @@ export default function CheckoutPage() {
     await http.delete(endpoints.cartRemove(id));
     await refreshCart();
     setBusyRow(null);
+    await router.reload({
+      only: ["cart"],
+      preserveState: true,
+      preserveScroll: true,
+    });
   };
 
   const clear = async () => {
@@ -219,11 +235,11 @@ export default function CheckoutPage() {
           <Card className="p-4 gap-3 lg:col-span-2">
             <div className="flex items-center justify-between">
               <div className="font-semibold">Your Order</div>
-              {!isEmpty && (
+              {/* {!isEmpty && (
                 <Button variant="ghost" size="sm" onClick={clear}>
                   <X className="h-4 w-4 mr-2" /> Clear cart
                 </Button>
-              )}
+              )} */}
             </div>
 
             {loading ? (
@@ -235,101 +251,185 @@ export default function CheckoutPage() {
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      {/* NEW: toggle column */}
+                      <TableHead className="w-[44px]"></TableHead>
                       <TableHead className="w-[120px]">SKU</TableHead>
                       <TableHead>Name</TableHead>
-                      <TableHead className="w-[180px]">Manufacturer</TableHead>
+                      {/* <TableHead className="w-[180px]">Manufacturer</TableHead> */}
                       <TableHead className="w-[260px]">Fitment Models</TableHead>
-                      <TableHead className="w-[220px]">Fitment Brands</TableHead>
-                      <TableHead className="w-[110px]">Min Order</TableHead>
-                      <TableHead className="w-[110px]">Min (Gros)</TableHead>
-                      <TableHead className="w-[120px]">Retail</TableHead>
-                      <TableHead className="w-[140px]">Demi-gros</TableHead>
-                      <TableHead className="w-[120px]">Gros</TableHead>
-                      <TableHead className="w-[260px]">References</TableHead>
+                      {/* <TableHead className="w-[220px]">Fitment Brands</TableHead> */}
+                      {/* <TableHead className="w-[110px]">Min Order</TableHead> */}
+                      {/* <TableHead className="w-[110px]">Min (Gros)</TableHead> */}
+                      {/* <TableHead className="w-[120px]">Retail</TableHead> */}
+                      {/* <TableHead className="w-[140px]">Demi-gros</TableHead> */}
+                      {/* <TableHead className="w-[120px]">Gros</TableHead> */}
+                      {/* <TableHead className="w-[260px]">References</TableHead> */}
                       <TableHead className="w-[200px]">Qty</TableHead>
                       <TableHead className="w-[80px]">Remove</TableHead>
                     </TableRow>
                   </TableHeader>
+
                   <TableBody>
                     {cart.items.map((it) => {
                       const disabled = busyRow === it.id;
                       const baseMin = Math.max(1, it.min_order_qty || 1);
+                      const isOpen = !!expanded[it.id];
+                      // header has 14 cells now → colSpan for detail row:
+                      const DETAIL_COLSPAN = 14;
+
                       return (
-                        <TableRow key={it.id}>
-                          <TableCell className="font-mono text-xs">{it.sku || "—"}</TableCell>
-                          <TableCell className="font-medium">{it.name}</TableCell>
-                          <TableCell>{it.manufacturer?.name || "—"}</TableCell>
-                          <TableCell className="text-xs">
-                            {it.fitment_models?.length ? it.fitment_models.join(", ") : "—"}
-                          </TableCell>
-                          <TableCell className="text-xs">
-                            {it.fitment_brands?.length ? it.fitment_brands.join(", ") : "—"}
-                          </TableCell>
-                          <TableCell>{it.min_order_qty}</TableCell>
-                          <TableCell>{it.min_qty_gros}</TableCell>
-                          <TableCell>
-                            {it.price_retail != null ? `${it.price_retail} ${cart.currency}` : "–"}
-                          </TableCell>
-                          <TableCell>
-                            {it.price_demi_gros != null ? `${it.price_demi_gros} ${cart.currency}` : "–"}
-                          </TableCell>
-                          <TableCell>
-                            {it.price_gros != null ? `${it.price_gros} ${cart.currency}` : "–"}
-                          </TableCell>
-                          <TableCell className="text-xs">
-                            {it.references?.length
-                              ? it.references.map((r, i) => (
-                                  <span key={i}>
-                                    {r.code}
-                                    {r.source_brand ? ` (${r.source_brand})` : ""}
-                                    {r.type ? ` [${r.type}]` : ""}
-                                    {i < it.references.length - 1 ? ", " : ""}
-                                  </span>
-                                ))
-                              : "—"}
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-1">
+                        <>
+                          <TableRow key={`row-${it.id}`}>
+                            {/* NEW: toggle cell */}
+                            <TableCell className="p-0">
                               <Button
-                                variant="outline"
+                                variant="ghost"
                                 size="icon"
-                                disabled={disabled}
-                                onClick={() => updateQty(it.id, Math.max(baseMin, (it.qty ?? baseMin) - 1))}
-                              >
-                                <Minus className="h-4 w-4" />
-                              </Button>
-                              <Input
-                                type="number"
-                                min={baseMin}
-                                className="w-20 text-center"
-                                disabled={disabled}
-                                value={it.qty ?? baseMin}
-                                onChange={(e) => {
-                                  const v = Math.max(baseMin, Number(e.target.value) || baseMin);
-                                  updateQty(it.id, v);
-                                }}
-                              />
-                              <Button
-                                variant="outline"
-                                size="icon"
-                                disabled={disabled}
-                                onClick={() => updateQty(it.id, (it.qty ?? baseMin) + 1)}
+                                className={`h-8 w-8 transition-transform ${isOpen ? "rotate-90" : ""}`}
+                                onClick={() => toggleRow(it.id)}
                               >
                                 <Plus className="h-4 w-4" />
                               </Button>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <Button variant="ghost" size="icon" disabled={disabled} onClick={() => remove(it.id)}>
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </TableCell>
-                        </TableRow>
+                            </TableCell>
+
+                            <TableCell className="font-mono text-xs">{it.sku || "—"}</TableCell>
+                            <TableCell className="font-medium">{it.name}</TableCell>
+                            {/* <TableCell>{it.manufacturer?.name || "—"}</TableCell> */}
+                            <TableCell className="text-xs truncate max-w-[260px]">
+                              {it.fitment_models?.length ? it.fitment_models.join(", ") : "—"}
+                            </TableCell>
+                            {/* <TableCell className="text-xs truncate max-w-[220px]">
+                              {it.fitment_brands?.length ? it.fitment_brands.join(", ") : "—"}
+                            </TableCell> */}
+                            {/* <TableCell>{it.min_order_qty}</TableCell> */}
+                            {/* <TableCell>{it.min_qty_gros}</TableCell> */}
+                            {/* <TableCell>{fmt(it.price_retail)}</TableCell> */}
+                            {/* <TableCell>{fmt(it.price_demi_gros)}</TableCell> */}
+                            {/* <TableCell>{fmt(it.price_gros)}</TableCell> */}
+                            {/* <TableCell className="text-xs truncate max-w-[260px]">
+                              {it.references?.length
+                                ? it.references
+                                  .map(r => `${r.code}${r.source_brand ? ` (${r.source_brand})` : ""}${r.type ? ` [${r.type}]` : ""}`)
+                                  .join(", ")
+                                : "—"}
+                            </TableCell> */}
+                            <TableCell>
+                              <div className="flex items-center gap-1">
+                                <Button
+                                  variant="outline"
+                                  size="icon"
+                                  disabled={disabled}
+                                  onClick={() => updateQty(it.id, Math.max(baseMin, (it.qty ?? baseMin) - 1))}
+                                >
+                                  <Minus className="h-4 w-4" />
+                                </Button>
+                                <Input
+                                  type="number"
+                                  min={baseMin}
+                                  className="remove_arrows w-20 text-center"
+                                  disabled={disabled}
+                                  value={it.qty ?? baseMin}
+                                  onChange={(e) => {
+                                    const v = Math.max(baseMin, Number(e.target.value) || baseMin);
+                                    updateQty(it.id, v);
+                                  }}
+                                />
+                                <Button
+                                  variant="outline"
+                                  size="icon"
+                                  disabled={disabled}
+                                  onClick={() => updateQty(it.id, (it.qty ?? baseMin) + 1)}
+                                >
+                                  <Plus className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <Button variant="ghost" size="icon" disabled={disabled} onClick={() => remove(it.id)}>
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+
+                          {/* NEW: detail row */}
+                          {isOpen && (
+                            <TableRow key={`detail-${it.id}`} className="bg-muted/30">
+                              <TableCell colSpan={DETAIL_COLSPAN} className="p-0">
+                                <div className="p-4 border-t">
+                                  <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+                                    {/* Image */}
+                                    {/* <div className="lg:col-span-1">
+                                      <div className="aspect-video rounded-md border overflow-hidden flex items-center justify-center bg-background">
+                                        {it.image ? (
+                                          // eslint-disable-next-line @next/next/no-img-element
+                                          <img src={it.image} alt={it.name} className="object-contain w-full h-full" />
+                                        ) : (
+                                          <div className="text-sm text-muted-foreground">No image</div>
+                                        )}
+                                      </div>
+                                    </div> */}
+
+                                    {/* Details */}
+                                    <div className="lg:col-span-3 grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                                      <div className="space-y-1">
+                                        <div className="font-medium">Identifiers</div>
+                                        <div><span className="text-muted-foreground">SKU:</span> {it.sku || "—"}</div>
+                                        <div><span className="text-muted-foreground">Category:</span> {it.category?.name || "—"}</div>
+                                        <div><span className="text-muted-foreground">Manufacturer:</span> {it.manufacturer?.name || "—"}</div>
+                                        <div><span className="text-muted-foreground">Min Order:</span> {it.min_order_qty ?? "—"}</div>
+                                        <div><span className="text-muted-foreground">Min (Gros):</span> {it.min_qty_gros ?? "—"}</div>
+                                      </div>
+
+                                      <div className="space-y-1">
+                                        <div className="font-medium">Pricing</div>
+                                        <div><span className="text-muted-foreground">Retail:</span> {fmt(it.price_retail)}</div>
+                                        <div><span className="text-muted-foreground">Demi-gros:</span> {fmt(it.price_demi_gros)}</div>
+                                        <div><span className="text-muted-foreground">Gros:</span> {fmt(it.price_gros)}</div>
+                                      </div>
+
+                                      <div className="space-y-1 md:col-span-1">
+                                        <div className="font-medium">References</div>
+                                        <div className="max-h-32 overflow-auto pr-1">
+                                          {it.references?.length ? (
+                                            <ul className="list-disc pl-4">
+                                              {it.references.map((r, idx) => (
+                                                <li key={idx} className="break-all">
+                                                  <span className="font-mono">{r.code}</span>
+                                                  {r.source_brand ? <> • {r.source_brand}</> : null}
+                                                  {r.type ? <> • <span className="uppercase">{r.type}</span></> : null}
+                                                </li>
+                                              ))}
+                                            </ul>
+                                          ) : (
+                                            <div className="text-muted-foreground">No references</div>
+                                          )}
+                                        </div>
+                                      </div>
+
+                                      <div className="space-y-1 md:col-span-3">
+                                        <div className="font-medium">Fitment</div>
+                                        <div>
+                                          <span className="text-muted-foreground">Models:</span>{" "}
+                                          {it.fitment_models?.length ? it.fitment_models.join(", ") : "—"}
+                                        </div>
+                                        <div>
+                                          <span className="text-muted-foreground">Brands:</span>{" "}
+                                          {it.fitment_brands?.length ? it.fitment_brands.join(", ") : "—"}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          )}
+                        </>
                       );
                     })}
                   </TableBody>
                 </Table>
               </div>
+
             )}
           </Card>
 

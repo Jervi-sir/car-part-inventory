@@ -78,6 +78,11 @@ class User extends Authenticatable
         return $this->role->name;
     }
 
+    public function currentCart()
+    {
+        return $this->hasOne(Order::class)->where('status', 'cart');
+    }
+
     // ---- Relations ----
     public function orders()
     {

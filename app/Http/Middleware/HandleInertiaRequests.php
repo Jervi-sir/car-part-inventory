@@ -46,7 +46,15 @@ class HandleInertiaRequests extends Middleware
             'auth' => [
                 'user' => $request->user(),
             ],
-            'ziggy' => fn (): array => [
+            'cart' => fn() => $request->user()
+                ? $request->user()
+                ->currentCart()
+                ->withCount(['orderItems as lines_count'])                 // distinct lines
+                ->withSum('orderItems as qty_total', 'quantity')           // total quantity across lines
+                ->withSum('orderItems as amount_total', 'line_total')      // money total (optional)
+                ->first(['id', 'currency', 'grand_total'])                 // pick what you need
+                : null,
+            'ziggy' => fn(): array => [
                 ...(new Ziggy)->toArray(),
                 'location' => $request->url(),
             ],

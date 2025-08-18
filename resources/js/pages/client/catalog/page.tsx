@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Head } from "@inertiajs/react";
+import { Head, router } from "@inertiajs/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -191,6 +191,11 @@ export default function CatalogPage() {
   const addToCart = async (id: number) => {
     await api.post(endpoints.cartAdd, { part_id: id, quantity: qtyById[id] ?? 1 });
     await refreshCart();
+    await router.reload({
+      only: ["cart"],
+      preserveState: true,
+      preserveScroll: true,
+    });
   };
 
   return (
