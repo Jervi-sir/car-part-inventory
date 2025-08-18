@@ -2,10 +2,14 @@
 
 namespace App\Models;
 
+use App\Enums\OrderStatus;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Order extends Model
 {
+    use HasFactory;
+
     protected $fillable = [
         'user_id',
         'status',
@@ -13,7 +17,6 @@ class Order extends Model
         'ship_to_name',
         'ship_to_phone',
         'ship_to_address',
-        'currency',
         'subtotal',
         'discount_total',
         'shipping_total',
@@ -22,23 +25,41 @@ class Order extends Model
         'notes',
     ];
 
+    protected function casts(): array
+    {
+        return [
+            'status'          => OrderStatus::class,
+            'delivery_method' => DeliveryMethod::class,
+            'subtotal'        => 'decimal:2',
+            'discount_total'  => 'decimal:2',
+            'shipping_total'  => 'decimal:2',
+            'tax_total'       => 'decimal:2',
+            'grand_total'     => 'decimal:2',
+        ];
+    }
+
+    // Relations
     public function user()
     {
         return $this->belongsTo(User::class);
     }
-
+    
     public function items()
     {
         return $this->hasMany(OrderItem::class);
     }
-
+    
     public function notes()
     {
-        return $this->hasOne(OrderNote::class);
+        return $this->hasMany(OrderNote::class);
     }
 
-    public function orderItems()
+    // Helpers
+    public function recalcTotals(): void
     {
-        return $this->hasMany(OrderItem::class);
+        $sum = $this->items->sum(fn($i) => $i->line_total);
+        $this->subtotal = $sum;
+        $this->tax_total = 0; // set if you implement per-item VAT later
+        $this->grand_total = $this->subtotal - $this->discount_total + $this->shipping_total + $this->tax_total;
     }
 }

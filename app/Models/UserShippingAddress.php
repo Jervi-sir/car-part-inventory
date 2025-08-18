@@ -2,19 +2,22 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class UserShippingAddress extends Model
 {
+    use HasFactory;
+
     protected $fillable = [
-        'label','recipient_name','phone', 'user_id',
-        'address_line1','address_line2','city','state','postal_code','country',
-        'is_default',
+        'user_id','label','recipient_name','phone','address_line1','address_line2',
+        'city','state','postal_code','country','is_default',
     ];
 
-    protected $casts = [
-        'is_default' => 'boolean',
-    ];
+    protected function casts(): array
+    {
+        return ['is_default' => 'boolean'];
+    }
 
     public function user() 
     {

@@ -7,43 +7,41 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class Part extends Model
 {
+    use HasFactory;
+
     protected $fillable = [
-        'manufacturer_id',
-        'category_id',
+        'reference',
         'sku',
+        'barcode',
         'name',
         'description',
-        'package_qty',
-        'min_order_qty',
-        'price_retail',
-        'price_demi_gros',
-        'price_gros',
-        'min_qty_gros',
+        'manufacturer_id',
+        'price_retail_ttc',
+        'price_wholesale_ttc',
+        'tva_rate',
+        'stock_real',
+        'stock_available',
         'images',
         'is_active',
     ];
 
-    protected $casts = [
-        'images'    => 'array',
-        'is_active' => 'boolean',
-        'price_retail' => 'decimal:2',
-        'price_demi_gros' => 'decimal:2',
-        'price_gros' => 'decimal:2',
-    ];
-
-    public function category()
+    protected function casts(): array
     {
-        return $this->belongsTo(Category::class);
+        return [
+            'price_retail_ttc'    => 'decimal:2',
+            'price_wholesale_ttc' => 'decimal:2',
+            'tva_rate'            => 'decimal:2',
+            'stock_real'          => 'integer',
+            'stock_available'     => 'integer',
+            'images'              => 'array',
+            'is_active'           => 'boolean',
+        ];
     }
 
+    // Relations
     public function manufacturer()
     {
         return $this->belongsTo(Manufacturer::class);
-    }
-
-    public function references()
-    {
-        return $this->hasMany(PartReference::class);
     }
 
     public function fitments()
@@ -51,14 +49,32 @@ class Part extends Model
         return $this->hasMany(PartFitment::class);
     }
 
-    public function stock()
+    public function models()
     {
-        return $this->hasOne(PartStock::class);
+        return $this->belongsToMany(VehicleModel::class, 'part_fitments')->withTimestamps();
     }
 
     public function orderItems()
     {
         return $this->hasMany(OrderItem::class);
+    }
+    
+    // Scopes
+    public function scopeActive($q)
+    {
+        return $q->where('is_active', true);
+    }
+
+    public function scopeSearch($q, ?string $term)
+    {
+        if (!$term) return $q;
+        $term = trim($term);
+        return $q->where(function ($w) use ($term) {
+            $w->where('reference', 'ILIKE', "%{$term}%")
+                ->orWhere('sku', 'ILIKE', "%{$term}%")
+                ->orWhere('name', 'ILIKE', "%{$term}%")
+                ->orWhere('description', 'ILIKE', "%{$term}%");
+        });
     }
 
     // Convenience: first image
@@ -67,17 +83,4 @@ class Part extends Model
         $imgs = $this->images ?? [];
         return is_array($imgs) && count($imgs) ? ($imgs[0]['url'] ?? $imgs[0]) : null;
     }
-    
-    // Optional search scope
-    public function scopeSearch($q, ?string $term)
-    {
-        if (!$term) return $q;
-        $term = trim($term);
-        return $q->where(function ($qq) use ($term) {
-            $qq->where('name', 'like', "%{$term}%")
-               ->orWhere('sku', 'like', "%{$term}%")
-               ->orWhere('description', 'like', "%{$term}%");
-        });
-    }
-
 }

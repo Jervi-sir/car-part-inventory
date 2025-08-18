@@ -11,6 +11,12 @@ return new class extends Migration
      */
     public function up(): void
     {
+        Schema::create('delivery_methods', function (Blueprint $table) {
+            $table->smallIncrements('id');
+            $table->string('code', 24)->unique();   // PICKUP|COURIER|POST
+            $table->string('label', 64);
+        });
+
         Schema::create('orders', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->constrained('users')->restrictOnDelete();
@@ -19,7 +25,6 @@ return new class extends Migration
             $table->string('ship_to_name', 120)->nullable();
             $table->string('ship_to_phone', 40)->nullable();
             $table->string('ship_to_address', 255)->nullable();
-            $table->char('currency', 3)->default('DZD');
             $table->decimal('subtotal', 12, 2)->default(0);
             $table->decimal('discount_total', 12, 2)->default(0);
             $table->decimal('shipping_total', 12, 2)->default(0);
@@ -35,7 +40,6 @@ return new class extends Migration
             $table->foreignId('part_id')->constrained('parts')->restrictOnDelete();
             $table->unsignedInteger('quantity');
             $table->decimal('unit_price', 12, 2);
-            $table->char('currency', 3)->default('DZD');
             $table->decimal('line_total', 12, 2);
             $table->string('notes', 255)->nullable();
             $table->timestamps();
@@ -50,7 +54,6 @@ return new class extends Migration
             $table->boolean('is_private')->default(true); // internal by default
             $table->timestamps();
         });
-
     }
 
     /**
