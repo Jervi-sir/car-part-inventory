@@ -142,7 +142,7 @@ export default function PartsIndex() {
               <Select value={filters.category_id} onValueChange={(v) => setFilters({ ...filters, category_id: v })}>
                 <SelectTrigger className="w-full"><SelectValue placeholder="All" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All</SelectItem>
+                  <SelectItem value="">All</SelectItem>
                   {cats.map((c) => <SelectItem key={String(c.id)} value={String(c.id)}>{c.name}</SelectItem>)}
                 </SelectContent>
               </Select>
@@ -152,7 +152,7 @@ export default function PartsIndex() {
               <Select value={filters.manufacturer_id} onValueChange={(v) => setFilters({ ...filters, manufacturer_id: v })}>
                 <SelectTrigger className="w-full"><SelectValue placeholder="All" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All</SelectItem>
+                  <SelectItem value="">All</SelectItem>
                   {mans.map((m) => <SelectItem key={String(m.id)} value={String(m.id)}>{m.name}</SelectItem>)}
                 </SelectContent>
               </Select>
@@ -162,7 +162,7 @@ export default function PartsIndex() {
               <Select value={filters.is_active} onValueChange={(v) => setFilters({ ...filters, is_active: v })}>
                 <SelectTrigger className="w-full"><SelectValue placeholder="All" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All</SelectItem>
+                  <SelectItem value="">All</SelectItem>
                   <SelectItem value="1">Active</SelectItem>
                   <SelectItem value="0">Inactive</SelectItem>
                 </SelectContent>

@@ -7,9 +7,24 @@ import { CheckIcon, ChevronDownIcon, ChevronUpIcon } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 function Select({
+  value,
+  defaultValue,
+  onValueChange,
   ...props
 }: React.ComponentProps<typeof SelectPrimitive.Root>) {
-  return <SelectPrimitive.Root data-slot="select" {...props} />
+  const S = SelectPrimitive.Root
+  const IN = (v: string | undefined) => (v === "" ? "__EMPTY__" : v)
+  const OUT = (v: string) => (v === "__EMPTY__" ? "" : v)
+
+  return (
+    <S
+      data-slot="select"
+      value={IN(value as string | undefined)}
+      defaultValue={IN(defaultValue as string | undefined)}
+      onValueChange={(v) => onValueChange?.(OUT(v))}
+      {...props}
+    />
+  )
 }
 
 function SelectGroup({
@@ -101,10 +116,16 @@ function SelectLabel({
 function SelectItem({
   className,
   children,
+  value,
   ...props
-}: React.ComponentProps<typeof SelectPrimitive.Item>) {
+}: Omit<React.ComponentProps<typeof SelectPrimitive.Item>, "value"> & {
+  value: string
+}) {
+  const safeValue = value === "" ? "__EMPTY__" : value
+
   return (
     <SelectPrimitive.Item
+      value={safeValue}
       data-slot="select-item"
       className={cn(
         "focus:bg-accent focus:text-accent-foreground [&_svg:not([class*='text-'])]:text-muted-foreground relative flex w-full cursor-default items-center gap-2 rounded-sm py-1.5 pr-8 pl-2 text-sm outline-hidden select-none data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 *:[span]:last:flex *:[span]:last:items-center *:[span]:last:gap-2",

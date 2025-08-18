@@ -245,7 +245,7 @@ export default function CatalogPage() {
               <Select value={filters.category_id} onValueChange={(v) => setFilters({ ...filters, category_id: v })}>
                 <SelectTrigger className="w-full"><SelectValue placeholder="All" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All</SelectItem>
+                  <SelectItem value="">All</SelectItem>
                   {cats.map(c => <SelectItem key={String(c.id)} value={String(c.id)}>{c.name}</SelectItem>)}
                 </SelectContent>
               </Select>
@@ -255,7 +255,7 @@ export default function CatalogPage() {
               <Select value={filters.manufacturer_id} onValueChange={(v) => setFilters({ ...filters, manufacturer_id: v })}>
                 <SelectTrigger className="w-full"><SelectValue placeholder="All" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All</SelectItem>
+                  <SelectItem value="">All</SelectItem>
                   {mans.map(m => <SelectItem key={String(m.id)} value={String(m.id)}>{m.name}</SelectItem>)}
                 </SelectContent>
               </Select>
@@ -265,7 +265,7 @@ export default function CatalogPage() {
               <Select value={filters.vehicle_brand_id} onValueChange={(v) => setFilters({ ...filters, vehicle_brand_id: v })}>
                 <SelectTrigger className="w-full"><SelectValue placeholder="All" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All</SelectItem>
+                  <SelectItem value="">All</SelectItem>
                   {brands.map(b => <SelectItem key={b.id} value={String(b.id)}>{b.name}</SelectItem>)}
                 </SelectContent>
               </Select>
@@ -275,7 +275,7 @@ export default function CatalogPage() {
               <Select value={filters.vehicle_model_id} onValueChange={(v) => setFilters({ ...filters, vehicle_model_id: v })} disabled={!models.length}>
                 <SelectTrigger className="w-full"><SelectValue placeholder={models.length ? "All" : "Pick brand first"} /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All</SelectItem>
+                  <SelectItem value="">All</SelectItem>
                   {models.map(m => (
                     <SelectItem key={m.id} value={String(m.id)}>
                       {m.name}{m.year_from ? ` (${m.year_from}${m.year_to ? `–${m.year_to}` : ""})` : ""}

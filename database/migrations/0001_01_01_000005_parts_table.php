@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('parts', function (Blueprint $table) {
             $table->id();
             $table->foreignId('manufacturer_id')->nullable()->constrained('manufacturers')->nullOnDelete();
-            $table->foreignId('category_id')->constrained('categories')->restrictOnDelete();
+            $table->foreignId('category_id')->nullable()->constrained('categories')->restrictOnDelete();
             $table->string('sku', 80)->nullable()->unique();
             $table->string('name')->nullable();
             $table->text('description')->nullable();
@@ -50,7 +50,7 @@ return new class extends Migration
             $table->unique(['part_id', 'vehicle_model_id', 'engine_code']);
         });
 
-        Schema::create('part_stock', function (Blueprint $table) {
+        Schema::create('part_stocks', function (Blueprint $table) {
             $table->id();
             $table->foreignId('part_id')->constrained('parts')->cascadeOnDelete();
             $table->foreignId('warehouse_id')->constrained('warehouses')->nullable()->restrictOnDelete();

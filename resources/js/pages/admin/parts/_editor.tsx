@@ -226,7 +226,7 @@ export default function Editor({
             <Select value={form.manufacturer_id} onValueChange={(v) => setForm({ ...form, manufacturer_id: v })}>
               <SelectTrigger><SelectValue placeholder="Optional" /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">— None —</SelectItem>
+                <SelectItem value="">— None —</SelectItem>
                 {mans.map((m) => <SelectItem key={String(m.id)} value={String(m.id)}>{m.name}</SelectItem>)}
               </SelectContent>
             </Select>

@@ -1,168 +1,390 @@
-import { useState } from 'react'
-import { router } from '@inertiajs/react'
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Head, useForm, usePage } from "@inertiajs/react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Switch } from "@/components/ui/switch";
+import { Separator } from "@/components/ui/separator";
+import { AdminLayout } from "../layout/admin-layout";
 
-type Tier = { id: number; code: string; label: string }
+declare const route: (name: string, params?: any) => string;
+type OptionItem = { id: number; name: string };
 
-export default function PartsImport({ priceTiers }: { priceTiers: Tier[] }) {
-  const [file, setFile] = useState<File | null>(null)
-  const [delimiter, setDelimiter] = useState<string>('auto')
-  const [tierId, setTierId] = useState<number>(priceTiers?.[0]?.id ?? 1)
-  const [dryRun, setDryRun] = useState<boolean>(true)
-  const [preview, setPreview] = useState<any | null>(null)
-  const [mapping, setMapping] = useState<Record<string, string>>({})
+const TARGET_FIELDS = [
+  { v: "", label: "— Ignore —" },
+  { v: "sku", label: "SKU / Référence" },
+  { v: "oem_reference", label: "OEM Reference" },
+  { v: "name", label: "Name / Désignation" },
+  { v: "qty", label: "Quantity" },
+  { v: "stock_qty", label: "Stock Qty" },
+  { v: "price_retail", label: "Price (Retail / PU Vente)" },
+  { v: "price_demi_gros", label: "Price (Demi-Gros)" },
+  { v: "price_gros", label: "Price (Gros TTC)" },
+  { v: "category", label: "Category" },
+  { v: "manufacturer", label: "Manufacturer" },
+  { v: "vehicle_brand", label: "Vehicle Brand / Marque" },
+  { v: "vehicle_model", label: "Vehicle Model / Affectation" },
+  { v: "year_from", label: "Year From" },
+  { v: "year_to", label: "Year To" },
+  { v: "engine_code", label: "Engine Code" },
+  { v: "reference_type", label: "Reference Type (OEM/AFTERMARKET/...)" },
+  { v: "source_brand", label: "Reference Source Brand" },
+  { v: "warehouse", label: "Warehouse (name or id)" },
+];
 
-  const upload = async (url: string, body: FormData) => {
-    const csrf =
-      (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content || '';
+export default function ImportParts() {
+  const { props }: any = usePage();
+  const guessMap = props.guessMap || {};
+  const warehouses = props.warehouses || [];
 
-    const resp = await fetch(url, {
-      method: 'POST',
-      body,
-      credentials: 'same-origin', // <-- send session cookies
-      headers: {
-        'X-CSRF-TOKEN': csrf,        // <-- CSRF token from meta
-        'X-Requested-With': 'XMLHttpRequest',
-        // DO NOT set Content-Type; let the browser set multipart/form-data boundary
-      },
-    });
+  const flashParsed = props.flash?.parsed;
+  const flashResult = props.flash?.result;
 
-    if (!resp.ok) {
-      const text = await resp.text();
-      throw new Error(text);
+  // 1) Upload form
+  const [file, setFile] = useState<File | null>(null);
+  const [delimiter, setDelimiter] = useState<string>("");
+  const [hasHeader, setHasHeader] = useState<boolean>(true);
+  const [catOptions, setCatOptions] = useState<OptionItem[]>([]);
+  const [manOptions, setManOptions] = useState<OptionItem[]>([]);
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string>("");
+  const [selectedManufacturerId, setSelectedManufacturerId] = useState<string>("");
+
+  // fetch on mount
+  useEffect(() => {
+    (async () => {
+      try {
+        const [catsRes, mansRes] = await Promise.all([
+          fetch(route("lookup.api.categories")),
+          fetch(route("lookup.api.manufacturers")),
+        ]);
+        const catsJson = await catsRes.json();
+        const mansJson = await mansRes.json();
+        setCatOptions(catsJson?.data ?? []);
+        setManOptions(mansJson?.data ?? []);
+      } catch (e) {
+        console.error("Lookup fetch failed:", e);
+      }
+    })();
+  }, []);
+
+  // if page reloads with existing defaults (names), preselect matching ids
+  useEffect(() => {
+    if (commitForm?.data?.options?.default_category && catOptions.length) {
+      const match = catOptions.find(c => c.name === commitForm.data.options.default_category);
+      if (match) setSelectedCategoryId(String(match.id));
     }
-    return resp.json();
+  }, [catOptions]);
+
+  useEffect(() => {
+    if (commitForm?.data?.options?.default_manufacturer && manOptions.length) {
+      const match = manOptions.find(m => m.name === commitForm.data.options.default_manufacturer);
+      if (match) setSelectedManufacturerId(String(match.id));
+    }
+  }, [manOptions]);
+
+  const uploadForm = useForm({
+    file: null as any,
+    delimiter: "",
+    has_header: true,
+  });
+
+  const onParse = () => {
+    if (!file) return;
+    uploadForm.data.file = file;
+    uploadForm.data.delimiter = delimiter;
+    // @ts-ignore
+    uploadForm.data.has_header = hasHeader;
+    uploadForm.post(route("admin.import.parts.parse"), { forceFormData: true });
   };
 
-  const onPreview = async () => {
-    if (!file) return
-    const fd = new FormData()
-    fd.append('file', file)
-    if (delimiter !== 'auto') fd.append('delimiter', delimiter)
-    const res = await upload(route('imports.parts.preview'), fd)
-    setPreview(res)
-    setMapping(res.mapping || {})
-  }
+  // 2) Mapping state
+  const [mapping, setMapping] = useState<Record<number, string>>({});
+  const parsed = flashParsed || null;
 
-  const onRun = async () => {
-    if (!file) return
-    const fd = new FormData()
-    fd.append('file', file)
-    if (delimiter !== 'auto') fd.append('delimiter', delimiter)
-    fd.append('price_tier_id', String(tierId))
-    fd.append('dryRun', String(dryRun ? 1 : 0))
-    fd.append('mapping', JSON.stringify(mapping)); // plain string field
-    const res = await upload(route('imports.parts.run'), fd)
-    alert((res.ok ? 'OK' : 'ERROR') + '\n' + JSON.stringify(res.stats, null, 2))
-  }
+  useEffect(() => {
+    if (parsed?.autoMap) {
+      setMapping(parsed.autoMap);
+    } else {
+      setMapping({});
+    }
+  }, [parsed?.autoMap]);
 
-  const targets = [
-    ['', '(ignore)'],
-    ['reference', 'Reference'],
-    ['name', 'Name / Designation'],
-    ['price', 'Price'],
-    ['vehicle_brand', 'Vehicle Brand'],
-    ['vehicle_model', 'Vehicle Model / Affectation'],
-    ['manufacturer', 'Manufacturer'],
-    ['category', 'Category'],
-    ['sku', 'SKU'],
-  ]
+  const headers: string[] = parsed?.headers || [];
+  const rows: string[][] = parsed?.rows || [];
+
+  const changeMap = (idx: number, value: string) => {
+    setMapping((m) => ({ ...m, [idx]: value || "" }));
+  };
+
+  // 3) Commit form
+  const commitForm = useForm({
+    uploaded: parsed ? {
+      headers: parsed.headers,
+      rows: parsed.rows,
+      delimiter: parsed.delimiter,
+      hasHeader: parsed.hasHeader,
+    } : null,
+    mapping: mapping,
+    options: {
+      default_category: "",
+      default_manufacturer: "",
+      reference_type: "OTHER",
+      default_warehouse_id: "",
+      create_missing_vehicle: true,
+    }
+  });
+
+  useEffect(() => {
+    if (parsed) {
+      commitForm.setData("uploaded", {
+        headers: parsed.headers,
+        rows: parsed.rows,
+        delimiter: parsed.delimiter,
+        hasHeader: parsed.hasHeader,
+      });
+      commitForm.setData("mapping", mapping);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [parsed, mapping]);
+
+  const onCommit = () => {
+    commitForm.post(route("admin.import.parts.commit"));
+  };
 
   return (
-    <div className="max-w-6xl mx-auto p-6 space-y-6">
-      <h1 className="text-2xl font-semibold">Import Parts (CSV)</h1>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div>
-          <label className="block text-sm font-medium">CSV File</label>
-          <input type="file" accept=".csv,text/csv" onChange={e => setFile(e.target.files?.[0] || null)} />
-        </div>
-        <div>
-          <label className="block text-sm font-medium">Delimiter</label>
-          <select className="border rounded px-2 py-1 w-full" value={delimiter} onChange={e => setDelimiter(e.target.value)}>
-            <option value="auto">Auto</option>
-            <option value=",">Comma (,)</option>
-            <option value=";">Semicolon (;)</option>
-            <option value="\t">Tab</option>
-            <option value="|">Pipe (|)</option>
-          </select>
-        </div>
-        <div>
-          <label className="block text-sm font-medium">Price Tier</label>
-          <select className="border rounded px-2 py-1 w-full" value={tierId} onChange={e => setTierId(Number(e.target.value))}>
-            {priceTiers.map(t => <option key={t.id} value={t.id}>{t.code} — {t.label}</option>)}
-          </select>
-        </div>
-        <div className="flex items-center gap-2">
-          <input id="dry" type="checkbox" checked={dryRun} onChange={e => setDryRun(e.target.checked)} />
-          <label htmlFor="dry">Dry run (no DB writes)</label>
-        </div>
-      </div>
-
-      <div className="flex gap-3">
-        <button onClick={onPreview} className="bg-gray-800 text-white px-4 py-2 rounded">Preview</button>
-        <button onClick={onRun} className="bg-green-600 text-white px-4 py-2 rounded">Import</button>
-      </div>
-
-      {preview && (
-        <div className="space-y-4">
-          <div className="text-sm text-gray-700">Detected delimiter: <b>{preview.detectedDelimiter}</b></div>
-
-          <div>
-            <h2 className="font-medium mb-2">Column Mapping</h2>
-            <div className="overflow-x-auto">
-              <table className="min-w-full text-sm border">
-                <thead>
-                  <tr className="">
-                    <th className="p-2 border">#</th>
-                    <th className="p-2 border">Header</th>
-                    <th className="p-2 border">Normalized</th>
-                    <th className="p-2 border">Map To</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {preview.headers.map((h: string, i: number) => (
-                    <tr key={i}>
-                      <td className="p-2 border">{i}</td>
-                      <td className="p-2 border">{h}</td>
-                      <td className="p-2 border text-gray-500">{preview.normalizedHeaders[i]}</td>
-                      <td className="p-2 border">
-                        <select
-                          className="border rounded px-2 py-1"
-                          value={mapping[i] ?? ''}
-                          onChange={e => setMapping({ ...mapping, [i]: e.target.value })}
-                        >
-                          {targets.map(([v, lbl]) => <option key={v} value={v}>{lbl}</option>)}
-                        </select>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+    <AdminLayout>
+      <Head title="Import Parts CSV" />
+      <div className="p-6 pt-0 space-y-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Upload CSV</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label>CSV File</Label>
+                <Input type="file" accept=".csv,text/csv" onChange={(e) => setFile(e.target.files?.[0] || null)} />
+              </div>
+              <div className="space-y-2">
+                <Label>Delimiter</Label>
+                <Select value={delimiter} onValueChange={setDelimiter}>
+                  <SelectTrigger><SelectValue placeholder="Auto-detect" /></SelectTrigger>
+                  <SelectContent>
+                    {/* empty string means auto-detect */}
+                    <SelectItem value="">Auto-detect</SelectItem>
+                    <SelectItem value=",">Comma (,)</SelectItem>
+                    <SelectItem value=";">Semicolon (;)</SelectItem>
+                    <SelectItem value="\t">Tab</SelectItem>
+                    <SelectItem value="|">Pipe (|)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex items-end gap-3">
+                <div className="space-y-2">
+                  <Label className="block">Has Header Row</Label>
+                  <div className="flex items-center gap-2">
+                    <Switch checked={hasHeader} onCheckedChange={setHasHeader} />
+                    <span className="text-sm">{hasHeader ? 'Yes' : 'No'}</span>
+                  </div>
+                </div>
+              </div>
             </div>
-          </div>
 
-          <div>
-            <h2 className="font-medium mb-2">Preview (first 50 rows)</h2>
-            <div className="overflow-x-auto">
-              <table className="min-w-full text-xs border">
-                <thead>
-                  <tr>
-                    {preview.headers.map((h: string, i: number) => <th key={i} className="p-2 border">{h}</th>)}
-                  </tr>
-                </thead>
-                <tbody>
-                  {preview.sample.map((r: string[], idx: number) => (
-                    <tr key={idx}>
-                      {r.map((c: string, j: number) => <td key={j} className="p-2 border">{c}</td>)}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div className="flex gap-3">
+              <Button onClick={onParse} disabled={!file || uploadForm.processing}>Parse & Preview</Button>
             </div>
-          </div>
 
-        </div>
-      )}
-    </div>
-  )
+            {uploadForm.errors.file && <p className="text-red-600 text-sm">{uploadForm.errors.file}</p>}
+          </CardContent>
+        </Card>
+
+        {parsed && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Preview & Mapping</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      {headers.map((h, i) => (
+                        <TableHead key={i} className="min-w-[220px]">
+                          <div className="space-y-2">
+                            {/* <div className="text-xs text-muted-foreground">CSV Header</div> */}
+                            <div className="font-medium">{h}</div>
+                            <Select value={mapping[i] ?? ""} onValueChange={(v) => changeMap(i, v)}>
+                              <SelectTrigger className="h-8">
+                                <SelectValue placeholder="Map to…" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {TARGET_FIELDS.map(f => (
+                                  <SelectItem key={f.v} value={f.v}>{f.label}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <div className="text-[11px] text-muted-foreground">Detected: {parsed.normalizedHeaders?.[i]}</div>
+                          </div>
+                        </TableHead>
+                      ))}
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {rows.slice(0, 10).map((r, ri) => (
+                      <TableRow key={ri}>
+                        {headers.map((_, ci) => (
+                          <TableCell key={ci} className="text-sm">{r[ci] ?? ''}</TableCell>
+                        ))}
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+
+              <Separator />
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label>Default Category (if missing)</Label>
+                  <Select
+                    value={selectedCategoryId}
+                    onValueChange={(v) => {
+                      setSelectedCategoryId(v);
+                      const name = v ? (catOptions.find(c => String(c.id) === v)?.name ?? "") : "";
+                      commitForm.setData("options", { ...commitForm.data.options, default_category: name });
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="— none —" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">— none —</SelectItem>
+                      {catOptions.map((c) => (
+                        <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {/* Optional tiny helper showing what will be sent */}
+                  <div className="text-xs text-muted-foreground">
+                    Will send: {commitForm.data.options.default_category || "— none —"}
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Default Manufacturer (if missing)</Label>
+                  <Select
+                    value={selectedManufacturerId}
+                    onValueChange={(v) => {
+                      setSelectedManufacturerId(v);
+                      const name = v ? (manOptions.find(m => String(m.id) === v)?.name ?? "") : "";
+                      commitForm.setData("options", { ...commitForm.data.options, default_manufacturer: name });
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="— none —" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">— none —</SelectItem>
+                      {manOptions.map((m) => (
+                        <SelectItem key={m.id} value={String(m.id)}>{m.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <div className="text-xs text-muted-foreground">
+                    Will send: {commitForm.data.options.default_manufacturer || "— none —"}
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Reference Type</Label>
+                  <Select
+                    value={commitForm.data.options.reference_type}
+                    onValueChange={(v) => commitForm.setData('options', { ...commitForm.data.options, reference_type: v })}
+                  >
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="OTHER">OTHER</SelectItem>
+                      <SelectItem value="OEM">OEM</SelectItem>
+                      <SelectItem value="AFTERMARKET">AFTERMARKET</SelectItem>
+                      <SelectItem value="SUPPLIER">SUPPLIER</SelectItem>
+                      <SelectItem value="EAN_UPC">EAN_UPC</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Default Warehouse</Label>
+                  <Select
+                    value={String(commitForm.data.options.default_warehouse_id || '')}
+                    onValueChange={(v) =>
+                      commitForm.setData('options', { ...commitForm.data.options, default_warehouse_id: v ? Number(v) : '' })
+                    }
+                  >
+                    <SelectTrigger><SelectValue placeholder="— none —" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">— none —</SelectItem> {/* was "Auto" */}
+                      {warehouses.map((w: any) => (
+                        <SelectItem key={w.id} value={String(w.id)}>{w.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+
+                </div>
+                <div className="flex items-end gap-2">
+                  <div className="space-y-2">
+                    <Label className="block">Create missing vehicle brands/models</Label>
+                    <div className="flex items-center gap-2">
+                      <Switch
+                        checked={!!commitForm.data.options.create_missing_vehicle}
+                        onCheckedChange={(val) => commitForm.setData('options', { ...commitForm.data.options, create_missing_vehicle: val })}
+                      />
+                      <span className="text-sm">{commitForm.data.options.create_missing_vehicle ? 'Yes' : 'No'}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex gap-3">
+                <Button onClick={onCommit} disabled={commitForm.processing}>
+                  Commit Import
+                </Button>
+              </div>
+
+              {commitForm.errors && Object.keys(commitForm.errors).length > 0 && (
+                <div className="text-red-600 text-sm">
+                  {Object.values(commitForm.errors).map((e: any, i) => <div key={i}>{e}</div>)}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {flashResult && (
+          <Card>
+            <CardHeader><CardTitle>Import Result</CardTitle></CardHeader>
+            <CardContent className="space-y-2">
+              <div className="text-sm">
+                <div>Created: <b>{flashResult.created}</b></div>
+                <div>Updated: <b>{flashResult.updated}</b></div>
+              </div>
+              {flashResult.errors?.length > 0 && (
+                <div className="text-sm">
+                  <div className="font-semibold mb-1">Errors ({flashResult.errors.length}):</div>
+                  <div className="max-h-60 overflow-auto border rounded p-2">
+                    {flashResult.errors.map((er: any, i: number) => (
+                      <div key={i} className="mb-1">
+                        Row {er.row}: {er.message}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+      </div>
+    </AdminLayout>
+  );
 }

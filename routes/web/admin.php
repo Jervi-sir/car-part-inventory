@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\CategoryController;
+use App\Http\Controllers\Admin\ImportPartsController;
 use App\Http\Controllers\Admin\LookupController;
 use App\Http\Controllers\Admin\ManufacturerController;
 use App\Http\Controllers\Admin\OrderController;
@@ -86,7 +87,6 @@ Route::middleware(['auth', 'role:ADMIN,MODERATOR'])->prefix('admin')->group(func
         Route::get('/manufacturers', [LookupController::class, 'manufacturers'])->name('lookup.api.manufacturers');
     });
 
-
     Route::prefix('orders')->group(function () {
         Route::get('/', [OrderController::class, 'page'])->name('admin.orders.page');
         // JSON API
@@ -113,5 +113,12 @@ Route::middleware(['auth', 'role:ADMIN,MODERATOR'])->prefix('admin')->group(func
         Route::get('/', [UserController::class, 'index'])->name('admin.api.users.index');
         Route::get('/{user}', [UserController::class, 'show'])->name('admin.api.users.show');
     });
+
+    Route::prefix('import-parts')->group(function () {
+        Route::get('/', [ImportPartsController::class, 'index'])->name('admin.import.parts.index');
+        Route::post('parse', [ImportPartsController::class, 'parse'])->name('admin.import.parts.parse');
+        Route::post('commit', [ImportPartsController::class, 'commit'])->name('admin.import.parts.commit');
+    });
+
 });
 
