@@ -1,18 +1,25 @@
 <?php
 
+use App\Http\Controllers\Admin\AdCampaignApiController;
+use App\Http\Controllers\Admin\AdCampaignPageController;
+use App\Http\Controllers\Admin\AdCreativeApiController;
+use App\Http\Controllers\Admin\AdCreativePageController;
+use App\Http\Controllers\Admin\AdPlacementApiController;
+use Inertia\Inertia;
+use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Admin\PartController;
+use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\Admin\OrderController;
+use App\Http\Controllers\Admin\LookupController;
 use App\Http\Controllers\Admin\CategoryController;
 use App\Http\Controllers\Admin\ImportPartsController;
-use App\Http\Controllers\Admin\LookupController;
-use App\Http\Controllers\Admin\ManufacturerController;
-use App\Http\Controllers\Admin\OrderController;
-use App\Http\Controllers\Admin\PartController;
 use App\Http\Controllers\Admin\PartFitmentController;
+use App\Http\Controllers\Admin\ManufacturerController;
 use App\Http\Controllers\Admin\VehicleBrandController;
 use App\Http\Controllers\Admin\VehicleModelController;
 use App\Http\Controllers\Admin\PartReferenceController;
-use App\Http\Controllers\Admin\UserController;
-use Inertia\Inertia;
-use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Admin\AdPlacementPageController;
+use App\Http\Controllers\Admin\AnalyticsController;
 
 // role:ADMIN,MODERATOR
 Route::middleware(['auth', 'role:ADMIN,MODERATOR'])->prefix('admin')->group(function () {
@@ -57,7 +64,7 @@ Route::middleware(['auth', 'role:ADMIN,MODERATOR'])->prefix('admin')->group(func
             Route::put('/{part}', [PartController::class, 'update']); // update
             Route::delete('/{part}', [PartController::class, 'destroy']); // delete
             Route::patch('/{part}/active', [PartController::class, 'updateActive'])->name('admin.parts.api.active');
-            
+
             Route::post('/bulk-status', [PartController::class, 'bulkStatus'])->name('admin.parts.api.bulk-status');
 
             Route::put('/{part}/images', [PartController::class, 'updateImages']);
@@ -103,4 +110,31 @@ Route::middleware(['auth', 'role:ADMIN,MODERATOR'])->prefix('admin')->group(func
         Route::post('parse', [ImportPartsController::class, 'parse'])->name('admin.import.parts.parse');
         Route::post('commit', [ImportPartsController::class, 'commit'])->name('admin.import.parts.commit');
     });
+
+
+    // API (still in web.php)
+    Route::prefix('ads')->group(function () {
+        // Inertia pages (no data)
+        Route::get('creatives', fn()  => Inertia::render('admin/ads/creatives-page'))->name('admin.ads.creatives.page');
+        // creatives: POST for update to keep multipart easy
+        Route::get   ('/creatives/list',     [AdCreativeApiController::class, 'index'])->name('admin.ads.creatives.index');
+        Route::post  ('/creatives',          [AdCreativeApiController::class, 'store'])->name('admin.ads.creatives.store');
+        Route::get   ('/creatives/{id}',     [AdCreativeApiController::class, 'show'])->name('admin.ads.creatives.show');
+        Route::post  ('/creatives/{id}',     [AdCreativeApiController::class, 'update'])->name('admin.ads.creatives.update');
+        Route::delete('/creatives/{id}',     [AdCreativeApiController::class, 'destroy'])->name('admin.ads.creatives.destroy');
+    });
+    
+    Route::prefix('analytics')->group(function () {
+        Route::get('/', fn()  => Inertia::render('admin/analytics/page'))->name('admin.analytics.page');
+        Route::get('/kpis', [AnalyticsController::class, 'kpis'])->name('admin.analytics.kpis');
+        Route::get('/revenue-series', [AnalyticsController::class, 'revenueSeries'])->name('admin.analytics.revenue-series');
+        Route::get('/orders-by-status', [AnalyticsController::class, 'ordersByStatus'])->name('admin.analytics.orders-by-status');
+        Route::get('/top-manufacturers', [AnalyticsController::class, 'topManufacturers'])->name('admin.analytics.top-manufacturers');
+        Route::get('/top-brands', [AnalyticsController::class, 'topBrands'])->name('admin.analytics.top-brands');
+        Route::get('/top-parts', [AnalyticsController::class, 'topParts'])->name('admin.analytics.top-parts');
+
+        Route::get('/ad-clicks-by-placement', [AnalyticsController::class, 'adClicksByPlacement'])->name('admin.analytics.ad-clicks-by-placement');
+        Route::get('/top-creatives-clicks', [AnalyticsController::class, 'topCreativesClicks'])->name('admin.analytics.top-creatives-clicks');
+    });
+
 });

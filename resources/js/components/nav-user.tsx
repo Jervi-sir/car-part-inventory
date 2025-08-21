@@ -87,7 +87,7 @@ export function NavUser() {
             {(user.role_key === 'ADMIN' || user.role_key === 'MODERATOR')
               && <>
                 <DropdownMenuGroup>
-                  <Link href={route('admin.manufacturers.page')}>
+                  <Link href={route('admin.analytics.page')}>
                     <DropdownMenuItem>
                       <LayoutDashboard />
                       Dashboard

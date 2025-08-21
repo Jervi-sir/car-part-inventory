@@ -27,6 +27,7 @@ const data = {
     avatar: "/avatars/shadcn.jpg",
   },
   navMain: [
+    { title: "Analytics", url: route("admin.analytics.page"), icon: Factory },
     { title: "Manufacturers", url: route("admin.manufacturers.page"), icon: Factory },
     { title: "Vehicle Brands", url: route("admin.vehicle-brands.page"), icon: CarFront },
     { title: "Vehicle Models", url: route("admin.vehicle-models.page"), icon: Package },
@@ -34,8 +35,11 @@ const data = {
     { title: "Orders", url: route("admin.orders.page"), icon: BaggageClaim },
     { title: "Users", url: route("admin.users.page"), icon: UserIcon },
     { title: "Imports", url: route("admin.import.parts.index"), icon: ImportIcon },
+    { title: "Ad Creative", url: route("admin.ads.creatives.page"), icon: ImportIcon },
 ],
 }
+
+
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { url } = usePage();

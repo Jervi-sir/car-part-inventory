@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Client\AdClickController;
 use App\Http\Controllers\Client\CartController;
 use App\Http\Controllers\Client\CatalogController;
 use App\Http\Controllers\Client\OrderController;
@@ -10,7 +11,8 @@ use Inertia\Inertia;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth'])->group(function () {
-
+    Route::get('ads/redirect', AdClickController::class)->name('ads.click')->middleware('signed');;
+    
     Route::prefix('catalog')->group(function () {
         Route::get('/', fn() => Inertia::render('client/catalog/page'))->name('client.parts.page');
         Route::get('/parts', [CatalogController::class, 'index'])->name('shop.api.parts');

@@ -18,8 +18,20 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import api from "@/lib/api";
+import { AdMarquee } from "@/components/ads/ad-marquee";
+import { AdsHeroSlider } from "@/components/ads/ad-hero-slider";
+import { AdGridFooter } from "@/components/ads/ad-grid-footer";
 
 declare const route: (name: string, params?: any) => string;
+
+type HeroAd = {
+  id: Id;
+  src: string;
+  alt: string;
+  href?: string;
+  title?: string;
+  subtitle?: string;
+};
 
 type Id = number | string;
 type Page<T> = { data: T[]; total: number; page: number; per_page: number };
@@ -63,6 +75,33 @@ const endpoints = {
 };
 
 export default function CatalogPage() {
+  const [heroAds] = useState<HeroAd[]>([
+    {
+      id: 1,
+      src: "https://picsum.photos/1200/360?random=11",
+      alt: "Promo 1",
+      href: "/promo/gsp",
+      title: "Jusqu’à -10% ce weekend",
+      subtitle: "Amortisseurs, freins et plus",
+    },
+    {
+      id: 2,
+      src: "https://picsum.photos/1200/360?random=12",
+      alt: "Promo 2",
+      href: "/brand/brembo",
+      title: "Arrivages Brembo",
+      subtitle: "Performance & fiabilité",
+    },
+    {
+      id: 3,
+      src: "https://picsum.photos/1200/360?random=13",
+      alt: "Promo 3",
+      href: "/shipping",
+      title: "Livraison 24h",
+      subtitle: "Commandez avant 16:00",
+    },
+  ]);
+
   const [filters, setFilters] = useState({
     q: "",
     manufacturer_id: "",
@@ -209,8 +248,9 @@ export default function CatalogPage() {
 
   return (
     <ClientLayout title="Catalog">
-      <div className="p-6 pt-0">
+      <div className="p-4 md:p-6 pt-0">
         <Head title="Shop" />
+        <AdsHeroSlider className="mb-4" />
         <div className="flex items-center justify-between mb-4">
           <h1 className="text-2xl font-semibold">Catalog</h1>
           <div className="flex items-center gap-2">
@@ -404,13 +444,13 @@ export default function CatalogPage() {
                       <TableCell className="text-xs">
                         {p.references?.length
                           ? p.references.map((r, i) => (
-                              <span key={i}>
-                                {r.code}
-                                {r.source_brand ? ` (${r.source_brand})` : ""}
-                                {r.type ? ` [${r.type}]` : ""}
-                                {i < p.references.length - 1 ? ", " : ""}
-                              </span>
-                            ))
+                            <span key={i}>
+                              {r.code}
+                              {r.source_brand ? ` (${r.source_brand})` : ""}
+                              {r.type ? ` [${r.type}]` : ""}
+                              {i < p.references.length - 1 ? ", " : ""}
+                            </span>
+                          ))
                           : "—"}
                       </TableCell>
                     )}
@@ -600,9 +640,9 @@ export default function CatalogPage() {
           <div className="text-sm text-muted-foreground">
             {pageData.total
               ? `${(pageData.page - 1) * pageData.per_page + 1}-${Math.min(
-                  pageData.total,
-                  pageData.page * pageData.per_page
-                )} of ${pageData.total}`
+                pageData.total,
+                pageData.page * pageData.per_page
+              )} of ${pageData.total}`
               : "0"}
           </div>
           <div className="flex items-center gap-3">
@@ -650,6 +690,8 @@ export default function CatalogPage() {
             </div>
           </div>
         </div>
+      
+      <AdGridFooter />
       </div>
     </ClientLayout>
   );
@@ -744,6 +786,7 @@ function CartWidget({
           </div>
         </div>
       )}
+
     </div>
   );
 }

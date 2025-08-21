@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use App\Enums\OrderStatus;
 use App\Models\Order;
+use App\Services\AdsService;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
@@ -43,6 +44,7 @@ class HandleInertiaRequests extends Middleware
 
         return [
             ...parent::share($request),
+            'ads' => $request->is('admin*') ? [] : fn () => AdsService::forRequest($request),
             'name' => config('app.name'),
             // 'quote' => ['message' => trim($message), 'author' => trim($author)],
             'auth' => [
