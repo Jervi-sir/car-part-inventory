@@ -7,6 +7,7 @@ import { AppearanceCard } from "./appearance-card";
 import { Address, User } from "./types";
 import { ProfileCard } from "./profile-card";
 import { DocumentsCard } from "./documents-card";
+import { NotificationsCard } from "./notifications-card";
 
 
 export default function SettingsPage() {
@@ -107,6 +108,9 @@ export default function SettingsPage() {
               setUser={setUser}
               saveUser={saveUser}
             />
+          </div>
+          <div className="break-inside-avoid mb-4 w-full">
+            <NotificationsCard />
           </div>
           <div className="break-inside-avoid mb-4 w-full">
             <AppearanceCard />

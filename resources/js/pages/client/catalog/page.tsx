@@ -21,6 +21,8 @@ import api from "@/lib/api";
 import { AdMarquee } from "@/components/ads/ad-marquee";
 import { AdsHeroSlider } from "@/components/ads/ad-hero-slider";
 import { AdGridFooter } from "@/components/ads/ad-grid-footer";
+import EnablePushButton from "./EnablePushButton";
+import TelegramConnect from "./TelegramConnect";
 
 declare const route: (name: string, params?: any) => string;
 
@@ -250,6 +252,7 @@ export default function CatalogPage() {
     <ClientLayout title="Catalog">
       <div className="p-4 md:p-6 pt-0">
         <Head title="Shop" />
+        <TelegramConnect />
         <AdsHeroSlider className="mb-4" />
         <div className="flex items-center justify-between mb-4">
           <h1 className="text-2xl font-semibold">Catalog</h1>

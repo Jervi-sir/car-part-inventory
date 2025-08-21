@@ -6,6 +6,7 @@ use App\Http\Controllers\Client\CatalogController;
 use App\Http\Controllers\Client\OrderController;
 use App\Http\Controllers\Client\OrderListController;
 use App\Http\Controllers\Client\ShippingAddressController;
+use App\Http\Controllers\Client\TelegramController;
 use App\Http\Controllers\Client\UserSettingsController;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Route;
@@ -63,6 +64,12 @@ Route::middleware(['auth'])->group(function () {
                 Route::get('search', [ShippingAddressController::class, 'search'])->name('client.settings.api.shipping-addresses.search');
             });
         });
+    });
+
+    Route::prefix('notifications/telegram')->group(function () {
+        Route::get('status', [TelegramController::class, 'status'])->name('client.notifications.telegram.status');
+        Route::post('connect', [TelegramController::class, 'connect'])->name('client.notifications.telegram.connect');
+        Route::delete('disconnect', [TelegramController::class, 'disconnect'])->name('client.notifications.telegram.disconnect');
     });
 });
 

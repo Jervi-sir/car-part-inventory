@@ -138,4 +138,10 @@ class User extends Authenticatable
     {
         return $this->hasMany(Order::class);
     }
+
+    public function telegramLink()
+    {
+        return $this->hasOne(TelegramLink::class);
+    }
+
 }
