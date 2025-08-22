@@ -252,7 +252,6 @@ export default function CatalogPage() {
     <ClientLayout title="Catalog">
       <div className="p-4 md:p-6 pt-0">
         <Head title="Shop" />
-        <TelegramConnect />
         <AdsHeroSlider className="mb-4" />
         <div className="flex items-center justify-between mb-4">
           <h1 className="text-2xl font-semibold">Catalog</h1>
@@ -376,25 +375,31 @@ export default function CatalogPage() {
 
         {/* Results table */}
         <div className="rounded-md border overflow-x-auto">
-          <Table>
+          <Table className="lg:table-fixed">
             <TableHeader>
               <TableRow>
                 <TableHead className="w-[36px]" />
-                {columnVisibility.sku && <TableHead className="w-[120px]">SKU</TableHead>}
-                {columnVisibility.name && <TableHead>Name</TableHead>}
-                {columnVisibility.manufacturer && <TableHead className="w-[180px]">Manufacturer</TableHead>}
-                {columnVisibility.fitmentModels && <TableHead className="w-[260px]">Fitment Models</TableHead>}
-                {columnVisibility.fitmentBrands && <TableHead className="w-[220px]">Fitment Brands</TableHead>}
-                {columnVisibility.minOrderQty && <TableHead className="w-[110px]">Min Order</TableHead>}
-                {columnVisibility.minQtyGros && <TableHead className="w-[110px]">Min (Gros)</TableHead>}
-                {columnVisibility.priceRetail && <TableHead className="w-[120px]">Retail</TableHead>}
-                {columnVisibility.priceDemiGros && <TableHead className="w-[140px]">Demi-gros</TableHead>}
-                {columnVisibility.priceGros && <TableHead className="w-[120px]">Gros</TableHead>}
-                {columnVisibility.references && <TableHead className="w-[260px]">References</TableHead>}
-                {columnVisibility.qty && <TableHead className="w/[140px]">Qty</TableHead>}
-                {columnVisibility.add && <TableHead className="w/[120px]">Add</TableHead>}
+                {columnVisibility.sku && <TableHead className="w-[100px]">SKU</TableHead>}
+                {columnVisibility.name && <TableHead className="">Name</TableHead>}
+                {columnVisibility.manufacturer && <TableHead className="w-[120px]">Manufacturer</TableHead>}
+
+                {columnVisibility.fitmentModels && <TableHead className="">Fitment Models</TableHead>}
+                {columnVisibility.fitmentBrands && <TableHead className="">Fitment Brands</TableHead>}
+
+                {columnVisibility.minOrderQty && <TableHead className="">Min Order</TableHead>}
+                {columnVisibility.minQtyGros && <TableHead className="">Min (Gros)</TableHead>}
+
+                {columnVisibility.priceRetail && <TableHead className="">Retail</TableHead>}
+                {columnVisibility.priceDemiGros && <TableHead className="">Demi-gros</TableHead>}
+                {columnVisibility.priceGros && <TableHead className="">Gros</TableHead>}
+
+                {columnVisibility.references && <TableHead className="">References</TableHead>}
+
+                {columnVisibility.qty && <TableHead className="w-[160px]">Qty</TableHead>}
+                {columnVisibility.add && <TableHead className="w-[100px]">Add</TableHead>}
               </TableRow>
             </TableHeader>
+
             <TableBody>
               {pageData.data.length === 0 && (
                 <TableRow>
@@ -418,31 +423,53 @@ export default function CatalogPage() {
                         <ChevronDown className={`h-4 w-4 transition-transform ${expanded[p.id] ? "" : "-rotate-90"}`} />
                       </button>
                     </TableCell>
+                    {columnVisibility.sku && (
+                      <TableCell className="font-mono text-xs">{p.sku || "—"}</TableCell>
+                    )}
 
-                    {columnVisibility.sku && <TableCell className="font-mono text-xs">{p.sku || "—"}</TableCell>}
-                    {columnVisibility.name && <TableCell className="font-medium">{p.name}</TableCell>}
-                    {columnVisibility.manufacturer && <TableCell>{p.manufacturer?.name || "—"}</TableCell>}
+                    {columnVisibility.name && (
+                      <TableCell>
+                        <div className="max-w-[180px] whitespace-normal break-words text-pretty leading-snug">
+                          {p.name}
+                        </div>
+                      </TableCell>
+                    )}
+                    {columnVisibility.manufacturer && (
+                      <TableCell>
+                        <div className="max-w-[180px] whitespace-normal break-words text-pretty leading-snug">
+                          {p.manufacturer?.name || "—"}
+                        </div>
+                      </TableCell>
+                    )}
+
                     {columnVisibility.fitmentModels && (
-                      <TableCell className="text-xs">
+                      <TableCell className="text-xs whitespace-normal break-words max-w-[160px]">
                         {p.fitment_models?.length ? p.fitment_models.join(", ") : "—"}
                       </TableCell>
                     )}
+
+
                     {columnVisibility.fitmentBrands && (
-                      <TableCell className="text-xs">
+                      <TableCell className="text-xs whitespace-normal break-words max-w-[220px]">
                         {p.fitment_brands?.length ? p.fitment_brands.join(", ") : "—"}
                       </TableCell>
                     )}
-                    {columnVisibility.minOrderQty && <TableCell>{p.min_order_qty}</TableCell>}
-                    {columnVisibility.minQtyGros && <TableCell>{p.min_qty_gros}</TableCell>}
+
+                    {columnVisibility.minOrderQty && <TableCell>{show(p.min_order_qty)}</TableCell>}
+                    {columnVisibility.minQtyGros && <TableCell>{show(p.min_qty_gros)}</TableCell>}
                     {columnVisibility.priceRetail && (
-                      <TableCell>{p.price_retail != null ? `${p.price_retail} DZD` : "–"}</TableCell>
+                      <TableCell className="text-xs whitespace-normal break-words max-w-[60px]">{p.price_retail != null ? `${p.price_retail} DZD` : "–"}</TableCell>
                     )}
                     {columnVisibility.priceDemiGros && (
-                      <TableCell>{p.price_demi_gros != null ? `${p.price_demi_gros} DZD` : "–"}</TableCell>
+                      <TableCell>
+                        {p.price_demi_gros != null ? `${p.price_demi_gros} DZD` : "–"}
+                      </TableCell>
                     )}
                     {columnVisibility.priceGros && (
                       <TableCell>{p.price_gros != null ? `${p.price_gros} DZD` : "–"}</TableCell>
                     )}
+
+
                     {columnVisibility.references && (
                       <TableCell className="text-xs">
                         {p.references?.length
@@ -451,15 +478,15 @@ export default function CatalogPage() {
                               {r.code}
                               {r.source_brand ? ` (${r.source_brand})` : ""}
                               {r.type ? ` [${r.type}]` : ""}
-                              {i < p.references.length - 1 ? ", " : ""}
+                              {i < (p.references?.length ?? 0) - 1 ? ", " : ""}
                             </span>
                           ))
                           : "—"}
                       </TableCell>
                     )}
                     {columnVisibility.qty && (
-                      <TableCell>
-                        <div className="flex items-center gap-1">
+                      <TableCell className="w-[160px] min-w-[160px]">
+                        <div className="flex items-center gap-1 shrink-0">
                           <Button
                             variant="outline"
                             size="icon"
@@ -491,7 +518,7 @@ export default function CatalogPage() {
                       </TableCell>
                     )}
                     {columnVisibility.add && (
-                      <TableCell>
+                      <TableCell className="w-[140px] min-w-[140px]">
                         <Button className="w-full" onClick={() => addToCart(p.id)}>
                           <ShoppingCart className="h-4 w-4 mr-2" /> Add
                         </Button>
@@ -693,8 +720,8 @@ export default function CatalogPage() {
             </div>
           </div>
         </div>
-      
-      <AdGridFooter />
+
+        <AdGridFooter />
       </div>
     </ClientLayout>
   );
