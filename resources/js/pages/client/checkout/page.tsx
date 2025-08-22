@@ -1,4 +1,3 @@
-// resources/js/pages/checkout/page.tsx
 import { useEffect, useState, useMemo } from "react";
 import { Head, router } from "@inertiajs/react";
 import { ClientLayout } from "../layout/client-layout";
@@ -116,7 +115,7 @@ export default function CheckoutPage() {
       else if (list.length) setSelectedAddressId(String(list[0].id));
       else setSelectedAddressId("new");
     } catch (e) {
-      console.error("Failed loading addresses", e);
+      console.error("Échec du chargement des adresses", e);
       setSelectedAddressId("new");
     } finally {
       setAddrLoading(false);
@@ -174,17 +173,17 @@ export default function CheckoutPage() {
     if (needsAddress) {
       if (usingSavedAddress) {
         if (!chosenAddress) {
-          setSubmitError("Please select a saved address.");
+          setSubmitError("Veuillez sélectionner une adresse enregistrée.");
           return;
         }
       } else if (!form.address.trim()) {
-        setSubmitError("Please provide an address or select a saved one.");
+        setSubmitError("Veuillez indiquer une adresse ou sélectionner une adresse enregistrée.");
         return;
       }
     }
 
     if (!form.full_name.trim() || !form.phone.trim()) {
-      setSubmitError("Please fill your name and phone.");
+      setSubmitError("Veuillez indiquer votre nom et votre numéro de téléphone.");
       return;
     }
 
@@ -217,7 +216,7 @@ export default function CheckoutPage() {
         e?.response?.data?.errors?.cart?.[0] ??
         e?.response?.data?.message ??
         e?.message ??
-        "Failed to submit shipping.";
+        "Échec de la soumission de l'expédition.";
       setSubmitError(msg);
     } finally {
       setSubmitBusy(false);
@@ -232,9 +231,9 @@ export default function CheckoutPage() {
         <Head title="Checkout" />
 
         <div className="flex items-center justify-between mb-4">
-          <h1 className="text-2xl font-semibold">Checkout</h1>
+          <h1 className="text-2xl font-semibold">Paiement</h1>
           <Button size={"sm"} variant="outline" onClick={refreshCart}>
-            <ShoppingCart className="mr-2 h-4 w-4" /> Refresh
+            <ShoppingCart className="mr-2 h-4 w-4" /> Actualiser
           </Button>
         </div>
 
@@ -242,7 +241,7 @@ export default function CheckoutPage() {
           {/* Items */}
           <Card className="p-4 gap-3 lg:col-span-2">
             <div className="flex items-center justify-between">
-              <div className="font-semibold">Your Order</div>
+              <div className="font-semibold">Votre commande</div>
               {/* {!isEmpty && (
                 <Button variant="ghost" size="sm" onClick={clear}>
                   Clear cart
@@ -251,9 +250,9 @@ export default function CheckoutPage() {
             </div>
 
             {loading ? (
-              <div className="text-sm text-muted-foreground">Loading...</div>
+              <div className="text-sm text-muted-foreground">Chargement…</div>
             ) : isEmpty ? (
-              <div className="text-sm text-muted-foreground">Your cart is empty.</div>
+              <div className="text-sm text-muted-foreground">Votre panier est vide.</div>
             ) : (
               <div className="rounded-md border overflow-x-auto">
                 <Table>
@@ -261,10 +260,10 @@ export default function CheckoutPage() {
                     <TableRow>
                       <TableHead className="w-[44px]" />
                       <TableHead className="w-[120px]">SKU</TableHead>
-                      <TableHead>Name</TableHead>
-                      <TableHead className="w-[260px]">Fitment Models</TableHead>
-                      <TableHead className="w-[200px]">Qty</TableHead>
-                      <TableHead className="w-[80px]">Remove</TableHead>
+                      <TableHead>Nom</TableHead>
+                      <TableHead className="w-[260px]">Modèles compatibles</TableHead>
+                      <TableHead className="w-[200px]">Qté</TableHead>
+                      <TableHead className="w-[80px]">Supprimer</TableHead>
                     </TableRow>
                   </TableHeader>
 
@@ -284,7 +283,7 @@ export default function CheckoutPage() {
                                 size="icon"
                                 className={`h-8 w-8 transition-transform ${isOpen ? "rotate-90" : ""}`}
                                 onClick={() => toggleRow(it.id)}
-                                title={isOpen ? "Hide details" : "Show details"}
+                                title={isOpen ? "Masquer les détails" : "Afficher les détails"}
                               >
                                 <Plus className="h-4 w-4" />
                               </Button>
@@ -353,28 +352,28 @@ export default function CheckoutPage() {
                                     {/* Details */}
                                     <div className="lg:col-span-3 grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
                                       <div className="space-y-1">
-                                        <div className="font-medium">Identifiers</div>
+                                        <div className="font-medium">Identifiants</div>
                                         <div>
                                           <span className="text-muted-foreground">SKU:</span> {it.sku || "—"}
                                         </div>
                                         <div>
-                                          <span className="text-muted-foreground">Manufacturer:</span>{" "}
+                                          <span className="text-muted-foreground">Fabricant:</span>{" "}
                                           {it.manufacturer?.name || "—"}
                                         </div>
                                         <div>
-                                          <span className="text-muted-foreground">Min Order:</span>{" "}
+                                          <span className="text-muted-foreground">Commande minimum:</span>{" "}
                                           {it.min_order_qty ?? "—"}
                                         </div>
                                         <div>
-                                          <span className="text-muted-foreground">Min (Gros):</span>{" "}
+                                          <span className="text-muted-foreground">Prix minimum (Gros):</span>{" "}
                                           {it.min_qty_gros ?? "—"}
                                         </div>
                                       </div>
 
                                       <div className="space-y-1">
-                                        <div className="font-medium">Pricing (TTC)</div>
+                                        <div className="font-medium">Prix (TTC)</div>
                                         <div>
-                                          <span className="text-muted-foreground">Retail:</span> {fmt(it.price_retail)}
+                                          <span className="text-muted-foreground">Prix de détail:</span> {fmt(it.price_retail)}
                                         </div>
                                         <div>
                                           <span className="text-muted-foreground">Demi-gros:</span>{" "}
@@ -386,13 +385,13 @@ export default function CheckoutPage() {
                                       </div>
 
                                       <div className="space-y-1 md:col-span-1">
-                                        <div className="font-medium">Fitment</div>
+                                        <div className="font-medium">Montage</div>
                                         <div>
-                                          <span className="text-muted-foreground">Models:</span>{" "}
+                                          <span className="text-muted-foreground">Modèles:</span>{" "}
                                           {it.fitment_models?.length ? it.fitment_models.join(", ") : "—"}
                                         </div>
                                         <div>
-                                          <span className="text-muted-foreground">Brands:</span>{" "}
+                                          <span className="text-muted-foreground">Marques:</span>{" "}
                                           {it.fitment_brands?.length ? it.fitment_brands.join(", ") : "—"}
                                         </div>
                                       </div>
@@ -414,24 +413,24 @@ export default function CheckoutPage() {
           {/* Right column */}
           <div className="space-y-6">
             <Card className="p-4 gap-3">
-              <div className="font-semibold">Order Summary</div>
+              <div className="font-semibold">Récapitulatif de la commande</div>
               <div className="space-y-2 text-sm">
                 <div className="flex items-center justify-between">
-                  <span>Items</span>
+                  <span>Articles</span>
                   <span>{cart.count}</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span>Subtotal</span>
+                  <span>Sous-total</span>
                   <span className="font-medium">
                     {Number(cart.subtotal).toFixed(2)} {cart.currency}
                   </span>
                 </div>
                 <div className="flex items-center justify-between text-muted-foreground">
-                  <span>Shipping</span>
-                  <span>Calculated at next step</span>
+                  <span>Frais de port</span>
+                  <span>Calculé à l'étape suivante</span>
                 </div>
                 <div className="border-t pt-2 flex items-center justify-between">
-                  <span className="font-semibold">Total (est.)</span>
+                  <span className="font-semibold">Total (estimé)</span>
                   <span className="font-semibold">
                     {Number(cart.subtotal).toFixed(2)} {cart.currency}
                   </span>
@@ -443,7 +442,7 @@ export default function CheckoutPage() {
               <div className="font-semibold">Contact</div>
               <div className="grid grid-cols-1 gap-3">
                 <div className="space-y-2">
-                  <Label>Full name</Label>
+                  <Label>Nom complet</Label>
                   <Input
                     placeholder="Your name"
                     value={form.full_name}
@@ -452,7 +451,7 @@ export default function CheckoutPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Phone</Label>
+                  <Label>Téléphone</Label>
                   <Input
                     placeholder="05xx-xx-xx-xx"
                     value={form.phone}
@@ -462,7 +461,7 @@ export default function CheckoutPage() {
                 </div>
               </div>
 
-              <div className="font-semibold pt-2">Delivery Method</div>
+              <div className="font-semibold pt-2">Mode de livraison</div>
               <RadioGroup
                 className="grid grid-cols-3 gap-2"
                 value={form.delivery_method}
@@ -484,10 +483,10 @@ export default function CheckoutPage() {
 
               {needsAddress && (
                 <>
-                  <div className="font-semibold pt-2">Shipping Address</div>
+                  <div className="font-semibold pt-2">Adresse de livraison</div>
 
                   {addrLoading ? (
-                    <div className="text-sm text-muted-foreground">Loading addresses...</div>
+                    <div className="text-sm text-muted-foreground">Chargement des adresses...</div>
                   ) : addresses.length ? (
                     <RadioGroup
                       className="space-y-2"
@@ -505,7 +504,7 @@ export default function CheckoutPage() {
                           <RadioGroupItem value={String(a.id)} />
                           <div className="text-sm">
                             <div className="font-medium">
-                              {a.label || "Address"} {a.is_default && <span className="ml-2 text-xs">• Default</span>}
+                              {a.label || "Address"} {a.is_default && <span className="ml-2 text-xs">• Par défaut</span>}
                             </div>
                             <div className="text-muted-foreground">
                               {a.recipient_name ? `${a.recipient_name} • ` : ""}
@@ -528,20 +527,20 @@ export default function CheckoutPage() {
                       >
                         <RadioGroupItem value="new" />
                         <div className="text-sm">
-                          <div className="font-medium">Use a different address</div>
-                          <div className="text-muted-foreground">Enter it below</div>
+                          <div className="font-medium">Utiliser une autre adresse</div>
+                          <div className="text-muted-foreground">Saisissez-la ci-dessous</div>
                         </div>
                       </label>
                     </RadioGroup>
                   ) : (
                     <div className="text-sm text-muted-foreground">
-                      You don’t have saved addresses. Enter a new one below.
+                      Vous n'avez pas d'adresse enregistrée. Saisissez-en une nouvelle ci-dessous.
                     </div>
                   )}
 
                   {selectedAddressId === "new" && (
                     <div className="pt-2">
-                      <Label>Address</Label>
+                      <Label>Adresse</Label>
                       <Input
                         placeholder="Street, City"
                         value={form.address}
@@ -555,19 +554,19 @@ export default function CheckoutPage() {
 
               {!needsAddress && (
                 <div className="text-xs text-muted-foreground">
-                  Pickup selected — address optional (you may still add instructions).
+                  Retrait sélectionné — adresse facultative (vous pouvez toujours ajouter des instructions).
                 </div>
               )}
 
               {!!submitError && <div className="text-sm text-red-600">{submitError}</div>}
 
               <Button className="w-full" disabled={isEmpty || submitBusy} onClick={submitShipping}>
-                Continue to shipping <Truck className="ml-2 h-4 w-4" />
+                Continuer vers l'expédition <Truck className="ml-2 h-4 w-4" />
               </Button>
 
               {placed && (
                 <div className="text-sm mt-2">
-                  Order <span className="font-mono">#{placed.order_id}</span> placed. Total:{" "}
+                  Commande <span className="font-mono">#{placed.order_id}</span> passée. Total:{" "}
                   <span className="font-semibold">
                     {placed.grand_total} {cart.currency}
                   </span>

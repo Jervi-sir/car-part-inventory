@@ -64,7 +64,7 @@ export default function SettingsPage() {
   };
 
   const onDeleteAddress = async (addr: Address) => {
-    if (!confirm("Delete this address?")) return;
+    if (!confirm("Supprimer cette adresse ?")) return;
     try {
       await api.delete(route("client.settings.api.shipping-addresses.crud") + `/${addr.id}`);
       setAddresses((prev) => prev.filter((a) => a.id !== addr.id));
@@ -100,7 +100,7 @@ export default function SettingsPage() {
   return (
     <ClientLayout title="Settings">
       <div className="p-6 pt-0 space-y-4">
-        <h1 className="text-2xl font-semibold">User Settings</h1>
+        <h1 className="text-2xl font-semibold">Paramètres utilisateur</h1>
         <div className="columns-1 md:columns-2 gap-4 [column-fill:_balance]">
           <div className="break-inside-avoid mb-4 w-full">
             <ProfileCard

@@ -90,13 +90,13 @@ export default function OrderPage() {
       const res = await http.get(endpoints.orderShow(orderId));
       if (!res.ok) {
         const js = await res.json().catch(() => null);
-        setErr(js?.message ?? "Failed to load order.");
+        setErr(js?.message ?? "Échec du chargement de la commande.");
       } else {
         const js = await res.json();
         setOrder(js as OrderPayload);
       }
     } catch (e: any) {
-      setErr(e?.message ?? "Failed to load order.");
+      setErr(e?.message ?? "Échec du chargement de la commande.");
     } finally {
       setLoading(false);
     }
@@ -106,47 +106,47 @@ export default function OrderPage() {
 
   const statusLabel = (s: OrderPayload["status"]) => {
     switch (s) {
-      case "cart": return "Cart";
-      case "pending": return "Pending";
-      case "confirmed": return "Confirmed";
-      case "preparing": return "Preparing";
-      case "shipped": return "Shipped";
-      case "completed": return "Completed";
-      case "canceled": return "Canceled";
+      case "cart": return "Panier";
+      case "pending": return "En attente";
+      case "confirmed": return "Confirmé";
+      case "preparing": return "Préparation";
+      case "shipped": return "Expédié";
+      case "completed": return "Terminé";
+      case "canceled": return "Annulé";
       default: return s;
     }
   };
 
   return (
-    <ClientLayout title={`Order #${orderId}`} >
+    <ClientLayout title={`Commande n°${orderId}`} >
       <div className="p-6 pt-0">
-        <Head title={`Order #${orderId}`} />
+        <Head title={`Commande n°${orderId}`} />
 
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
             <Button className="cursor-pointer" size={'icon'} variant="outline" onClick={() => router.get(window.history.back() as any)}>
               <ArrowLeft />
             </Button>
-            <h1 className="text-2xl font-semibold">Order #{orderId}</h1>
+            <h1 className="text-2xl font-semibold">Commande n°{orderId}</h1>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline" onClick={refresh}>Refresh</Button>
+            <Button variant="outline" onClick={refresh}>Actualiser</Button>
           </div>
         </div>
 
         {loading ? (
-          <Card className="p-4">Loading…</Card>
+          <Card className="p-4">Chargement…</Card>
         ) : err ? (
           <Card className="p-4 text-red-600">{err}</Card>
         ) : !order ? (
-          <Card className="p-4">Order not found.</Card>
+          <Card className="p-4">Commande introuvable.</Card>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Left: Items */}
             <Card className="p-4 lg:col-span-2">
               <div className="flex items-center justify-between mb-4">
-                <div className="font-semibold">Items</div>
-                <span className="text-sm text-muted-foreground">{order.items_count} item(s)</span>
+                <div className="font-semibold">Articles</div>
+                <span className="text-sm text-muted-foreground">{order.items_count} Article(s)</span>
               </div>
 
               <div className="rounded-md border overflow-x-auto">
@@ -154,11 +154,11 @@ export default function OrderPage() {
                   <TableHeader>
                     <TableRow>
                       <TableHead className="w-[120px]">SKU</TableHead>
-                      <TableHead>Name</TableHead>
-                      <TableHead className="w-[160px]">Manufacturer</TableHead>
-                      <TableHead className="w-[120px]">Qty</TableHead>
-                      <TableHead className="w-[140px]">Unit</TableHead>
-                      <TableHead className="w-[140px]">Line Total</TableHead>
+                      <TableHead>Nom</TableHead>
+                      <TableHead className="w-[160px]">Fabricant</TableHead>
+                      <TableHead className="w-[120px]">Qté</TableHead>
+                      <TableHead className="w-[140px]">Unité</TableHead>
+                      <TableHead className="w-[140px]">Total</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -180,7 +180,7 @@ export default function OrderPage() {
             {/* Right: Status + Summary + Shipping */}
             <div className="space-y-6">
               <Card className="p-4 gap-2">
-                <div className="font-semibold mb-0">Status</div>
+                <div className="font-semibold mb-0">Statut</div>
                 <div className="text-sm">
                   {/* <div className="mb-2">
                     <span className="px-2 py-1 rounded bg-muted">{statusLabel(order.status)}</span>
@@ -199,18 +199,18 @@ export default function OrderPage() {
               </Card>
 
               <Card className="p-4 gap-2">
-                <div className="font-semibold mb-1">Summary</div>
+                <div className="font-semibold mb-1">Récapitulatif</div>
                 <div className="space-y-2 text-sm">
                   <div className="flex items-center justify-between">
-                    <span>Subtotal</span>
+                    <span>Sous-total</span>
                     <span>{order.subtotal.toFixed(2)} {order.currency}</span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span>Discount</span>
+                    <span>Remise</span>
                     <span>- {order.discount_total.toFixed(2)} {order.currency}</span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span>Shipping</span>
+                    <span>Livraison</span>
                     <span>{order.shipping_total.toFixed(2)} {order.currency}</span>
                   </div>
                   <div className="flex items-center justify-between">
@@ -218,22 +218,22 @@ export default function OrderPage() {
                     <span>{order.tax_total.toFixed(2)} {order.currency}</span>
                   </div>
                   <div className="border-t pt-2 flex items-center justify-between">
-                    <span className="font-semibold">Grand Total</span>
+                    <span className="font-semibold">Total général</span>
                     <span className="font-semibold">{order.grand_total.toFixed(2)} {order.currency}</span>
                   </div>
                 </div>
               </Card>
 
               <Card className="p-4 gap-2">
-                <div className="font-semibold mb-1">Contact & Shipping</div>
+                <div className="font-semibold mb-1">Contact et livraison</div>
                 <div className="text-sm space-y-1">
-                  <div><span className="text-muted-foreground">Method:</span> {order.delivery_method ?? '—'}</div>
-                  <div><span className="text-muted-foreground">Name:</span> {order.ship_to.name ?? '—'}</div>
-                  <div><span className="text-muted-foreground">Phone:</span> {order.ship_to.phone ?? '—'}</div>
-                  <div><span className="text-muted-foreground">Address:</span> {order.ship_to.address ?? '—'}</div>
+                  <div><span className="text-muted-foreground">Méthode :</span> {order.delivery_method ?? '—'}</div>
+                  <div><span className="text-muted-foreground">Nom :</span> {order.ship_to.name ?? '—'}</div>
+                  <div><span className="text-muted-foreground">Téléphone :</span> {order.ship_to.phone ?? '—'}</div>
+                  <div><span className="text-muted-foreground">Adresse :</span> {order.ship_to.address ?? '—'}</div>
                 </div>
                 <p className="text-xs text-muted-foreground mt-3 flex items-center gap-2">
-                  <Truck className="h-3 w-3" /> Updated: {order.updated_at ? new Date(order.updated_at).toLocaleString() : '—'}
+                  <Truck className="h-3 w-3" /> Mise à jour : {order.updated_at ? new Date(order.updated_at).toLocaleString() : '—'}
                 </p>
               </Card>
             </div>

@@ -1,4 +1,3 @@
-// resources/js/pages/catalog/page.tsx
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Head, router } from "@inertiajs/react";
 import { Button } from "@/components/ui/button";
@@ -18,11 +17,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import api from "@/lib/api";
-import { AdMarquee } from "@/components/ads/ad-marquee";
 import { AdsHeroSlider } from "@/components/ads/ad-hero-slider";
 import { AdGridFooter } from "@/components/ads/ad-grid-footer";
-import EnablePushButton from "./EnablePushButton";
-import TelegramConnect from "./TelegramConnect";
 
 declare const route: (name: string, params?: any) => string;
 
@@ -77,33 +73,6 @@ const endpoints = {
 };
 
 export default function CatalogPage() {
-  const [heroAds] = useState<HeroAd[]>([
-    {
-      id: 1,
-      src: "https://picsum.photos/1200/360?random=11",
-      alt: "Promo 1",
-      href: "/promo/gsp",
-      title: "Jusqu’à -10% ce weekend",
-      subtitle: "Amortisseurs, freins et plus",
-    },
-    {
-      id: 2,
-      src: "https://picsum.photos/1200/360?random=12",
-      alt: "Promo 2",
-      href: "/brand/brembo",
-      title: "Arrivages Brembo",
-      subtitle: "Performance & fiabilité",
-    },
-    {
-      id: 3,
-      src: "https://picsum.photos/1200/360?random=13",
-      alt: "Promo 3",
-      href: "/shipping",
-      title: "Livraison 24h",
-      subtitle: "Commandez avant 16:00",
-    },
-  ]);
-
   const [filters, setFilters] = useState({
     q: "",
     manufacturer_id: "",
@@ -249,21 +218,21 @@ export default function CatalogPage() {
   };
 
   return (
-    <ClientLayout title="Catalog">
+    <ClientLayout title="Catalogue">
       <div className="p-4 md:p-6 pt-0">
         <Head title="Shop" />
         <AdsHeroSlider className="mb-4" />
         <div className="flex items-center justify-between mb-4">
-          <h1 className="text-2xl font-semibold">Catalog</h1>
+          <h1 className="text-2xl font-semibold">Catalogue</h1>
           <div className="flex items-center gap-2">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button size={"sm"} variant="outline">
-                  Columns
+                  Colonnes
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent className="w-56">
-                <DropdownMenuLabel>Table Columns</DropdownMenuLabel>
+                <DropdownMenuLabel>Colonnes du tableau</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 {Object.keys(columnVisibility).map((key) => (
                   <DropdownMenuCheckboxItem
@@ -287,10 +256,10 @@ export default function CatalogPage() {
         <Card className="p-4 mb-4">
           <div className="grid grid-cols-1 md:grid-cols-6 gap-3">
             <div className="md:col-span-2 space-y-2">
-              <Label>Search</Label>
+              <Label>Recherche</Label>
               <div className="flex gap-2">
                 <Input
-                  placeholder="Name, SKU, barcode, reference..."
+                  placeholder="Nom, SKU, code-barres, référence..."
                   value={filters.q}
                   onChange={(e) => setFilters({ ...filters, q: e.target.value })}
                 />
@@ -298,16 +267,16 @@ export default function CatalogPage() {
             </div>
 
             <div className="space-y-2">
-              <Label>Manufacturer</Label>
+              <Label>Fabricant</Label>
               <Select
                 value={filters.manufacturer_id}
                 onValueChange={(v) => setFilters({ ...filters, manufacturer_id: v })}
               >
                 <SelectTrigger className="w-full">
-                  <SelectValue placeholder="All" />
+                  <SelectValue placeholder="Tous" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All</SelectItem>
+                  <SelectItem value="all">Tous</SelectItem>
                   {mans.map((m) => (
                     <SelectItem key={String(m.id)} value={String(m.id)}>
                       {m.name}
@@ -318,16 +287,16 @@ export default function CatalogPage() {
             </div>
 
             <div className="space-y-2">
-              <Label>Brand</Label>
+              <Label>Marque</Label>
               <Select
                 value={filters.vehicle_brand_id}
                 onValueChange={(v) => setFilters({ ...filters, vehicle_brand_id: v })}
               >
                 <SelectTrigger className="w-full">
-                  <SelectValue placeholder="All" />
+                  <SelectValue placeholder="Toutes" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All</SelectItem>
+                  <SelectItem value="all">Toutes</SelectItem>
                   {brands.map((b) => (
                     <SelectItem key={b.id} value={String(b.id)}>
                       {b.name}
@@ -338,17 +307,17 @@ export default function CatalogPage() {
             </div>
 
             <div className="space-y-2">
-              <Label>Model</Label>
+              <Label>Modèle</Label>
               <Select
                 value={filters.vehicle_model_id}
                 onValueChange={(v) => setFilters({ ...filters, vehicle_model_id: v })}
                 disabled={!models.length}
               >
                 <SelectTrigger className="w-full">
-                  <SelectValue placeholder={models.length ? "All" : "Pick brand first"} />
+                  <SelectValue placeholder={models.length ? "Tous" : "Choisissez d'abord la marque"} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All</SelectItem>
+                  <SelectItem value="all">Tous</SelectItem>
                   {models.map((m) => (
                     <SelectItem key={m.id} value={String(m.id)}>
                       {m.name}
@@ -367,7 +336,7 @@ export default function CatalogPage() {
                   refreshParts(1);
                 }}
               >
-                Clear
+                Effacer
               </Button>
             </div>
           </div>
@@ -380,23 +349,23 @@ export default function CatalogPage() {
               <TableRow>
                 <TableHead className="w-[36px]" />
                 {columnVisibility.sku && <TableHead className="w-[100px]">SKU</TableHead>}
-                {columnVisibility.name && <TableHead className="">Name</TableHead>}
-                {columnVisibility.manufacturer && <TableHead className="w-[120px]">Manufacturer</TableHead>}
+                {columnVisibility.name && <TableHead className="">Nom</TableHead>}
+                {columnVisibility.manufacturer && <TableHead className="w-[120px]">Fabricant</TableHead>}
 
-                {columnVisibility.fitmentModels && <TableHead className="">Fitment Models</TableHead>}
-                {columnVisibility.fitmentBrands && <TableHead className="">Fitment Brands</TableHead>}
+                {columnVisibility.fitmentModels && <TableHead className="">Modèles compatibles</TableHead>}
+                {columnVisibility.fitmentBrands && <TableHead className="">Marques compatibles</TableHead>}
 
-                {columnVisibility.minOrderQty && <TableHead className="">Min Order</TableHead>}
-                {columnVisibility.minQtyGros && <TableHead className="">Min (Gros)</TableHead>}
+                {columnVisibility.minOrderQty && <TableHead className="">Commande minimum</TableHead>}
+                {columnVisibility.minQtyGros && <TableHead className="">Minimum (Gros)</TableHead>}
 
-                {columnVisibility.priceRetail && <TableHead className="">Retail</TableHead>}
+                {columnVisibility.priceRetail && <TableHead className="">Prix de détail</TableHead>}
                 {columnVisibility.priceDemiGros && <TableHead className="">Demi-gros</TableHead>}
                 {columnVisibility.priceGros && <TableHead className="">Gros</TableHead>}
 
-                {columnVisibility.references && <TableHead className="">References</TableHead>}
+                {columnVisibility.references && <TableHead className="">Références</TableHead>}
 
-                {columnVisibility.qty && <TableHead className="w-[160px]">Qty</TableHead>}
-                {columnVisibility.add && <TableHead className="w-[100px]">Add</TableHead>}
+                {columnVisibility.qty && <TableHead className="w-[160px]">Qté</TableHead>}
+                {columnVisibility.add && <TableHead className="w-[100px]">Ajouter</TableHead>}
               </TableRow>
             </TableHeader>
 
@@ -404,7 +373,7 @@ export default function CatalogPage() {
               {pageData.data.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={visibleCount + 1} className="text-center text-muted-foreground">
-                    No parts found
+                    Aucune pièce trouvée
                   </TableCell>
                 </TableRow>
               )}
@@ -520,7 +489,7 @@ export default function CatalogPage() {
                     {columnVisibility.add && (
                       <TableCell className="w-[140px] min-w-[140px]">
                         <Button className="w-full" onClick={() => addToCart(p.id)}>
-                          <ShoppingCart className="h-4 w-4 mr-2" /> Add
+                          <ShoppingCart className="h-4 w-4 mr-2" /> Ajouter
                         </Button>
                       </TableCell>
                     )}
@@ -546,33 +515,33 @@ export default function CatalogPage() {
 
                           {/* Basics (only if hidden in columns) */}
                           {!columnVisibility.sku && <DetailItem label="SKU" value={p.sku || "—"} />}
-                          {!columnVisibility.name && <DetailItem label="Name" value={p.name} />}
+                          {!columnVisibility.name && <DetailItem label="Nom" value={p.name} />}
                           {!columnVisibility.manufacturer && (
-                            <DetailItem label="Manufacturer" value={p.manufacturer?.name || "—"} />
+                            <DetailItem label="Fabricant" value={p.manufacturer?.name || "—"} />
                           )}
 
                           {/* Fitments (only if hidden) */}
                           {!columnVisibility.fitmentBrands && (
                             <DetailItem
-                              label="Fitment Brands"
+                              label="Modèles compatibles"
                               value={p.fitment_brands?.length ? p.fitment_brands.join(", ") : "—"}
                             />
                           )}
                           {!columnVisibility.fitmentModels && (
                             <DetailItem
-                              label="Fitment Models"
+                              label="Marques compatibles"
                               value={p.fitment_models?.length ? p.fitment_models.join(", ") : "—"}
                             />
                           )}
 
                           {/* Quantities & thresholds (only if hidden) */}
-                          {!columnVisibility.minOrderQty && <DetailItem label="Min Order" value={show(p.min_order_qty)} />}
-                          {!columnVisibility.minQtyGros && <DetailItem label="Min (Gros)" value={show(p.min_qty_gros)} />}
+                          {!columnVisibility.minOrderQty && <DetailItem label="Commande minimum" value={show(p.min_order_qty)} />}
+                          {!columnVisibility.minQtyGros && <DetailItem label="Minimum (Gros)" value={show(p.min_qty_gros)} />}
 
                           {/* Prices (only if hidden) */}
                           {!columnVisibility.priceRetail && (
                             <DetailItem
-                              label="Retail"
+                              label="Prix de détail"
                               value={p.price_retail != null ? `${p.price_retail} DZD` : "–"}
                             />
                           )}
@@ -589,7 +558,7 @@ export default function CatalogPage() {
                           {/* References (only if hidden) */}
                           {!columnVisibility.references && (
                             <div className="lg:col-span-3">
-                              <div className="text-xs font-medium text-muted-foreground mb-1">References</div>
+                              <div className="text-xs font-medium text-muted-foreground mb-1">Références</div>
                               {p.references?.length ? (
                                 <ul className="text-sm list-disc pl-5 space-y-0.5">
                                   {p.references.map((r, i) => (
@@ -609,7 +578,7 @@ export default function CatalogPage() {
                           {/* Interactions (only if hidden) */}
                           {!columnVisibility.qty && (
                             <div className="rounded border bg-background p-3">
-                              <div className="text-xs font-medium text-muted-foreground mb-1">Qty</div>
+                              <div className="text-xs font-medium text-muted-foreground mb-1">Qté</div>
                               <div className="flex items-center gap-1">
                                 <Button
                                   variant="outline"
@@ -649,9 +618,9 @@ export default function CatalogPage() {
 
                           {!columnVisibility.add && (
                             <div className="rounded border bg-background p-3">
-                              <div className="text-xs font-medium text-muted-foreground mb-1">Add</div>
+                              <div className="text-xs font-medium text-muted-foreground mb-1">Ajouter</div>
                               <Button className="w-full" onClick={() => addToCart(p.id)}>
-                                <ShoppingCart className="h-4 w-4 mr-2" /> Add
+                                <ShoppingCart className="h-4 w-4 mr-2" /> Ajouter
                               </Button>
                             </div>
                           )}
@@ -677,7 +646,7 @@ export default function CatalogPage() {
           </div>
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2">
-              <Label htmlFor="per">Per page</Label>
+              <Label htmlFor="per">Par page</Label>
               <Select
                 value={String(pageData.per_page)}
                 onValueChange={(v) => setPageData((p) => ({ ...p, per_page: Number(v) }))}
@@ -694,7 +663,7 @@ export default function CatalogPage() {
                 </SelectContent>
               </Select>
               <Button variant="outline" size="sm" onClick={() => refreshParts(1)}>
-                Apply
+                Appliquer
               </Button>
             </div>
             <div className="flex items-center gap-2">
@@ -752,19 +721,19 @@ function CartWidget({
   return (
     <div className="relative">
       <Button size={"sm"} variant="outline" onClick={() => setOpen((o) => !o)}>
-        <ShoppingCart className="h-4 w-4 mr-2" /> {cart.count} items
+        <ShoppingCart className="h-4 w-4 mr-2" /> {cart.count} articles
       </Button>
 
       {open && (
         <div className="absolute right-0 mt-2 w-[420px] bg-background border rounded-md shadow-xl z-50 p-3">
           <div className="flex items-center justify-between mb-2">
-            <div className="font-semibold">Your Cart</div>
+            <div className="font-semibold">Votre panier</div>
             <Button variant="ghost" size="sm" onClick={clear}>
-              Clear
+              Effacer
             </Button>
           </div>
           {cart.items.length === 0 ? (
-            <div className="text-sm text-muted-foreground">Cart is empty</div>
+            <div className="text-sm text-muted-foreground">Le panier est vide</div>
           ) : (
             <div className="space-y-3 max-h-[50vh] overflow-auto pr-1">
               {cart.items.map((it) => (
@@ -773,7 +742,7 @@ function CartWidget({
                     {it.image ? (
                       <img src={it.image} className="object-cover w-full h-full" />
                     ) : (
-                      <div className="text-xs text-muted-foreground">No Img</div>
+                      <div className="text-xs text-muted-foreground">Aucune image</div>
                     )}
                   </div>
                   <div className="flex-1">
@@ -806,13 +775,13 @@ function CartWidget({
             </div>
           )}
           <div className="mt-3 flex items-center justify-between">
-            <div className="font-medium">Subtotal</div>
+            <div className="font-medium">Sous total</div>
             <div className="font-semibold">
               {cart.subtotal} {cart.currency}
             </div>
           </div>
           <div className="mt-3">
-            <Button className="w-full">Checkout</Button>
+            <Button className="w-full">Commander</Button>
           </div>
         </div>
       )}

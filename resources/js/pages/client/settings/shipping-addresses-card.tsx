@@ -9,14 +9,14 @@ export const ShippingAddressesCard = ({ loading, hasAddresses, addresses, openEd
     <>
       <Card>
         <CardHeader>
-          <CardTitle>Shipping Addresses</CardTitle>
-          <CardDescription>Manage addresses used for delivery.</CardDescription>
+          <CardTitle>Adresses de livraison</CardTitle>
+          <CardDescription>Gérer les adresses utilisées pour la livraison.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
-          {loading && <div className="text-sm text-muted-foreground">Loading...</div>}
+          {loading && <div className="text-sm text-muted-foreground">Chargement…</div>}
 
           {!loading && !hasAddresses && (
-            <div className="text-sm text-muted-foreground">No addresses yet.</div>
+            <div className="text-sm text-muted-foreground">Aucune adresse pour le moment.</div>
           )}
 
           {!loading &&
@@ -32,7 +32,7 @@ export const ShippingAddressesCard = ({ loading, hasAddresses, addresses, openEd
                         {addr.label || "Address"}{" "}
                         {addr.is_default && (
                           <span className="ml-2 text-xs rounded bg-primary/10 text-primary px-2 py-0.5">
-                            Default
+                            Par défaut
                           </span>
                         )}
                       </div>
@@ -51,14 +51,14 @@ export const ShippingAddressesCard = ({ loading, hasAddresses, addresses, openEd
 
                     <div className="flex gap-2">
                       <Button size="sm" variant="outline" onClick={() => openEditDialog(addr)}>
-                        Edit
+                        Modifier
                       </Button>
                       <Button
                         size="sm"
                         variant="destructive"
                         onClick={() => onDeleteAddress(addr)}
                       >
-                        Delete
+                        Supprimer
                       </Button>
                     </div>
                   </div>
@@ -67,7 +67,7 @@ export const ShippingAddressesCard = ({ loading, hasAddresses, addresses, openEd
             ))}
         </CardContent>
         <CardFooter className="justify-end">
-          <Button onClick={openCreateDialog}>Add Address</Button>
+          <Button onClick={openCreateDialog}>Ajouter une adresse</Button>
         </CardFooter>
       </Card>
     </>

@@ -85,21 +85,21 @@ export function AddressDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{isEdit ? "Edit Address" : "New Address"}</DialogTitle>
+          <DialogTitle>{isEdit ? "Modifier l'adresse" : "Nouvelle adresse"}</DialogTitle>
         </DialogHeader>
 
         <div className="grid gap-3 md:grid-cols-2">
           <div className="space-y-1">
-            <Label>Label</Label>
+            <Label>Libellé</Label>
             <Input
-              placeholder="Home, Work..."
+              placeholder="Domicile, Travail..."
               value={form.label ?? ""}
               onChange={(e) => onChange("label", e.target.value)}
             />
           </div>
 
           <div className="space-y-1">
-            <Label>Recipient Name</Label>
+            <Label>Nom du destinataire</Label>
             <Input
               value={form.recipient_name ?? ""}
               onChange={(e) => onChange("recipient_name", e.target.value)}
@@ -107,12 +107,12 @@ export function AddressDialog({
           </div>
 
           <div className="space-y-1">
-            <Label>Phone</Label>
+            <Label>Téléphone</Label>
             <Input value={form.phone ?? ""} onChange={(e) => onChange("phone", e.target.value)} />
           </div>
 
           <div className="space-y-1 md:col-span-2">
-            <Label>Address Line 1</Label>
+            <Label>Ligne d'adresse 1</Label>
             <Input
               value={form.address_line1 ?? ""}
               onChange={(e) => onChange("address_line1", e.target.value)}
@@ -120,7 +120,7 @@ export function AddressDialog({
           </div>
 
           <div className="space-y-1 md:col-span-2">
-            <Label>Address Line 2</Label>
+            <Label>Ligne d'adresse 2</Label>
             <Input
               value={form.address_line2 ?? ""}
               onChange={(e) => onChange("address_line2", e.target.value)}
@@ -128,17 +128,17 @@ export function AddressDialog({
           </div>
 
           <div className="space-y-1">
-            <Label>City</Label>
+            <Label>Ville</Label>
             <Input value={form.city ?? ""} onChange={(e) => onChange("city", e.target.value)} />
           </div>
 
           <div className="space-y-1">
-            <Label>State</Label>
+            <Label>État/Province</Label>
             <Input value={form.state ?? ""} onChange={(e) => onChange("state", e.target.value)} />
           </div>
 
           <div className="space-y-1">
-            <Label>Postal Code</Label>
+            <Label>Code postal</Label>
             <Input
               value={form.postal_code ?? ""}
               onChange={(e) => onChange("postal_code", e.target.value)}
@@ -146,7 +146,7 @@ export function AddressDialog({
           </div>
 
           <div className="space-y-1">
-            <Label>Country</Label>
+            <Label>Pays</Label>
             <Input
               value={form.country ?? "DZ"}
               maxLength={2}
@@ -160,16 +160,16 @@ export function AddressDialog({
               checked={!!form.is_default}
               onCheckedChange={(v) => onChange("is_default", v)}
             />
-            <Label htmlFor="is_default">Set as default</Label>
+            <Label htmlFor="is_default">Définir par défaut</Label>
           </div>
         </div>
 
         <DialogFooter className="mt-2">
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
-            Cancel
+            Annuler
           </Button>
           <Button onClick={save} disabled={saving || !requiredOk}>
-            {saving ? "Saving..." : "Save"}
+            {saving ? "Enregistrement..." : "Enregistrer"}
           </Button>
         </DialogFooter>
       </DialogContent>

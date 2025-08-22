@@ -50,8 +50,8 @@ const statusOptions = ["all", "cart", "pending", "confirmed", "preparing", "ship
 const methodOptions = ["all", "pickup", "courier", "post"] as const;
 const sortOptions = [
   { value: "created_at", label: "Date" },
-  { value: "grand_total", label: "Amount" },
-  { value: "status", label: "Status" },
+  { value: "grand_total", label: "Montant" },
+  { value: "status", label: "Statut" },
 ] as const;
 
 export default function OrdersPage() {
@@ -126,14 +126,14 @@ export default function OrdersPage() {
       <div className="p-6 pt-0">
         <Head title="My Orders" />
         <div className="flex items-center justify-between mb-4">
-          <h1 className="text-2xl font-semibold">My Orders</h1>
+          <h1 className="text-2xl font-semibold">Mes commandes</h1>
         </div>
 
         {/* Filters */}
         <Card className="p-4 mb-4">
           <div className="flex flex-row flex-wrap gap-3">
             <div className="w-[180px] md:col-span-2 space-y-2">
-              <Label>Search</Label>
+              <Label>Recherche</Label>
               <div className="flex gap-2">
                 <Input
                   className="w-full"
@@ -145,7 +145,7 @@ export default function OrdersPage() {
             </div>
 
             <div className="w-[120px] space-y-2">
-              <Label>Status</Label>
+              <Label>Statut</Label>
               <Select value={filters.status} onValueChange={(v) => setFilters({ ...filters, status: v })}>
                 <SelectTrigger className="w-full">
                   <SelectValue />
@@ -161,7 +161,7 @@ export default function OrdersPage() {
             </div>
 
             <div className="w-[120px] space-y-2">
-              <Label>Method</Label>
+              <Label>Méthode</Label>
               <Select
                 value={filters.delivery_method}
                 onValueChange={(v) => setFilters({ ...filters, delivery_method: v })}
@@ -180,7 +180,7 @@ export default function OrdersPage() {
             </div>
 
             <div className="w-[150px] space-y-2">
-              <Label>From</Label>
+              <Label>De</Label>
               <Input
                 className="w-full"
                 type="date"
@@ -190,7 +190,7 @@ export default function OrdersPage() {
             </div>
 
             <div className="w-[150px] space-y-2">
-              <Label>To</Label>
+              <Label>À</Label>
               <Input
                 className="w-full"
                 type="date"
@@ -200,7 +200,7 @@ export default function OrdersPage() {
             </div>
 
             <div className="w-[240px] space-y-2">
-              <Label>Sort</Label>
+              <Label>Trier</Label>
               <div className="flex gap-2">
                 <Select value={filters.sort_by} onValueChange={(v) => setFilters({ ...filters, sort_by: v })}>
                   <SelectTrigger className="w-full">
@@ -219,8 +219,8 @@ export default function OrdersPage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="desc">Desc</SelectItem>
-                    <SelectItem value="asc">Asc</SelectItem>
+                    <SelectItem value="desc">Descendant</SelectItem>
+                    <SelectItem value="asc">Croissant</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -241,7 +241,7 @@ export default function OrdersPage() {
                   });
                 }}
               >
-                Clear
+                Effacer
               </Button>
             </div>
           </div>
@@ -252,13 +252,13 @@ export default function OrdersPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-[90px]">Order #</TableHead>
+                <TableHead className="w-[90px]">N° de commande</TableHead>
                 <TableHead className="w-[160px]">Date</TableHead>
-                <TableHead className="w-[120px]">Status</TableHead>
-                <TableHead>Items (brief)</TableHead>
-                <TableHead className="w-[90px]">Count</TableHead>
-                <TableHead className="w-[130px]">Subtotal</TableHead>
-                <TableHead className="w-[110px]">Ship</TableHead>
+                <TableHead className="w-[120px]">Statut</TableHead>
+                <TableHead>Articles (résumé)</TableHead>
+                <TableHead className="w-[90px]">Nombre</TableHead>
+                <TableHead className="w-[130px]">Sous-total</TableHead>
+                <TableHead className="w-[110px]">Expédition</TableHead>
                 <TableHead className="w-[140px]">Total</TableHead>
                 <TableHead className="w-[100px]">Action</TableHead>
               </TableRow>
@@ -268,13 +268,13 @@ export default function OrdersPage() {
               {loading ? (
                 <TableRow>
                   <TableCell colSpan={9} className="text-center text-muted-foreground">
-                    Loading…
+                    Chargement…
                   </TableCell>
                 </TableRow>
               ) : pageData.data.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={9} className="text-center text-muted-foreground">
-                    No orders found
+                    Aucune commande trouvée
                   </TableCell>
                 </TableRow>
               ) : (
@@ -311,7 +311,7 @@ export default function OrdersPage() {
                         <TableCell className="font-semibold">{money(o.grand_total, o.currency)}</TableCell>
                         <TableCell>
                           <Button size="sm" onClick={() => (window.location.href = endpoints.view(o.id))}>
-                            View
+                            Afficher
                           </Button>
                         </TableCell>
                       </TableRow>
@@ -329,9 +329,9 @@ export default function OrdersPage() {
                                 ))}
                               </ul>
                               <div className="flex gap-6 text-muted-foreground">
-                                <span>Discount: {money(o.discount_total, o.currency)}</span>
-                                <span>Tax: {money(o.tax_total, o.currency)}</span>
-                                <span>Updated: {new Date(o.updated_at).toLocaleString()}</span>
+                                <span>Remise :{money(o.discount_total, o.currency)}</span>
+                                <span>Taxe :{money(o.tax_total, o.currency)}</span>
+                                <span>Mise à jour :{new Date(o.updated_at).toLocaleString()}</span>
                               </div>
                             </div>
                           </TableCell>
@@ -357,7 +357,7 @@ export default function OrdersPage() {
           </div>
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2">
-              <Label htmlFor="per">Per page</Label>
+              <Label htmlFor="per">Par page</Label>
               <Select
                 value={String(pageData.per_page)}
                 onValueChange={(v) => setPageData((p) => ({ ...p, per_page: Number(v) }))}
@@ -374,7 +374,7 @@ export default function OrdersPage() {
                 </SelectContent>
               </Select>
               <Button variant="outline" size="sm" onClick={() => refresh(1)}>
-                Apply
+                Appliquer
               </Button>
             </div>
             <div className="flex items-center gap-2">

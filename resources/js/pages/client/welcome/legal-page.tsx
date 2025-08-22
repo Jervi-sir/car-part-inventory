@@ -4,7 +4,6 @@ import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
-
 export type LegalPageProps = {
   type: "terms" | "privacy";
   updatedAt?: string; // ISO date string e.g. "2025-08-18"
@@ -17,7 +16,7 @@ export type LegalPageProps = {
 };
 
 export default function LegalPage({ type, updatedAt, company }: LegalPageProps) {
-  const metaTitle = type === "terms" ? "Terms of Service" : "Privacy Policy";
+  const metaTitle = type === "terms" ? "Conditions d’utilisation" : "Politique de confidentialité";
   const updated = updatedAt ?? new Date().toISOString().slice(0, 10);
   const info = {
     name: company?.name ?? "CarParts DZ",
@@ -39,8 +38,8 @@ export default function LegalPage({ type, updatedAt, company }: LegalPageProps) 
           <div className="flex flex-row items-center gap-2">
             <Badge variant="secondary" className="rounded-full">{metaTitle}</Badge>
             <div className="flex items-center gap-3">
-              <Link href={route("login")}> <Button variant="ghost" className="hidden sm:inline-flex">Sign in</Button> </Link>
-              <Link href={route("register")}> <Button className="rounded-xl">Create account</Button> </Link>
+              <Link href={route("login")}> <Button variant="ghost" className="hidden sm:inline-flex">Se connecter</Button> </Link>
+              <Link href={route("register")}> <Button className="rounded-xl">Créer un compte</Button> </Link>
             </div>
           </div>
         </div>
@@ -50,7 +49,7 @@ export default function LegalPage({ type, updatedAt, company }: LegalPageProps) 
         <Card className="rounded-2xl border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900">
           <CardHeader>
             <CardTitle className="text-2xl">{metaTitle}</CardTitle>
-            <div className="text-xs text-neutral-500 dark:text-neutral-400">Last updated: {updated}</div>
+            <div className="text-xs text-neutral-500 dark:text-neutral-400">Dernière mise à jour : {updated}</div>
           </CardHeader>
           <CardContent className="prose prose-neutral dark:prose-invert max-w-none">
             {type === "terms" ? <TermsBody info={info} /> : <PrivacyBody info={info} />}
@@ -60,11 +59,11 @@ export default function LegalPage({ type, updatedAt, company }: LegalPageProps) 
 
       <footer className="border-t border-neutral-200 dark:border-neutral-800">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8 text-sm text-neutral-500 dark:text-neutral-400 flex flex-col sm:flex-row items-center justify-between gap-3">
-          <div>© {new Date().getFullYear()} CarParts DZ. All rights reserved.</div>
+          <div>© {new Date().getFullYear()} CarParts DZ. Tous droits réservés.</div>
           <div className="flex items-center gap-4">
-            <Link href={route("terms")}>Terms</Link>
-            <Link href={route("privacy")}>Privacy</Link>
-            <Link href={route("register")}>Create account</Link>
+            <Link href={route("terms")}>Conditions</Link>
+            <Link href={route("privacy")}>Confidentialité</Link>
+            <Link href={route("register")}>Créer un compte</Link>
           </div>
         </div>
       </footer>
@@ -77,75 +76,75 @@ function TermsBody({ info }: { info: { name: string; country: string; email: str
   return (
     <div className="space-y-6">
       <p>
-        These Terms of Service ("Terms") govern your access to and use of {info.name}'s platform for browsing and
-        purchasing automotive parts and related services (the "Service"). By creating an account or using the Service, you
-        agree to these Terms.
+        Les présentes Conditions d’utilisation (« Conditions ») régissent votre accès et votre utilisation de la plateforme
+        {` ${info.name} `} pour la consultation et l’achat de pièces automobiles et services associés (le « Service »).
+        En créant un compte ou en utilisant le Service, vous acceptez ces Conditions.
       </p>
 
-      <h3>1. Eligibility & Accounts</h3>
+      <h3>1. Admissibilité et comptes</h3>
       <p>
-        You must be at least 18 years old. You are responsible for your account credentials and for all activity under your
-        account. We may require additional verification for business (B2B) accounts.
+        Vous devez avoir au moins 18 ans. Vous êtes responsable de vos identifiants et de toute activité réalisée via votre
+        compte. Des vérifications supplémentaires peuvent être requises pour les comptes professionnels (B2B).
       </p>
 
-      <h3>2. Access & Availability</h3>
+      <h3>2. Accès et disponibilité</h3>
       <p>
-        Access to live prices, stock and ordering is limited to registered users. We may modify or discontinue features at
-        any time to maintain availability and accuracy.
+        L’accès aux prix en direct, au stock et à la commande est réservé aux utilisateurs enregistrés. Nous pouvons
+        modifier ou interrompre des fonctionnalités à tout moment pour préserver la disponibilité et l’exactitude.
       </p>
 
-      <h3>3. Pricing & Orders</h3>
+      <h3>3. Tarifs et commandes</h3>
       <ul>
-        <li>Prices are shown in DZD unless stated otherwise; tiered pricing (retail / demi-gros / gros) may apply per item.</li>
-        <li>Submitting an order constitutes an offer to purchase; we may accept or reject your order at our discretion.</li>
-        <li>For bulk orders, quotes may have validity periods and stock constraints.</li>
+        <li>Les prix sont affichés en DZD sauf indication contraire ; une tarification par paliers (détail / demi-gros / gros) peut s’appliquer selon l’article.</li>
+        <li>La soumission d’une commande constitue une offre d’achat ; nous pouvons accepter ou refuser votre commande à notre discrétion.</li>
+        <li>Pour les commandes en gros, les devis peuvent avoir des périodes de validité et des contraintes de stock.</li>
       </ul>
 
-      <h3>4. Shipping, Pickup & Risk</h3>
+      <h3>4. Expédition, retrait et risques</h3>
       <ul>
-        <li>Delivery options include courier or post; alternatively, you may select warehouse pickup where offered.</li>
-        <li>Risk of loss transfers on delivery to the carrier or upon pickup handover.</li>
+        <li>Les options de livraison incluent coursier ou poste ; vous pouvez également choisir le retrait en entrepôt lorsque disponible.</li>
+        <li>Le transfert des risques s’opère à la remise au transporteur ou lors du retrait.</li>
       </ul>
 
-      <h3>5. Returns & Warranty</h3>
+      <h3>5. Retours et garanties</h3>
       <ul>
-        <li>Returns are subject to prior authorization and item condition. Electrical items and special orders may be non‑returnable.</li>
-        <li>OEM/aftermarket parts carry their respective manufacturer warranties, if any.</li>
+        <li>Les retours sont soumis à une autorisation préalable et à l’état des articles. Les pièces électriques et commandes spéciales peuvent être non retournables.</li>
+        <li>Les pièces OEM/aftermarket sont couvertes par leurs garanties fabricant respectives, le cas échéant.</li>
       </ul>
 
-      <h3>6. Prohibited Uses</h3>
+      <h3>6. Usages interdits</h3>
       <p>
-        You agree not to misuse the Service, including scraping, reselling access, posting unlawful content, or interfering
-        with systems.
+        Vous vous engagez à ne pas faire un usage abusif du Service, notamment via le scraping, la revente d’accès, la
+        publication de contenus illicites ou l’atteinte aux systèmes.
       </p>
 
-      <h3>7. Intellectual Property</h3>
+      <h3>7. Propriété intellectuelle</h3>
       <p>
-        All content, trademarks and data on the Service are owned by {info.name} or licensors. You receive a limited,
-        non‑exclusive license to use the Service.
+        L’ensemble des contenus, marques et données du Service appartiennent à {info.name} ou à ses concédants. Une licence
+        limitée et non exclusive vous est accordée pour utiliser le Service.
       </p>
 
-      <h3>8. Liability</h3>
+      <h3>8. Responsabilité</h3>
       <p>
-        To the fullest extent permitted by law, {info.name} is not liable for indirect, incidental or consequential damages
-        arising from your use of the Service.
+        Dans la mesure permise par la loi, {info.name} ne saurait être tenue responsable des dommages indirects, accessoires
+        ou consécutifs découlant de votre utilisation du Service.
       </p>
 
-      <h3>9. Governing Law</h3>
+      <h3>9. Droit applicable</h3>
       <p>
-        These Terms are governed by the laws of {info.country}. Disputes will be handled by the competent courts where we
-        are established, unless mandatory consumer protections provide otherwise.
+        Les présentes Conditions sont régies par les lois de {info.country}. Les litiges seront traités par les tribunaux
+        compétents du lieu où nous sommes établis, sous réserve des protections impératives des consommateurs.
       </p>
 
       <h3>10. Contact</h3>
       <p>
-        Questions about these Terms? Contact us at {info.email}. Address: {info.address}
+        Des questions concernant ces Conditions ? Contactez-nous à {info.email}. Adresse : {info.address}
       </p>
 
       <Separator />
       <p className="text-xs text-neutral-500 dark:text-neutral-400">
-        This is a general template and may need adjustments to meet specific legal requirements in your jurisdiction or
-        business model.
+        Ce modèle est général et peut nécessiter des ajustements pour répondre aux exigences juridiques de votre
+        juridiction ou à votre modèle commercial.
       </p>
     </div>
   );
@@ -155,75 +154,75 @@ function PrivacyBody({ info }: { info: { name: string; country: string; email: s
   return (
     <div className="space-y-6">
       <p>
-        This Privacy Policy explains how {info.name} collects, uses and protects personal information when you create an
-        account and use our Service.
+        La présente Politique de confidentialité explique comment {info.name} collecte, utilise et protège les informations
+        personnelles lorsque vous créez un compte et utilisez notre Service.
       </p>
 
-      <h3>1. Data We Collect</h3>
+      <h3>1. Données que nous collectons</h3>
       <ul>
-        <li>Account data: name, email, phone (optional), password hash.</li>
-        <li>Shipping details: recipient, phone, address, country.</li>
-        <li>Order data: items, quantities, amounts, delivery method, notes.</li>
-        <li>Technical data: device/browser info, IP address, and usage logs for security.</li>
+        <li>Données de compte : nom, e-mail, téléphone (optionnel), hachage du mot de passe.</li>
+        <li>Coordonnées de livraison : destinataire, téléphone, adresse, pays.</li>
+        <li>Données de commande : articles, quantités, montants, mode de livraison, notes.</li>
+        <li>Données techniques : informations appareil/navigateur, adresse IP et journaux d’utilisation à des fins de sécurité.</li>
       </ul>
 
-      <h3>2. How We Use Data</h3>
+      <h3>2. Utilisation des données</h3>
       <ul>
-        <li>To create and manage your account and authenticate access.</li>
-        <li>To process orders, deliveries/pickups, returns and support.</li>
-        <li>To prevent fraud and ensure platform security.</li>
-        <li>To improve our catalog and user experience.</li>
+        <li>Créer et gérer votre compte et authentifier l’accès.</li>
+        <li>Traiter les commandes, livraisons/retraits, retours et support.</li>
+        <li>Prévenir la fraude et assurer la sécurité de la plateforme.</li>
+        <li>Améliorer notre catalogue et l’expérience utilisateur.</li>
       </ul>
 
-      <h3>3. Legal Bases</h3>
+      <h3>3. Bases juridiques</h3>
       <p>
-        We process data to perform our contract with you (orders, account), to comply with legal obligations (tax, invoices),
-        and based on our legitimate interests (security, service improvement). Where required, we rely on your consent.
+        Nous traitons les données pour exécuter notre contrat avec vous (commandes, compte), respecter nos obligations légales
+        (fiscales, facturation) et sur la base de nos intérêts légitimes (sécurité, amélioration du service). Lorsque requis,
+        nous nous fondons sur votre consentement.
       </p>
 
-      <h3>4. Sharing</h3>
+      <h3>4. Partage</h3>
       <ul>
-        <li>Logistics providers and couriers for delivery.</li>
-        <li>Payment processors for transactions.</li>
-        <li>IT/service vendors under confidentiality and data protection obligations.</li>
-        <li>Authorities when legally required.</li>
+        <li>Prestataires logistiques et transporteurs pour la livraison.</li>
+        <li>Prestataires de paiement pour les transactions.</li>
+        <li>Fournisseurs IT/tiers de service soumis à des obligations de confidentialité et de protection des données.</li>
+        <li>Autorités lorsque la loi l’exige.</li>
       </ul>
 
-      <h3>5. Retention</h3>
+      <h3>5. Conservation</h3>
       <p>
-        We retain account and order records for as long as necessary for legal/accounting purposes, then securely delete or
-        anonymize them.
+        Nous conservons les comptes et historiques de commandes aussi longtemps que nécessaire à des fins légales/comptables,
+        puis les supprimons ou les anonymisons de manière sécurisée.
       </p>
 
-      <h3>6. Your Rights</h3>
+      <h3>6. Vos droits</h3>
       <ul>
-        <li>Access, correction, deletion (where applicable), and portability of your data.</li>
-        <li>Objection to certain processing and the right to withdraw consent.</li>
+        <li>Accès, rectification, suppression (le cas échéant) et portabilité de vos données.</li>
+        <li>Opposition à certains traitements et droit de retirer votre consentement.</li>
       </ul>
 
-      <h3>7. Security</h3>
+      <h3>7. Sécurité</h3>
       <p>
-        We use technical and organizational measures to protect data, including encryption-in-transit, access controls, and
-        least-privilege practices.
+        Nous appliquons des mesures techniques et organisationnelles pour protéger les données, notamment le chiffrement en
+        transit, des contrôles d’accès et le principe du moindre privilège.
       </p>
 
-      <h3>8. International Transfers</h3>
+      <h3>8. Transferts internationaux</h3>
       <p>
-        If data is transferred outside of {info.country}, we use appropriate safeguards where required by law.
+        Si des données sont transférées en dehors de {info.country}, nous mettons en place les garanties appropriées lorsque
+        la loi l’exige.
       </p>
 
       <h3>9. Contact</h3>
       <p>
-        To exercise your rights or ask questions, contact {info.name} at {info.email}. Address: {info.address}
+        Pour exercer vos droits ou poser des questions, contactez {info.name} à {info.email}. Adresse : {info.address}
       </p>
 
       <Separator />
       <p className="text-xs text-neutral-500 dark:text-neutral-400">
-        This template is informational and may require updates to reflect local regulations and your specific processing.
+        Ce modèle est informatif et peut nécessiter des mises à jour pour refléter les réglementations locales et vos
+        traitements spécifiques.
       </p>
-
-
-
     </div>
   );
 }

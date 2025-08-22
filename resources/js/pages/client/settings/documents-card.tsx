@@ -68,8 +68,8 @@ export const DocumentsCard = ({ user, setUser, saveUser }) => {
     <>
       <Card>
         <CardHeader>
-          <CardTitle>Verification Documents</CardTitle>
-          <CardDescription>Upload your ID card and commercial register.</CardDescription>
+          <CardTitle>Documents de vérification</CardTitle>
+          <CardDescription>Téléchargez votre carte d'identité et votre registre du commerce.</CardDescription>
         </CardHeader>
 
         <CardContent className="grid gap-6 sm:grid-cols-2">
@@ -77,7 +77,7 @@ export const DocumentsCard = ({ user, setUser, saveUser }) => {
             <>
               {/* ID Card */}
               <div className="space-y-3">
-                <Label>ID Card</Label>
+                <Label>Carte d'identité</Label>
 
                 {/* Preview box */}
                 <div
@@ -87,12 +87,12 @@ export const DocumentsCard = ({ user, setUser, saveUser }) => {
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
                       src={idCardPreview}
-                      alt="ID Card Preview"
+                      alt="Aperçu de la carte d'identité"
                       className="h-full w-full object-cover cursor-zoom-in"
                       onClick={() => openLightbox(idCardPreview, "ID Card")}
                     />
                   ) : (
-                    <div className="text-sm text-muted-foreground">No image selected</div>
+                    <div className="text-sm text-muted-foreground">Aucune image sélectionnée</div>
                   )}
                 </div>
 
@@ -107,7 +107,7 @@ export const DocumentsCard = ({ user, setUser, saveUser }) => {
                       variant="secondary"
                       onClick={() => uploadFile(idCardFile, "id_card_url")}
                     >
-                      Upload
+                      Envoyer
                     </Button>
                   )}
                 </div>
@@ -119,14 +119,14 @@ export const DocumentsCard = ({ user, setUser, saveUser }) => {
                     className="px-0"
                     onClick={() => openLightbox(user.id_card_url!, "ID Card")}
                   >
-                    View current
+                    Télécharger
                   </Button>
                 )}
               </div>
 
               {/* Commercial Register */}
               <div className="space-y-3">
-                <Label>Commercial Register</Label>
+                <Label>Registre du commerce</Label>
 
                 {/* Preview box */}
                 <div
@@ -136,9 +136,9 @@ export const DocumentsCard = ({ user, setUser, saveUser }) => {
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
                       src={crPreview}
-                      alt="Commercial Register Preview"
+                      alt="Aucune image sélectionnée"
                       className="h-full w-full object-cover cursor-zoom-in"
-                      onClick={() => openLightbox(crPreview, "Commercial Register")}
+                      onClick={() => openLightbox(crPreview, "Registre du commerce")}
                     />
                   ) : (
                     <div className="text-sm text-muted-foreground">No image selected</div>
@@ -156,7 +156,7 @@ export const DocumentsCard = ({ user, setUser, saveUser }) => {
                       variant="secondary"
                       onClick={() => uploadFile(crFile, "commercial_register_url")}
                     >
-                      Upload
+                      Envoyer
                     </Button>
                   )}
                 </div>
@@ -167,10 +167,10 @@ export const DocumentsCard = ({ user, setUser, saveUser }) => {
                     variant="link"
                     className="px-0"
                     onClick={() =>
-                      openLightbox(user.commercial_register_url!, "Commercial Register")
+                      openLightbox(user.commercial_register_url!, "Registre du commerce")
                     }
                   >
-                    View current
+                    Voir le registre du commerce actuel
                   </Button>
                 )}
               </div>
@@ -180,7 +180,7 @@ export const DocumentsCard = ({ user, setUser, saveUser }) => {
 
         <CardFooter className="justify-end">
           <Button onClick={saveUser} disabled={!user}>
-            Save Documents
+            Enregistrer les documents
           </Button>
         </CardFooter>
       </Card>

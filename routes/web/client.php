@@ -74,27 +74,3 @@ Route::middleware(['auth'])->group(function () {
 });
 
 
-// Route::middleware('guest')->group(function () {
-Route::get('/terms', fn () => Inertia::render('client/welcome/legal-page', [
-    'type' => 'terms',
-    'updatedAt' => now()->toDateString(),
-    'company' => [
-        'name' => 'CarParts DZ',
-        'country' => 'Algeria',
-        'legalEmail' => 'support@carpartsdz.example',
-        'address' => '—',
-    ],
-]))->name('terms');
-
-Route::get('/privacy', fn () => Inertia::render('client/welcome/legal-page', [
-    'type' => 'privacy',
-    'updatedAt' => now()->toDateString(),
-    'company' => [
-        'name' => 'CarParts DZ',
-        'country' => 'Algeria',
-        'legalEmail' => 'support@carpartsdz.example',
-        'address' => '—',
-    ],
-]))->name('privacy');
-// });
-

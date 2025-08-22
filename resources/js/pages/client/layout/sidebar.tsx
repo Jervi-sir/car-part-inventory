@@ -28,23 +28,23 @@ import { cn } from "@/lib/utils"
 const data = {
   navMain: [
     {
-      title: "Items",
+      title: "Articles",
       url: route('client.parts.page'),
       icon: SearchIcon,
       isActive: true,
     },
     {
-      title: "Cart",
+      title: "Panier",
       url: route('client.checkout.page'),
       icon: ShoppingCartIcon,
     },
     {
-      title: "Orders",
+      title: "Commandes",
       url: route('client.orders.page'),
       icon: Container,
     },
     {
-      title: "Settings",
+      title: "Paramètres",
       url: route('client.settings.page'),
       icon: SettingsIcon,
     },
@@ -62,7 +62,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>Platform</SidebarGroupLabel>
+          <SidebarGroupLabel>Services</SidebarGroupLabel>
           <SidebarMenu>
             {data.navMain.map((item) => {
               // convert absolute URL to just pathname
@@ -118,11 +118,12 @@ export function SiteLogo() {
               className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
             >
               <div className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg">
-                <Command className="size-4" color="black" />
+                {/* <Command className="size-4" color="black" /> */}
+                <img src="/images/logo-rafiki-motors-2.png" />
               </div>
               <div className="grid flex-1 text-left text-sm leading-tight">
-                <span className="truncate font-medium">Car Part</span>
-                <span className="truncate text-xs">Inventory</span>
+                <span className="truncate font-medium">Pièce automobile.</span>
+                <span className="truncate text-xs">Inventaire</span>
               </div>
             </SidebarMenuButton>
           </DropdownMenuTrigger>

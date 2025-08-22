@@ -10,42 +10,42 @@ export const ProfileCard = ({ user, setUser, saveUser }) => {
     <>
       <Card>
         <CardHeader>
-          <CardTitle>Profile</CardTitle>
-          <CardDescription>Update your basic profile information.</CardDescription>
+          <CardTitle>Profil</CardTitle>
+          <CardDescription>Mettez à jour les informations de votre profil.</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4 sm:grid-cols-2">
           {user && (
             <>
               <div className="space-y-2">
-                <Label>Username</Label>
+                <Label>Nom d'utilisateur</Label>
                 <Input
                   value={user.name}
                   onChange={(e) => setUser({ ...user, name: e.target.value })}
-                  placeholder="Username"
+                  placeholder="Nom d'utilisateur"
                 />
               </div>
 
               <div className="space-y-2">
-                <Label>Full Name</Label>
+                <Label>Nom complet</Label>
                 <Input
                   value={user.full_name ?? ""}
                   onChange={(e) => setUser({ ...user, full_name: e.target.value })}
-                  placeholder="Full Name"
+                  placeholder="Nom complet"
                 />
               </div>
 
               <div className="space-y-2">
-                <Label>Email</Label>
+                <Label>E-mail</Label>
                 <Input
                   type="email"
                   value={user.email}
                   onChange={(e) => setUser({ ...user, email: e.target.value })}
-                  placeholder="Email"
+                  placeholder="E-mail"
                 />
               </div>
 
               <div className="space-y-2">
-                <Label>Birthdate</Label>
+                <Label>Date de naissance</Label>
                 <Input
                   type="date"
                   value={user.birthdate ?? ""}
@@ -57,7 +57,7 @@ export const ProfileCard = ({ user, setUser, saveUser }) => {
         </CardContent>
         <CardFooter className="justify-end">
           <Button onClick={saveUser} disabled={!user}>
-            Save Profile
+            Enregistrer le profil
           </Button>
         </CardFooter>
       </Card>
