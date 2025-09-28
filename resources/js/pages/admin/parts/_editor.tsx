@@ -111,7 +111,7 @@ export default function Editor({
 
   const onSaveAll = async () => {
     if (!form.name.trim()) {
-      alert("Name is required");
+      alert("Nom requis");
       return;
     }
 
@@ -174,12 +174,12 @@ export default function Editor({
     <div className="space-y-3 px-6">
       {/* Core fields */}
       <section className="space-y-3">
-        <h3 className="text-lg font-semibold">Details</h3>
+        <h3 className="text-lg font-semibold">Détails</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
-            <Label>Manufacturer</Label>
+            <Label>Fabricant</Label>
             <Select value={form.manufacturer_id} onValueChange={(v) => setForm({ ...form, manufacturer_id: v })}>
-              <SelectTrigger className="w-full"><SelectValue placeholder="Optional" /></SelectTrigger>
+              <SelectTrigger className="w-full"><SelectValue placeholder="Facultatif" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="">— None —</SelectItem>
                 {mans.map((m) => <SelectItem key={String(m.id)} value={String(m.id)}>{m.name}</SelectItem>)}
@@ -187,20 +187,20 @@ export default function Editor({
             </Select>
           </div>
           <div className="space-y-2">
-            <Label>Reference</Label>
+            <Label>Référence</Label>
             <Input value={form.reference} onChange={(e) => setForm({ ...form, reference: e.target.value })} placeholder="e.g. 1K0615301" />
           </div>
           <div className="space-y-2">
-            <Label>Barcode</Label>
-            <Input value={form.barcode} onChange={(e) => setForm({ ...form, barcode: e.target.value })} placeholder="EAN/UPC (optional)" />
+            <Label>Code-barres</Label>
+            <Input value={form.barcode} onChange={(e) => setForm({ ...form, barcode: e.target.value })} placeholder="EAN/UPC (facultatif)" />
           </div>
           <div className="space-y-2">
             <Label>SKU</Label>
-            <Input value={form.sku} onChange={(e) => setForm({ ...form, sku: e.target.value })} placeholder="internal ref (optional)" />
+            <Input value={form.sku} onChange={(e) => setForm({ ...form, sku: e.target.value })} placeholder="Référence interne (facultatif)" />
           </div>
           <div className="space-y-2">
             <Label>Name *</Label>
-            <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Designation" />
+            <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Désignation" />
           </div>
           <div className="md:col-span-2 space-y-2">
             <Label>Description</Label>
@@ -208,11 +208,11 @@ export default function Editor({
           </div>
 
           <div className="space-y-2">
-            <Label>Retail TTC</Label>
+            <Label>Prix de vente au détail</Label>
             <Input type="number" step="0.01" value={form.price_retail_ttc} onChange={(e) => setForm({ ...form, price_retail_ttc: e.target.value })} />
           </div>
           <div className="space-y-2">
-            <Label>Wholesale TTC</Label>
+            <Label>Prix de vente en gros</Label>
             <Input type="number" step="0.01" value={form.price_wholesale_ttc} onChange={(e) => setForm({ ...form, price_wholesale_ttc: e.target.value })} />
           </div>
           <div className="space-y-2">
@@ -221,16 +221,16 @@ export default function Editor({
           </div>
 
           <div className="space-y-2">
-            <Label>Stock Real</Label>
+            <Label>Stock réel</Label>
             <Input type="number" value={form.stock_real} onChange={(e) => setForm({ ...form, stock_real: Number(e.target.value) || 0 })} />
           </div>
           <div className="space-y-2">
-            <Label>Stock Available</Label>
+            <Label>Stock disponible</Label>
             <Input type="number" value={form.stock_available} onChange={(e) => setForm({ ...form, stock_available: Number(e.target.value) || 0 })} />
           </div>
 
           <div className="flex items-end gap-4 pb-3">
-            <Label>Active</Label>
+            <Label>Actif</Label>
             <Switch checked={!!form.is_active} onCheckedChange={(v) => setForm({ ...form, is_active: v })} />
           </div>
         </div>
@@ -243,11 +243,11 @@ export default function Editor({
         <h3 className="text-lg font-semibold">Images</h3>
         <div className="flex items-center gap-2">
           <Button size="sm" variant="outline" onClick={() => setImages((x) => [...x, { url: "", sort_order: x.length }])}>
-            <Plus className="h-4 w-4 mr-1" /> Add Image
+            <Plus className="h-4 w-4 mr-1" /> Ajouter une image
           </Button>
         </div>
         <div className="space-y-2">
-          {images.length === 0 && <div className="text-sm text-muted-foreground">No images. Add URLs; order is preserved.</div>}
+          {images.length === 0 && <div className="text-sm text-muted-foreground">Aucune image. Ajouter des URL ; l'ordre est conservé.</div>}
           {images.map((img, idx) => (
             <div key={idx} className="flex items-center gap-2 border rounded-md p-2">
               <Input className="flex-1" placeholder="https://..." value={img.url} onChange={(e) => setImages((arr) => arr.map((r, i) => (i === idx ? { ...r, url: e.target.value } : r)))} />
@@ -263,23 +263,23 @@ export default function Editor({
 
       {/* Fitments */}
       <section className="space-y-3">
-        <h3 className="text-lg font-semibold">Fitments</h3>
+        <h3 className="text-lg font-semibold">Compatibilités</h3>
         <Button size="sm" variant="outline" onClick={() => setFitments((f) => [...f, { vehicle_brand_id: undefined, vehicle_model_id: undefined, engine_code: "", notes: "" }])}>
-          <Plus className="h-4 w-4 mr-1" /> Add Fitment
+          <Plus className="h-4 w-4 mr-1" /> Ajouter une compatibilité
         </Button>
         <div className="rounded-md border">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-[200px]">Brand</TableHead>
-                <TableHead className="w-[260px]">Model</TableHead>
-                <TableHead className="w-[160px]">Engine Code</TableHead>
+                <TableHead className="w-[200px]">Marque</TableHead>
+                <TableHead className="w-[260px]">Modèle</TableHead>
+                <TableHead className="w-[160px]">Code moteur</TableHead>
                 <TableHead className="w-[80px]">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {fitments.length === 0 && (
-                <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground">No fitments</TableCell></TableRow>
+                <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground">Aucune compatibilité</TableCell></TableRow>
               )}
               {fitments.map((f, idx) => {
                 const brandId = f.vehicle_brand_id ? String(f.vehicle_brand_id) : "";
@@ -296,7 +296,7 @@ export default function Editor({
                             await ensureModelsLoaded(v);
                           }}
                         >
-                          <SelectTrigger><SelectValue placeholder="Select brand" /></SelectTrigger>
+                          <SelectTrigger><SelectValue placeholder="Sélectionner la marque" /></SelectTrigger>
                           <SelectContent>
                             {brands.map((b) => <SelectItem key={b.id} value={String(b.id)}>{b.name}</SelectItem>)}
                           </SelectContent>
@@ -307,7 +307,7 @@ export default function Editor({
                           value={f.vehicle_model_id ? String(f.vehicle_model_id) : ""}
                           onValueChange={(v) => setFitments((arr) => arr.map((x, i) => (i === idx ? { ...x, vehicle_model_id: v } : x)))}
                         >
-                          <SelectTrigger><SelectValue placeholder={brandId ? "Select model" : "Select brand first"} /></SelectTrigger>
+                          <SelectTrigger><SelectValue placeholder={brandId ? "Sélectionner le modèle" : "Sélectionner la marque en premier"} /></SelectTrigger>
                           <SelectContent>
                             {models.map((m) => (
                               <SelectItem key={m.id} value={String(m.id)}>
@@ -326,7 +326,7 @@ export default function Editor({
                     </TableRow>
                     <TableRow key={idx}>
                        <TableCell colSpan={3}>
-                        <Input value={f.notes || ""} onChange={(e) => setFitments((arr) => arr.map((x, i) => (i === idx ? { ...x, notes: e.target.value } : x)))} placeholder="Notes" />
+                        <Input value={f.notes || ""} onChange={(e) => setFitments((arr) => arr.map((x, i) => (i === idx ? { ...x, notes: e.target.value } : x)))} placeholder="Remarques" />
                       </TableCell>
                     </TableRow>
                   </React.Fragment>
@@ -339,8 +339,8 @@ export default function Editor({
 
       {/* Actions */}
       <div className="flex justify-end gap-2 pt-2">
-        <Button variant="outline" onClick={onCancel}>Close</Button>
-        <Button onClick={onSaveAll}>Save</Button>
+        <Button variant="outline" onClick={onCancel}>Fermer</Button>
+        <Button onClick={onSaveAll}>Enregistrer</Button>
       </div>
     </div>
   );

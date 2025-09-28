@@ -84,20 +84,20 @@ export default function VehicleModelsPage() {
 
   return (
     <AdminLayout>
-      <Head title="Vehicle Models" />
+      <Head title="Modèles de véhicules" />
       <div className="p-6 pt-0 space-y-4">
-        <div className="text-2xl font-semibold">Vehicle Models</div>
+        <div className="text-2xl font-semibold">Modèles de véhicules</div>
         <div className="flex items-center gap-2">
-          <Input placeholder="Search models..." value={search} onChange={(e) => setSearch(e.target.value)} className="w-64" />
+          <Input placeholder="Rechercher des modèles..." value={search} onChange={(e) => setSearch(e.target.value)} className="w-64" />
           <Select value={brandFilter} onValueChange={(v) => setBrandFilter(v)}>
             <SelectTrigger><SelectValue placeholder="Select category" className="w-full" /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All</SelectItem>
+              <SelectItem value="all">Tous</SelectItem>
               {brands.map(c => <SelectItem key={String(c.id)} value={String(c.id)}>{c.name}</SelectItem>)}
             </SelectContent>
           </Select>
           <div className="flex-1" />
-          <Button size="sm" onClick={openCreate}><Plus className="h-4 w-4 mr-1" />New Model</Button>
+          <Button size="sm" onClick={openCreate}><Plus className="h-4 w-4 mr-1" />Nouveau modèle</Button>
         </div>
 
         <div className="rounded-md border">
@@ -105,15 +105,15 @@ export default function VehicleModelsPage() {
             <TableHeader>
               <TableRow>
                 <TableHead className="w-[70px]">ID</TableHead>
-                <TableHead>Brand</TableHead>
-                <TableHead>Model</TableHead>
-                <TableHead>From</TableHead>
-                <TableHead>To</TableHead>
+                <TableHead>Marque</TableHead>
+                <TableHead>Modèle</TableHead>
+                <TableHead>De</TableHead>
+                <TableHead>À</TableHead>
                 <TableHead className="w-[120px]">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {pageData.data.length === 0 && (<TableRow><TableCell colSpan={6} className="text-center text-muted-foreground">No data</TableCell></TableRow>)}
+              {pageData.data.length === 0 && (<TableRow><TableCell colSpan={6} className="text-center text-muted-foreground">Aucune donnée</TableCell></TableRow>)}
               {pageData.data.map((row) => (
                 <TableRow key={String(row.id)}>
                   <TableCell>{row.id}</TableCell>
@@ -133,7 +133,7 @@ export default function VehicleModelsPage() {
 
         <div className="flex items-center justify-between">
           <div className="text-sm text-muted-foreground">
-            {pageData.total ? `${(pageData.page - 1) * pageData.per_page + 1}-${Math.min(pageData.total, pageData.page * pageData.per_page)} of ${pageData.total}` : "0"}
+            {pageData.total ? `${(pageData.page - 1) * pageData.per_page + 1}-${Math.min(pageData.total, pageData.page * pageData.per_page)} de ${pageData.total}` : "0"}
           </div>
           <div className="flex items-center gap-2">
             <Button variant="outline" size="icon" onClick={() => fetchData(Math.max(1, pageData.page - 1))} disabled={pageData.page <= 1}><ChevronLeft className="h-4 w-4" /></Button>
@@ -172,29 +172,29 @@ function VehicleModelDialog({ open, onOpenChange, brands, initial, onSave }: { o
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
-        <DialogHeader><DialogTitle>{initial ? "Edit Model" : "New Model"}</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>{initial ? "Modifier le modèle" : "Nouveau modèle"}</DialogTitle></DialogHeader>
         <div className="space-y-3">
           <div className="space-y-1">
-            <label className="text-sm">Brand</label>
+            <label className="text-sm">Marque</label>
             <Select value={vehicleBrandId} onValueChange={setVehicleBrandId}>
-              <SelectTrigger className="w-full" ><SelectValue placeholder="Select a brand" /></SelectTrigger>
+              <SelectTrigger className="w-full" ><SelectValue placeholder="Sélectionner une marque" /></SelectTrigger>
               <SelectContent >
                 {brands.map(b => (<SelectItem key={String(b.id)} value={String(b.id)}>{b.name}</SelectItem>))}
               </SelectContent>
             </Select>
           </div>
           <div className="space-y-1">
-            <label className="text-sm">Model name</label>
-            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Golf" />
+            <label className="text-sm">Nom du modèle</label>
+            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. 300D" />
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1"><label className="text-sm">Year from</label><Input value={yearFrom} onChange={(e) => setYearFrom(e.target.value)} placeholder="1998" /></div>
-            <div className="space-y-1"><label className="text-sm">Year to</label><Input value={yearTo} onChange={(e) => setYearTo(e.target.value)} placeholder="2005" /></div>
+            <div className="space-y-1"><label className="text-sm">Année de</label><Input value={yearFrom} onChange={(e) => setYearFrom(e.target.value)} placeholder="1998" /></div>
+            <div className="space-y-1"><label className="text-sm">Année à</label><Input value={yearTo} onChange={(e) => setYearTo(e.target.value)} placeholder="2005" /></div>
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button onClick={submit} disabled={submitting || !name.trim() || !vehicleBrandId}>Save</Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>Annuler</Button>
+          <Button onClick={submit} disabled={submitting || !name.trim() || !vehicleBrandId}>Enregistrer</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

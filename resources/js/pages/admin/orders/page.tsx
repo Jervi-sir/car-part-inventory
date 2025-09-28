@@ -56,8 +56,8 @@ const statusOptions = ["all", "cart", "pending", "confirmed", "preparing", "ship
 const methodOptions = ["all", "pickup", "courier", "post"] as const;
 const sortOptions = [
   { value: "created_at", label: "Date" },
-  { value: "grand_total", label: "Amount" },
-  { value: "status", label: "Status" },
+  { value: "grand_total", label: "Montant" },
+  { value: "status", label: "Statut" },
 ] as const;
 
 export default function OrdersPage() {
@@ -150,18 +150,18 @@ export default function OrdersPage() {
   };
 
   return (
-    <AdminLayout title="Orders">
+    <AdminLayout title="Commandes">
       <div className="p-6 pt-0">
         <Head title="Orders" />
         <div className="flex items-center justify-between mb-4">
-          <h1 className="text-2xl font-semibold">Orders</h1>
+          <h1 className="text-2xl font-semibold">Commandes</h1>
         </div>
 
         {/* Filters */}
         <Card className="p-4 mb-4">
           <div className="flex flex-row flex-wrap gap-3">
             <div className="flex-1 md:col-span-2 space-y-2">
-              <Label>Search</Label>
+              <Label>Recherche</Label>
               <Input
                 className="w-full"
                 placeholder="Order #, name, phone, SKU, reference…"
@@ -171,7 +171,7 @@ export default function OrdersPage() {
             </div>
             <div className="flex-1 flex flex-row gap-4">
               <div className="w-full space-y-2">
-                <Label>Sort</Label>
+                <Label>Trier</Label>
                 <div className="flex gap-2">
                   <Select value={filters.sort_by} onValueChange={(v) => setFilters({ ...filters, sort_by: v })}>
                     <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
@@ -182,8 +182,8 @@ export default function OrdersPage() {
                   <Select value={filters.sort_dir} onValueChange={(v) => setFilters({ ...filters, sort_dir: v })}>
                     <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="desc">Desc</SelectItem>
-                      <SelectItem value="asc">Asc</SelectItem>
+                      <SelectItem value="desc">Description</SelectItem>
+                      <SelectItem value="asc">Croissant</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -193,16 +193,16 @@ export default function OrdersPage() {
           </div>
           <div className="flex flex-row flex-wrap gap-3">
             <div className="w-[160px] space-y-2">
-              <Label>From</Label>
+              <Label>De</Label>
               <Input className="w-full" type="date" value={filters.from} onChange={(e) => setFilters({ ...filters, from: e.target.value })} />
             </div>
             <div className="w-[160px] space-y-2">
-              <Label>To</Label>
+              <Label>À</Label>
               <Input className="w-full" type="date" value={filters.to} onChange={(e) => setFilters({ ...filters, to: e.target.value })} />
             </div>
 
             <div className="w-[160px] space-y-2">
-              <Label>Status</Label>
+              <Label>Statut</Label>
               <Select value={filters.status} onValueChange={(v) => setFilters({ ...filters, status: v })}>
                 <SelectTrigger className="w-full"><SelectValue placeholder="All" /></SelectTrigger>
                 <SelectContent>
@@ -211,7 +211,7 @@ export default function OrdersPage() {
               </Select>
             </div>
             <div className="w-[160px] space-y-2">
-              <Label>Method</Label>
+              <Label>Méthode</Label>
               <Select value={filters.delivery_method} onValueChange={(v) => setFilters({ ...filters, delivery_method: v })}>
                 <SelectTrigger className="w-full"><SelectValue placeholder="All" /></SelectTrigger>
                 <SelectContent>
@@ -227,7 +227,7 @@ export default function OrdersPage() {
                 onClick={() => refresh(1)}
                 disabled={loading}
               >
-                {loading ? "Loading…" : "Apply"}
+                {loading ? "Chargement…" : "Appliquer"}
               </Button>
               <Button
                 variant="ghost"
@@ -235,7 +235,7 @@ export default function OrdersPage() {
                   setFilters({ q: "", status: "all", delivery_method: "all", from: "", to: "", sort_by: "created_at", sort_dir: "desc" });
                 }}
               >
-                Clear
+                Effacer
               </Button>
             </div>
           </div>
@@ -247,13 +247,13 @@ export default function OrdersPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-[100px]">Order #</TableHead>
+                <TableHead className="w-[100px]">Commande #</TableHead>
                 <TableHead className="w-[180px]">Date</TableHead>
-                <TableHead className="w-[120px]">Status</TableHead>
-                <TableHead>Items (brief)</TableHead>
-                <TableHead className="w-[90px]">Count</TableHead>
-                <TableHead className="w-[130px]">Subtotal</TableHead>
-                <TableHead className="w-[110px]">Ship</TableHead>
+                <TableHead className="w-[120px]">Statut</TableHead>
+                <TableHead>Articles (résumé)</TableHead>
+                <TableHead className="w-[90px]">Nombre</TableHead>
+                <TableHead className="w-[130px]">Sous-total</TableHead>
+                <TableHead className="w-[110px]">Expédition</TableHead>
                 <TableHead className="w-[140px]">Total</TableHead>
                 <TableHead className="w-[100px]">Action</TableHead>
               </TableRow>
@@ -262,7 +262,7 @@ export default function OrdersPage() {
               {pageData.data?.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={9} className="text-center text-muted-foreground">
-                    {loading ? "Loading…" : "No orders found"}
+                    {loading ? "Chargement…" : "Aucune commande trouvée"}
                   </TableCell>
                 </TableRow>
               ) : (
@@ -303,7 +303,7 @@ export default function OrdersPage() {
                             size="sm"
                             onClick={() => (window.location.href = endpoints.view(o.id))}
                           >
-                            View
+                            Afficher
                           </Button>
                         </TableCell>
                       </TableRow>
@@ -314,7 +314,7 @@ export default function OrdersPage() {
                             <div className="p-3 space-y-3 text-sm">
                               {/* Items brief list (existing) */}
                               <div>
-                                <div className="font-semibold">Items</div>
+                                <div className="font-semibold">Articles</div>
                                 <ul className="list-disc pl-4">
                                   {o.items_brief.map((i, idx) => (
                                     <li key={idx}>
@@ -332,17 +332,17 @@ export default function OrdersPage() {
                               <div>
 
                                 <div className="flex items-center justify-between flex-wrap gap-3">
-                                  <div className="font-semibold">User</div>
+                                  <div className="font-semibold">Utilisateur</div>
                                   <div className="text-muted-foreground text-xs">
-                                    Updated: {new Date(o.updated_at).toLocaleString()}
+                                    Mis à jour: {new Date(o.updated_at).toLocaleString()}
                                   </div>
                                 </div>
                                 <div>
                                   {o.user ? (
                                     <div className="space-y-1">
-                                      <div><span className="text-muted-foreground">Name:</span> {o.user.name}</div>
-                                      <div><span className="text-muted-foreground">Email:</span> {o.user.email ?? "—"}</div>
-                                      <div className="text-xs text-muted-foreground">User ID: {o.user.id}</div>
+                                      <div><span className="text-muted-foreground">Nom:</span> {o.user.name}</div>
+                                      <div><span className="text-muted-foreground">E-mail:</span> {o.user.email ?? "—"}</div>
+                                      <div className="text-xs text-muted-foreground">ID utilisateur: {o.user.id}</div>
                                     </div>
                                   ) : (
                                     <div className="text-muted-foreground">—</div>
@@ -364,7 +364,7 @@ export default function OrdersPage() {
         {/* Pagination */}
         <div className="flex items-center justify-between mt-4">
           <div className="text-sm text-muted-foreground">
-            {pageData.total ? `${(pageData.page - 1) * pageData.per_page + 1}-${Math.min(pageData.total, pageData.page * pageData.per_page)} of ${pageData.total}` : "0"}
+            {pageData.total ? `${(pageData.page - 1) * pageData.per_page + 1}-${Math.min(pageData.total, pageData.page * pageData.per_page)} de ${pageData.total}` : "0"}
           </div>
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2">
@@ -375,7 +375,7 @@ export default function OrdersPage() {
                   {[10, 12, 20, 30, 50, 100].map(n => <SelectItem key={n} value={String(n)}>{n}</SelectItem>)}
                 </SelectContent>
               </Select>
-              <Button variant="outline" size="sm" onClick={() => refresh(1)}>Apply</Button>
+              <Button variant="outline" size="sm" onClick={() => refresh(1)}>Appliquer</Button>
             </div>
             <div className="flex items-center gap-2">
               <Button variant="outline" size="icon" onClick={() => refresh(Math.max(1, pageData.page - 1))} disabled={pageData.page <= 1}>

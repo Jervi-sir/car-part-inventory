@@ -19,7 +19,7 @@ export function TopCreativesBar({ range, chartConfig }: { range: string; chartCo
 
   return (
     <Card>
-      <CardHeader><CardTitle>Top creatives by clicks</CardTitle></CardHeader>
+      <CardHeader><CardTitle>Meilleures créations par clics</CardTitle></CardHeader>
       <CardContent>
         {loading ? (
           <Skeleton className="h-[280px] w-full" />

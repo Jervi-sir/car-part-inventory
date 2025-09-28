@@ -56,11 +56,11 @@ export default function ManufacturersPage() {
     <AdminLayout>
       <Head title="Manufacturers" />
       <div className="p-6 pt-0 space-y-4">
-        <div className="text-2xl font-semibold">Manufacturers</div>
+        <div className="text-2xl font-semibold">Fabricants</div>
         <div className="flex items-center gap-2">
           <Input placeholder="Search..." value={search} onChange={(e) => setSearch(e.target.value)} className="w-64" />
           <div className="flex-1" />
-          <Button size="sm" onClick={openCreate}><Plus className="h-4 w-4 mr-1" />New Manufacturer</Button>
+          <Button size="sm" onClick={openCreate}><Plus className="h-4 w-4 mr-1" />Nouveau fabricant</Button>
         </div>
 
         <div className="rounded-md border">
@@ -68,13 +68,13 @@ export default function ManufacturersPage() {
             <TableHeader>
               <TableRow>
                 <TableHead className="w-[90px]">ID</TableHead>
-                <TableHead>Name</TableHead>
+                <TableHead>Nom</TableHead>
                 <TableHead className="w-[120px]">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {pageData.data.length === 0 && (
-                <TableRow><TableCell colSpan={3} className="text-center text-muted-foreground">No data</TableCell></TableRow>
+                <TableRow><TableCell colSpan={3} className="text-center text-muted-foreground">Aucune donnée</TableCell></TableRow>
               )}
               {pageData.data.map((row) => (
                 <TableRow key={String(row.id)}>
@@ -101,7 +101,7 @@ export default function ManufacturersPage() {
           </div>
         </div>
 
-        <NameDialog open={open} onOpenChange={setOpen} title={editingId == null ? "New Manufacturer" : "Edit Manufacturer"} initialName={initialName} onSave={save} />
+        <NameDialog open={open} onOpenChange={setOpen} title={editingId == null ? "Nouveau fabricant" : "Modifier le fabricant"} initialName={initialName} onSave={save} />
       </div>
     </AdminLayout>
   );
@@ -116,10 +116,10 @@ function NameDialog({ open, onOpenChange, title, initialName, onSave }: { open: 
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader><DialogTitle>{title}</DialogTitle></DialogHeader>
-        <div className="space-y-2"><label className="text-sm">Name</label><Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Bosch" /></div>
+        <div className="space-y-2"><label className="text-sm">Nom</label><Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Bosch" /></div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button onClick={submit} disabled={submitting || !name.trim()}>Save</Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>Annuler</Button>
+          <Button onClick={submit} disabled={submitting || !name.trim()}>Enregistrer</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

@@ -18,7 +18,7 @@ export function RevenueChart({ range, chartConfig }: { range: string; chartConfi
 
   return (
     <Card className="xl:col-span-2">
-      <CardHeader><CardTitle>Revenue over time</CardTitle></CardHeader>
+      <CardHeader><CardTitle>Chiffre d'affaires au fil du temps</CardTitle></CardHeader>
       <CardContent>
         {loading ? (
           <Skeleton className="h-[260px] w-full" />

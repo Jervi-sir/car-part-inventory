@@ -32,9 +32,9 @@ const endpoints = {
 };
 
 const sortOptions = [
-  { value: "created_at", label: "Joined" },
-  { value: "name", label: "Name" },
-  { value: "orders_count", label: "Orders" },
+  { value: "created_at", label: "Inscrit" },
+  { value: "name", label: "Nom" },
+  { value: "orders_count", label: "Commandes" },
 ] as const;
 
 export default function UsersPage() {
@@ -76,17 +76,17 @@ export default function UsersPage() {
       <div className="p-6 pt-0">
         <Head title="Users" />
         <div className="flex items-center justify-between mb-4">
-          <h1 className="text-2xl font-semibold">Users</h1>
+          <h1 className="text-2xl font-semibold">Utilisateurs</h1>
         </div>
 
         <Card className="p-4 mb-4">
           <div className="flex flex-wrap gap-3 items-end">
             <div className="w-[260px] space-y-2">
-              <Label>Search</Label>
+              <Label>Recherche</Label>
               <Input placeholder="Name, email, ID…" value={filters.q} onChange={(e)=>setFilters({...filters, q:e.target.value})} />
             </div>
             <div className="w-[240px] space-y-2">
-              <Label>Sort</Label>
+              <Label>Trier</Label>
               <div className="flex gap-2">
                 <Select value={filters.sort_by} onValueChange={(v)=>setFilters({...filters, sort_by:v})}>
                   <SelectTrigger className="w-full"><SelectValue/></SelectTrigger>
@@ -98,13 +98,13 @@ export default function UsersPage() {
                   <SelectTrigger className="w-full"><SelectValue/></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="desc">Desc</SelectItem>
-                    <SelectItem value="asc">Asc</SelectItem>
+                    <SelectItem value="asc">Ascendant</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
             </div>
             <Button variant="outline" onClick={()=>refresh(1)} disabled={loading}>{loading ? "Loading…" : "Apply"}</Button>
-            <Button variant="ghost" onClick={()=>setFilters({ q:"", sort_by:"created_at", sort_dir:"desc" })}>Clear</Button>
+            <Button variant="ghost" onClick={()=>setFilters({ q:"", sort_by:"created_at", sort_dir:"desc" })}>Effacer</Button>
           </div>
           {err && <div className="text-sm text-red-600 mt-2">{err}</div>}
         </Card>
@@ -113,17 +113,17 @@ export default function UsersPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-[90px]">User #</TableHead>
-                <TableHead>Name</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead className="w-[120px]">Orders</TableHead>
-                <TableHead className="w-[180px]">Joined</TableHead>
+                <TableHead className="w-[90px]">Utilisateur #</TableHead>
+                <TableHead>Nom</TableHead>
+                <TableHead>E-mail</TableHead>
+                <TableHead className="w-[120px]">Commandes</TableHead>
+                <TableHead className="w-[180px]">Inscrit</TableHead>
                 <TableHead className="w-[100px]">Action</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {pageData.data.length === 0 ? (
-                <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground">{loading ? "Loading…" : "No users found"}</TableCell></TableRow>
+                <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground">{loading ? "Chargement…" : "Aucun utilisateur trouvé"}</TableCell></TableRow>
               ) : pageData.data.map(u => (
                 <TableRow key={u.id}>
                   <TableCell>#{u.id}</TableCell>
@@ -132,7 +132,7 @@ export default function UsersPage() {
                   <TableCell>{u.orders_count}</TableCell>
                   <TableCell>{new Date(u.created_at).toLocaleString()}</TableCell>
                   <TableCell>
-                    <Button size="sm" onClick={()=> (window.location.href = endpoints.view(u.id))}>Preview</Button>
+                    <Button size="sm" onClick={()=> (window.location.href = endpoints.view(u.id))}>Aperçu</Button>
                   </TableCell>
                 </TableRow>
               ))}
@@ -142,7 +142,7 @@ export default function UsersPage() {
 
         <div className="flex items-center justify-between mt-4">
           <div className="text-sm text-muted-foreground">
-            {pageData.total ? `${(pageData.page - 1) * pageData.per_page + 1}-${Math.min(pageData.total, pageData.page * pageData.per_page)} of ${pageData.total}` : "0"}
+            {pageData.total ? `${(pageData.page - 1) * pageData.per_page + 1}-${Math.min(pageData.total, pageData.page * pageData.per_page)} de ${pageData.total}` : "0"}
           </div>
           <div className="flex items-center gap-2">
             <Button variant="outline" size="icon" onClick={()=>refresh(Math.max(1, pageData.page - 1))} disabled={pageData.page<=1}><ChevronLeft className="h-4 w-4"/></Button>

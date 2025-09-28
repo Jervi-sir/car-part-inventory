@@ -130,16 +130,16 @@ export default function PartsIndex() {
 
   return (
     <AdminLayout>
-      <Head title="Parts" />
+      <Head title="Pièces" />
       <div className="p-6 pt-0 space-y-4">
         <div className="flex items-center justify-between">
-          <div className="text-2xl font-semibold">Parts</div>
+          <div className="text-2xl font-semibold">Pièces</div>
           <div className="flex items-center gap-2">
             <Button variant="outline" size="sm" onClick={() => fetchData(pageData.page)}>
-              <RefreshCw className="h-4 w-4 mr-1" /> Refresh
+              <RefreshCw className="h-4 w-4 mr-1" /> Actualiser
             </Button>
             <Button size="sm" onClick={openCreate}>
-              <Plus className="h-4 w-4 mr-1" /> New Part
+              <Plus className="h-4 w-4 mr-1" /> Nouvelle pièce
             </Button>
           </div>
         </div>
@@ -149,11 +149,11 @@ export default function PartsIndex() {
           <div className="grid grid-cols-1 md:grid-cols-7 gap-3">
             {/* Manufacturer (kept) */}
             <div className="space-y-2">
-              <Label>Manufacturer</Label>
+              <Label>Fabricant</Label>
               <Select value={filters.manufacturer_id} onValueChange={(v) => setFilters({ ...filters, manufacturer_id: v })}>
-                <SelectTrigger className="w-full"><SelectValue placeholder="All" /></SelectTrigger>
+                <SelectTrigger className="w-full"><SelectValue placeholder="Tous" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All</SelectItem>
+                  <SelectItem value="">Tous</SelectItem>
                   {mans.map((m) => <SelectItem key={String(m.id)} value={String(m.id)}>{m.name}</SelectItem>)}
                 </SelectContent>
               </Select>
@@ -161,7 +161,7 @@ export default function PartsIndex() {
 
             {/* Vehicle Brand */}
             <div className="space-y-2">
-              <Label>Vehicle Brand</Label>
+              <Label>Marque du véhicule</Label>
               <Select
                 value={filters.vehicle_brand_id}
                 onValueChange={async (v) => {
@@ -169,9 +169,9 @@ export default function PartsIndex() {
                   await ensureModelsLoaded(v);
                 }}
               >
-                <SelectTrigger className="w-full"><SelectValue placeholder="All" /></SelectTrigger>
+                <SelectTrigger className="w-full"><SelectValue placeholder="Tous" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All</SelectItem>
+                  <SelectItem value="">Tous</SelectItem>
                   {brands.map((b) => <SelectItem key={b.id} value={String(b.id)}>{b.name}</SelectItem>)}
                 </SelectContent>
               </Select>
@@ -185,10 +185,10 @@ export default function PartsIndex() {
                 onValueChange={(v) => setFilters({ ...filters, vehicle_model_id: v })}
               >
                 <SelectTrigger className="w-full">
-                  <SelectValue placeholder={filters.vehicle_brand_id ? "All" : "Select brand first"} />
+                  <SelectValue placeholder={filters.vehicle_brand_id ? "Tous" : "Sélectionner la marque en premier"} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All</SelectItem>
+                  <SelectItem value="">Tous</SelectItem>
                   {(filters.vehicle_brand_id
                     ? (modelsByBrand[String(filters.vehicle_brand_id)] || [])
                     : []
@@ -203,13 +203,13 @@ export default function PartsIndex() {
 
             {/* Status */}
             <div className="space-y-2">
-              <Label>Status</Label>
+              <Label>Statut</Label>
               <Select value={filters.is_active} onValueChange={(v) => setFilters({ ...filters, is_active: v })}>
-                <SelectTrigger className="w-full"><SelectValue placeholder="All" /></SelectTrigger>
+                <SelectTrigger className="w-full"><SelectValue placeholder="Tous" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All</SelectItem>
-                  <SelectItem value="1">Active</SelectItem>
-                  <SelectItem value="0">Inactive</SelectItem>
+                  <SelectItem value="">Tous</SelectItem>
+                  <SelectItem value="1">Actif</SelectItem>
+                  <SelectItem value="0">Inactif</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -222,7 +222,7 @@ export default function PartsIndex() {
 
             {/* Reference */}
             <div className="space-y-2">
-              <Label>Reference</Label>
+              <Label>Référence</Label>
               <Input value={filters.reference} onChange={(e) => setFilters({ ...filters, reference: e.target.value })} />
             </div>
 
@@ -235,7 +235,7 @@ export default function PartsIndex() {
                   vehicle_brand_id: "", vehicle_model_id: "",
                 })}
               >
-                Clear
+                Effacer
               </Button>
             </div>
           </div>
@@ -243,9 +243,9 @@ export default function PartsIndex() {
 
         {/* Bulk actions */}
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={() => bulkSetActive(true)} disabled={!allSelectedIds.length}>Activate</Button>
-          <Button variant="outline" size="sm" onClick={() => bulkSetActive(false)} disabled={!allSelectedIds.length}>Deactivate</Button>
-          <div className="text-sm text-muted-foreground">{allSelectedIds.length ? `${allSelectedIds.length} selected` : ""}</div>
+          <Button variant="outline" size="sm" onClick={() => bulkSetActive(true)} disabled={!allSelectedIds.length}>Activer</Button>
+          <Button variant="outline" size="sm" onClick={() => bulkSetActive(false)} disabled={!allSelectedIds.length}>Désactiver</Button>
+          <div className="text-sm text-muted-foreground">{allSelectedIds.length ? `${allSelectedIds.length} sélectionné` : ""}</div>
         </div>
 
         {/* Table */}
@@ -265,11 +265,11 @@ export default function PartsIndex() {
                 </TableHead>
                 <TableHead className="w-[80px]">ID</TableHead>
                 <TableHead className="w-[140px]">SKU</TableHead>
-                <TableHead className="w-[160px]">Reference</TableHead>
-                <TableHead>Name</TableHead>
-                <TableHead className="w-[160px]">Manufacturer</TableHead>
-                <TableHead className="w-[120px]">Retail TTC</TableHead>
-                <TableHead className="w-[90px]">Active</TableHead>
+                <TableHead className="w-[160px]">Référence</TableHead>
+                <TableHead>Nom</TableHead>
+                <TableHead className="w-[160px]">Fabricant</TableHead>
+                <TableHead className="w-[120px]">Prix de vente au détail</TableHead>
+                <TableHead className="w-[90px]">Actif</TableHead>
                 <TableHead className="w-[160px]">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -277,7 +277,7 @@ export default function PartsIndex() {
               {(!pageData.data.length || loading) && (
                 <TableRow>
                   <TableCell colSpan={9} className="text-center text-muted-foreground">
-                    {loading ? "Loading..." : "No data"}
+                    {loading ? "Chargement..." : "Aucune donnée"}
                   </TableCell>
                 </TableRow>
               )}
@@ -292,7 +292,7 @@ export default function PartsIndex() {
                         onClick={() =>
                           setExpanded((e) => ({ ...e, [String(row.id)]: !e[String(row.id)] }))
                         }
-                        aria-label={expanded[String(row.id)] ? "Collapse" : "Expand"}
+                        aria-label={expanded[String(row.id)] ? "Réduire" : "Développer"}
                       >
                         <ChevronDown className={`h-4 w-4 transition-transform ${expanded[String(row.id)] ? "" : "-rotate-90"}`} />
                       </button>
@@ -316,7 +316,7 @@ export default function PartsIndex() {
                             await api.patch(endpoints.partActive(row.id), { is_active: v });
                           } catch {
                             setPageData(prev);
-                            alert('Failed to update status');
+                            alert('Échec de la mise à jour du statut');
                           }
                         }}
                       />
@@ -336,10 +336,10 @@ export default function PartsIndex() {
                       {/* colSpan now = checkbox+expander + 8 other cols = 9+1 = 10 */}
                       <TableCell colSpan={10} className="bg-muted/40 p-4">
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                          <DetailItem label="Fitment Brands" value={(row.fitment_brands?.length ? row.fitment_brands.join(", ") : "—")} />
-                          <DetailItem label="Fitment Models" value={(row.fitment_models?.length ? row.fitment_models.join(", ") : "—")} />
-                          <DetailItem label="Stock Real" value={show(row.stock_real)} />
-                          <DetailItem label="Stock Available" value={show(row.stock_available)} />
+                          <DetailItem label="Marques de montage" value={(row.fitment_brands?.length ? row.fitment_brands.join(", ") : "—")} />
+                          <DetailItem label="Modèles de montage" value={(row.fitment_models?.length ? row.fitment_models.join(", ") : "—")} />
+                          <DetailItem label="Stock réel" value={show(row.stock_real)} />
+                          <DetailItem label="Stock disponible" value={show(row.stock_available)} />
                         </div>
                       </TableCell>
                     </TableRow>
@@ -371,7 +371,7 @@ export default function PartsIndex() {
       <Sheet open={openEditor} onOpenChange={setOpenEditor}>
         <SheetContent side="right" className="w-full sm:max-w-2xl overflow-y-auto gap-0">
           <SheetHeader>
-            <SheetTitle className="pl-2">{editingId == null ? "New Part" : `Edit Part #${editingId}`}</SheetTitle>
+            <SheetTitle className="pl-2">{editingId == null ? "Nouvelle pièce" : `Modifier la pièce #${editingId}`}</SheetTitle>
           </SheetHeader>
           <Editor
             partId={editingId}

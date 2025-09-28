@@ -20,7 +20,7 @@ export function OrdersStatusPie({ range, chartConfig }: { range: string; chartCo
 
   return (
     <Card>
-      <CardHeader><CardTitle>Orders by status</CardTitle></CardHeader>
+      <CardHeader><CardTitle>Commandes par statut</CardTitle></CardHeader>
       <CardContent>
         {loading ? (
           <Skeleton className="h-[260px] w-full" />

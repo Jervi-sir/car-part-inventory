@@ -19,5 +19,8 @@ class DatabaseSeeder extends Seeder
         //     'email' => 'test@example.com',
         // ]);
 
+        $fill_data = new FillDataSeeder();
+        $fill_data->run();
+
     }
 }

@@ -81,60 +81,60 @@ export default function UserPage() {
   const money = (n: number, c: string) => `${Number(n).toFixed(2)} ${c}`;
 
   return (
-    <AdminLayout title={`User #${userId}`}>
+    <AdminLayout title={`Utilisateur #${userId}`}>
       <div className="p-6 pt-0">
-        <Head title={`User #${userId}`} />
+        <Head title={`Utilisateur #${userId}`} />
 
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
-            <Button size="icon" variant="outline" onClick={()=> (window.location.href = endpoints.back)} title="Back to Users">
+            <Button size="icon" variant="outline" onClick={()=> (window.location.href = endpoints.back)} title="Retour aux utilisateurs">
               <ArrowLeft />
             </Button>
-            <h1 className="text-2xl font-semibold">User #{userId}</h1>
+            <h1 className="text-2xl font-semibold">Utilisateur #{userId}</h1>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline" onClick={()=>refresh(orders.page)}>Refresh</Button>
+            <Button variant="outline" onClick={()=>refresh(orders.page)}>Actualiser</Button>
           </div>
         </div>
 
         {loading ? (
-          <Card className="p-4">Loading…</Card>
+          <Card className="p-4">Chargement…</Card>
         ) : err ? (
           <Card className="p-4 text-red-600">{err}</Card>
         ) : !user ? (
-          <Card className="p-4">User not found.</Card>
+          <Card className="p-4">Utilisateur introuvable.</Card>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Left: user info */}
             <Card className="p-4">
-              <div className="font-semibold mb-1">Customer</div>
+              <div className="font-semibold mb-1">Client</div>
               <div className="text-sm space-y-1">
-                <div><span className="text-muted-foreground">Name:</span> {user.full_name || user.name}</div>
-                <div><span className="text-muted-foreground">Email:</span> {user.email}</div>
-                <div className="text-xs text-muted-foreground">User ID: {user.id}</div>
-                <div className="text-xs text-muted-foreground">Joined: {user.created_at ? new Date(user.created_at).toLocaleString() : "—"}</div>
+                <div><span className="text-muted-foreground">Nom:</span> {user.full_name || user.name}</div>
+                <div><span className="text-muted-foreground">E-mail:</span> {user.email}</div>
+                <div className="text-xs text-muted-foreground">ID utilisateur: {user.id}</div>
+                <div className="text-xs text-muted-foreground">Inscrit: {user.created_at ? new Date(user.created_at).toLocaleString() : "—"}</div>
               </div>
             </Card>
 
             {/* Right: orders table */}
             <Card className="p-4 lg:col-span-2">
               <div className="flex items-end justify-between gap-3 mb-3">
-                <div className="font-semibold">Orders</div>
+                <div className="font-semibold">Commandes</div>
                 <div className="flex gap-2">
-                  <Label>Sort</Label>
+                  <Label>Tri</Label>
                   <Select value={sortBy} onValueChange={setSortBy}>
                     <SelectTrigger className="w-[160px]"><SelectValue/></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="created_at">Date</SelectItem>
-                      <SelectItem value="grand_total">Amount</SelectItem>
-                      <SelectItem value="status">Status</SelectItem>
+                      <SelectItem value="grand_total">Montant</SelectItem>
+                      <SelectItem value="status">Statut</SelectItem>
                     </SelectContent>
                   </Select>
                   <Select value={sortDir} onValueChange={setSortDir}>
                     <SelectTrigger className="w-[110px]"><SelectValue/></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="desc">Desc</SelectItem>
-                      <SelectItem value="asc">Asc</SelectItem>
+                      <SelectItem value="desc">Description</SelectItem>
+                      <SelectItem value="asc">Ascension</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -144,17 +144,17 @@ export default function UserPage() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="w-[90px]">Order #</TableHead>
+                      <TableHead className="w-[90px]">Commande #</TableHead>
                       <TableHead className="w-[170px]">Date</TableHead>
-                      <TableHead className="w-[120px]">Status</TableHead>
-                      <TableHead className="w-[90px]">Items</TableHead>
+                      <TableHead className="w-[120px]">Statut</TableHead>
+                      <TableHead className="w-[90px]">Articles</TableHead>
                       <TableHead className="w-[140px]">Total</TableHead>
                       <TableHead className="w-[100px]">Action</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {orders.data.length === 0 ? (
-                      <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground">No orders</TableCell></TableRow>
+                      <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground">Aucune commande</TableCell></TableRow>
                     ) : orders.data.map(o => (
                       <TableRow key={o.id}>
                         <TableCell>#{o.id}</TableCell>
@@ -164,7 +164,7 @@ export default function UserPage() {
                         <TableCell className="font-semibold">{money(o.grand_total, o.currency)}</TableCell>
                         <TableCell>
                           <Button size="sm" onClick={()=> (window.location.href = endpoints.viewOrder(o.id))}>
-                            View
+                            Vue
                           </Button>
                         </TableCell>
                       </TableRow>
@@ -176,7 +176,7 @@ export default function UserPage() {
               {/* Pagination */}
               <div className="flex items-center justify-between mt-3">
                 <div className="text-sm text-muted-foreground">
-                  {orders.total ? `${(orders.page - 1) * orders.per_page + 1}-${Math.min(orders.total, orders.page * orders.per_page)} of ${orders.total}` : "0"}
+                  {orders.total ? `${(orders.page - 1) * orders.per_page + 1}-${Math.min(orders.total, orders.page * orders.per_page)} de ${orders.total}` : "0"}
                 </div>
                 <div className="flex items-center gap-2">
                   <Button variant="outline" size="icon" onClick={()=>refresh(Math.max(1, orders.page-1))} disabled={orders.page<=1}><ChevronLeft className="h-4 w-4"/></Button>

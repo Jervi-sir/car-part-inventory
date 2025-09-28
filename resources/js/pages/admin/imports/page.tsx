@@ -16,27 +16,27 @@ type OptionItem = { id: number; name: string };
 const TARGET_FIELDS = [
   { v: "", label: "— Ignore —" },
   // identifiers
-  { v: "sku", label: "SKU" },
-  { v: "reference", label: "Reference" },
-  { v: "barcode", label: "Barcode (EAN/UPC)" },
+  { v: "sku", label: "UGS" },
+  { v: "reference", label: "Référence" },
+  { v: "barcode", label: "Code-barres (EAN/UPC)" },
   // name/desc
-  { v: "name", label: "Name / Désignation" },
+  { v: "name", label: "Nom / Désignation" },
   { v: "description", label: "Description" },
   // manufacturer
-  { v: "manufacturer", label: "Manufacturer" },
+  { v: "manufacturer", label: "Fabricant" },
   // pricing TTC + TVA
-  { v: "price_retail_ttc", label: "Price Retail TTC" },
-  { v: "price_wholesale_ttc", label: "Price Wholesale TTC" },
+  { v: "price_retail_ttc", label: "Prix de vente TTC" },
+  { v: "price_wholesale_ttc", label: "Prix de gros TTC" },
   { v: "tva_rate", label: "TVA %" },
   // stock (global)
-  { v: "stock_real", label: "Stock Réel" },
-  { v: "stock_available", label: "Stock Disponible" },
+  { v: "stock_real", label: "Stock réel" },
+  { v: "stock_available", label: "Stock disponible" },
   // fitment
-  { v: "vehicle_brand", label: "Vehicle Brand / Marque" },
-  { v: "vehicle_model", label: "Vehicle Model / Affectation" },
-  { v: "year_from", label: "Year From" },
-  { v: "year_to", label: "Year To" },
-  { v: "engine_code", label: "Engine Code" },
+  { v: "vehicle_brand", label: "Marque du véhicule" },
+  { v: "vehicle_model", label: "Modèle du véhicule" },
+  { v: "year_from", label: "Année de fabrication" },
+  { v: "year_to", label: "Année de fabrication" },
+  { v: "engine_code", label: "Code moteur" },
 ];
 
 export default function ImportParts() {
@@ -131,40 +131,40 @@ export default function ImportParts() {
       <div className="p-6 pt-0 space-y-6">
         <Card>
           <CardHeader>
-            <CardTitle>Upload CSV</CardTitle>
+            <CardTitle>Importer un fichier CSV</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="space-y-2">
-                <Label>CSV File</Label>
+                <Label>Fichier CSV</Label>
                 <Input type="file" accept=".csv,text/csv" onChange={(e) => setFile(e.target.files?.[0] || null)} />
               </div>
               <div className="space-y-2">
-                <Label>Delimiter</Label>
+                <Label>Délimiteur</Label>
                 <Select value={delimiter} onValueChange={setDelimiter}>
                   <SelectTrigger><SelectValue placeholder="Auto-detect" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Auto-detect</SelectItem>
-                    <SelectItem value=",">Comma (,)</SelectItem>
-                    <SelectItem value=";">Semicolon (;)</SelectItem>
-                    <SelectItem value="\t">Tab</SelectItem>
-                    <SelectItem value="|">Pipe (|)</SelectItem>
+                    <SelectItem value="">Détection automatique</SelectItem>
+                    <SelectItem value=",">Virgule (,)</SelectItem>
+                    <SelectItem value=";">Point-virgule (;)</SelectItem>
+                    <SelectItem value="\t">Tabulation</SelectItem>
+                    <SelectItem value="|">Tuyau (|)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="flex items-end gap-3">
                 <div className="space-y-2">
-                  <Label className="block">Has Header Row</Label>
+                  <Label className="block">A une ligne d'en-tête</Label>
                   <div className="flex items-center gap-2">
                     <Switch checked={hasHeader} onCheckedChange={setHasHeader} />
-                    <span className="text-sm">{hasHeader ? 'Yes' : 'No'}</span>
+                    <span className="text-sm">{hasHeader ? 'Oui' : 'Non'}</span>
                   </div>
                 </div>
               </div>
             </div>
 
             <div className="flex gap-3">
-              <Button onClick={onParse} disabled={!file || uploadForm.processing}>Parse & Preview</Button>
+              <Button onClick={onParse} disabled={!file || uploadForm.processing}>Analyse et aperçu</Button>
             </div>
 
             {uploadForm.errors.file && <p className="text-red-600 text-sm">{uploadForm.errors.file}</p>}
@@ -174,7 +174,7 @@ export default function ImportParts() {
         {parsed && (
           <Card>
             <CardHeader>
-              <CardTitle>Preview & Mapping</CardTitle>
+              <CardTitle>Aperçu et mappage</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="overflow-x-auto">
@@ -195,7 +195,7 @@ export default function ImportParts() {
                                 ))}
                               </SelectContent>
                             </Select>
-                            <div className="text-[11px] text-muted-foreground">Detected: {parsed.normalizedHeaders?.[i]}</div>
+                            <div className="text-[11px] text-muted-foreground">Détecté : {parsed.normalizedHeaders?.[i]}</div>
                           </div>
                         </TableHead>
                       ))}
@@ -217,7 +217,7 @@ export default function ImportParts() {
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
-                  <Label>Default Manufacturer (if missing)</Label>
+                  <Label>Fabricant par défaut (si manquant)</Label>
                   <Select
                     value={selectedManufacturerId}
                     onValueChange={(v) => {
@@ -230,19 +230,19 @@ export default function ImportParts() {
                       <SelectValue placeholder="— none —" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">— none —</SelectItem>
+                      <SelectItem value="">— Aucun —</SelectItem>
                       {manufacturers.map((m: OptionItem) => (
                         <SelectItem key={m.id} value={String(m.id)}>{m.name}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                   <div className="text-xs text-muted-foreground">
-                    Will send: {commitForm.data.options.default_manufacturer || "— none —"}
+                    Enverra : {commitForm.data.options.default_manufacturer || "— none —"}
                   </div>
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Default TVA % (if column missing)</Label>
+                  <Label>% TVA par défaut (si colonne manquante)</Label>
                   <Input
                     type="number"
                     step="0.01"
@@ -253,14 +253,14 @@ export default function ImportParts() {
                     }
                   />
                   <div className="text-xs text-muted-foreground">
-                    Used only if CSV has no TVA column.
+                    Utilisé uniquement si le fichier CSV ne contient pas de colonne TVA.
                   </div>
                 </div>
               </div>
 
               <div className="flex gap-3">
                 <Button onClick={onCommit} disabled={commitForm.processing}>
-                  Commit Import
+                  Valider l'importation
                 </Button>
               </div>
 
@@ -275,19 +275,19 @@ export default function ImportParts() {
 
         {flashResult && (
           <Card>
-            <CardHeader><CardTitle>Import Result</CardTitle></CardHeader>
+            <CardHeader><CardTitle>Résultat de l'importation</CardTitle></CardHeader>
             <CardContent className="space-y-2">
               <div className="text-sm">
-                <div>Created: <b>{flashResult.created}</b></div>
-                <div>Updated: <b>{flashResult.updated}</b></div>
+                <div>Créé: <b>{flashResult.created}</b></div>
+                <div>Mis à jour: <b>{flashResult.updated}</b></div>
               </div>
               {flashResult.errors?.length > 0 && (
                 <div className="text-sm">
-                  <div className="font-semibold mb-1">Errors ({flashResult.errors.length}):</div>
+                  <div className="font-semibold mb-1">Erreurs ({flashResult.errors.length}):</div>
                   <div className="max-h-60 overflow-auto border rounded p-2">
                     {flashResult.errors.map((er: any, i: number) => (
                       <div key={i} className="mb-1">
-                        Row {er.row}: {er.message}
+                        Ligne {er.row}: {er.message}
                       </div>
                     ))}
                   </div>

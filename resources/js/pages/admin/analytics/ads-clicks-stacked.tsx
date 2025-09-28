@@ -33,7 +33,7 @@ export function AdsClicksStacked({ range, chartConfig }: { range: string; chartC
 
   return (
     <Card>
-      <CardHeader><CardTitle>Ad clicks by placement</CardTitle></CardHeader>
+      <CardHeader><CardTitle>Clics sur les annonces par emplacement</CardTitle></CardHeader>
       <CardContent>
         {loading ? (
           <Skeleton className="h-[280px] w-full" />

@@ -178,27 +178,27 @@ export default function CreativesIndex() {
   return (
     <AdminLayout>
       <div className="p-6">
-        <Head title="Ad Creatives" />
+        <Head title="Créations publicitaires" />
         <div className="flex items-center justify-between mb-4">
-          <h1 className="text-xl font-semibold">Ad Creatives</h1>
-          <Button onClick={startCreate}>New Creative</Button>
+          <h1 className="text-xl font-semibold">Créations publicitaires</h1>
+          <Button onClick={startCreate}>Nouvelle création</Button>
         </div>
 
         <Card className="p-3 mb-3">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
             <Input
-              placeholder="Search title/subtitle…"
+              placeholder="Rechercher un titre/sous-titre…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
             <div className="flex items-center gap-2">
-              <Label>Placement</Label>
+              <Label>Emplacement</Label>
               <Select value={filterPlacement} onValueChange={setFilterPlacement}>
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="All" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All</SelectItem>
+                  <SelectItem value="">Tout</SelectItem>
                   {PLACEMENTS.map((p) => (
                     <SelectItem key={p} value={p}>
                       {p}
@@ -208,7 +208,7 @@ export default function CreativesIndex() {
               </Select>
             </div>
             <Button variant="outline" onClick={() => fetchRows(1)}>
-              Search
+              Recherche
             </Button>
           </div>
         </Card>
@@ -218,13 +218,13 @@ export default function CreativesIndex() {
             <TableHeader>
               <TableRow>
                 <TableHead>ID</TableHead>
-                <TableHead>Preview</TableHead>
-                <TableHead>Placement</TableHead>
-                <TableHead>Title</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Weight</TableHead>
-                <TableHead>Start</TableHead>
-                <TableHead>End</TableHead>
+                <TableHead>Aperçu</TableHead>
+                <TableHead>Emplacement</TableHead>
+                <TableHead>Titre</TableHead>
+                <TableHead>Statut</TableHead>
+                <TableHead>Poids</TableHead>
+                <TableHead>Début</TableHead>
+                <TableHead>Fin</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -259,10 +259,10 @@ export default function CreativesIndex() {
                   <TableCell>{r.ends_at ? new Date(r.ends_at).toLocaleString() : "—"}</TableCell>
                   <TableCell className="text-right space-x-2">
                     <Button size="sm" variant="outline" onClick={() => startEdit(r)}>
-                      Edit
+                      Modifier
                     </Button>
                     <Button size="sm" variant="destructive" onClick={() => remove(r)}>
-                      Delete
+                      Supprimer
                     </Button>
                   </TableCell>
                 </TableRow>
@@ -270,7 +270,7 @@ export default function CreativesIndex() {
               {!rows.length && (
                 <TableRow>
                   <TableCell colSpan={9} className="text-center text-muted-foreground">
-                    {loading ? "Loading…" : "No results"}
+                    {loading ? "Chargement…" : "Aucun résultat"}
                   </TableCell>
                 </TableRow>
               )}
@@ -294,7 +294,7 @@ export default function CreativesIndex() {
               disabled={meta.current_page <= 1}
               onClick={() => fetchRows(meta.current_page - 1)}
             >
-              Prev
+              Précédent
             </Button>
             <Button
               variant="outline"
@@ -302,7 +302,7 @@ export default function CreativesIndex() {
               disabled={meta.current_page * meta.per_page >= meta.total}
               onClick={() => fetchRows(meta.current_page + 1)}
             >
-              Next
+              Suivant
             </Button>
           </div>
         </div>
@@ -317,7 +317,7 @@ export default function CreativesIndex() {
             <div className="grid md:grid-cols-2 gap-4">
               <div className="grid gap-3">
                 <div className="grid gap-1.5">
-                  <Label>Placement</Label>
+                  <Label>Emplacement</Label>
                   <Select
                     value={String(form.placement ?? "")}
                     onValueChange={(v) =>
@@ -325,7 +325,7 @@ export default function CreativesIndex() {
                     }
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Select a placement" />
+                      <SelectValue placeholder="Sélectionner un emplacement" />
                     </SelectTrigger>
                     <SelectContent>
                       {PLACEMENTS.map((p) => (
@@ -338,7 +338,7 @@ export default function CreativesIndex() {
                 </div>
 
                 <div className="grid gap-1.5">
-                  <Label>Title</Label>
+                  <Label>Titre</Label>
                   <Input
                     value={form.title ?? ""}
                     onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
@@ -346,7 +346,7 @@ export default function CreativesIndex() {
                 </div>
 
                 <div className="grid gap-1.5">
-                  <Label>Subtitle</Label>
+                  <Label>Sous-titre</Label>
                   <Input
                     value={form.subtitle ?? ""}
                     onChange={(e) => setForm((f) => ({ ...f, subtitle: e.target.value }))}
@@ -354,7 +354,7 @@ export default function CreativesIndex() {
                 </div>
 
                 <div className="grid gap-1.5">
-                  <Label>Image alt</Label>
+                  <Label>Image alternative</Label>
                   <Input
                     value={form.image_alt ?? ""}
                     onChange={(e) => setForm((f) => ({ ...f, image_alt: e.target.value }))}
@@ -362,7 +362,7 @@ export default function CreativesIndex() {
                 </div>
 
                 <div className="grid gap-1.5">
-                  <Label>Target URL</Label>
+                  <Label>URL cible</Label>
                   <Input
                     value={form.target_url ?? ""}
                     onChange={(e) => setForm((f) => ({ ...f, target_url: e.target.value }))}
@@ -372,7 +372,7 @@ export default function CreativesIndex() {
 
               <div className="grid gap-3">
                 <div className="grid gap-1.5">
-                  <Label>Image {editing ? "(leave empty to keep)" : ""}</Label>
+                  <Label>Image {editing ? "(laisser vide pour conserver)" : ""}</Label>
                   <Input
                     type="file"
                     accept="image/*"
@@ -382,7 +382,7 @@ export default function CreativesIndex() {
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <Label>Weight</Label>
+                    <Label>Poids</Label>
                     <Input
                       type="number"
                       min={1}
@@ -394,7 +394,7 @@ export default function CreativesIndex() {
                     />
                   </div>
                   <div>
-                    <Label>Status</Label>
+                    <Label>Statut</Label>
                     <Select
                       value={form.status ?? "active"}
                       onValueChange={(v) =>
@@ -405,8 +405,8 @@ export default function CreativesIndex() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="active">active</SelectItem>
-                        <SelectItem value="paused">paused</SelectItem>
+                        <SelectItem value="active">actif</SelectItem>
+                        <SelectItem value="paused">en pause</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -414,7 +414,7 @@ export default function CreativesIndex() {
 
                 <div className="grid grid-cols-1 gap-3">
                   <div>
-                    <Label>Starts at</Label>
+                    <Label>Début à</Label>
                     <Input
                       type="datetime-local"
                       value={form.starts_at ?? ""}
@@ -422,7 +422,7 @@ export default function CreativesIndex() {
                     />
                   </div>
                   <div>
-                    <Label>Ends at</Label>
+                    <Label>Fin à</Label>
                     <Input
                       type="datetime-local"
                       value={form.ends_at ?? ""}
@@ -435,9 +435,9 @@ export default function CreativesIndex() {
 
             <DialogFooter>
               <Button variant="outline" onClick={() => setOpen(false)}>
-                Cancel
+                Annuler
               </Button>
-              <Button onClick={save}>{editing ? "Update" : "Create"}</Button>
+              <Button onClick={save}>{editing ? "Mettre à jour" : "Créer"}</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>

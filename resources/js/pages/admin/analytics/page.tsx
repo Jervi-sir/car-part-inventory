@@ -26,15 +26,15 @@ export default function AnalyticsPage() {
       <div className="p-6 pt-0">
         <Head title="Analytics" />
         <div className="flex items-center justify-between pb-4">
-          <h1 className="text-2xl font-semibold tracking-tight">Analytics</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">Analyses</h1>
           <div className="flex items-center gap-2">
             <Select value={range} onValueChange={setRange}>
               <SelectTrigger className="w-[140px]"><SelectValue placeholder="Range" /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="7d">Last 7 days</SelectItem>
-                <SelectItem value="30d">Last 30 days</SelectItem>
-                <SelectItem value="90d">Last 90 days</SelectItem>
-                <SelectItem value="ytd">Year to date</SelectItem>
+                <SelectItem value="7d">7 derniers jours</SelectItem>
+                <SelectItem value="30d">30 derniers jours</SelectItem>
+                <SelectItem value="90d">90 derniers jours</SelectItem>
+                <SelectItem value="ytd">Cumul annuel</SelectItem>
               </SelectContent>
             </Select>
           </div>
