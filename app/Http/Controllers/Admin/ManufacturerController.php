@@ -7,10 +7,16 @@ use App\Models\Manufacturer;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\Database\QueryException;
+use Inertia\Inertia;
 use Symfony\Component\HttpFoundation\Response;
 
 class ManufacturerController extends Controller
 {
+    public function page()
+    {
+        return Inertia::render('admin/manufacturers/page');
+    }
+
     public function index(Request $request)
     {
         $q = Manufacturer::query();

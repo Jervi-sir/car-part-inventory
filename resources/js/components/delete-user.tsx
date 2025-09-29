@@ -17,12 +17,12 @@ export default function DeleteUser() {
     const deleteUser: FormEventHandler = (e) => {
         e.preventDefault();
 
-        destroy(route('profile.destroy'), {
-            preserveScroll: true,
-            onSuccess: () => closeModal(),
-            onError: () => passwordInput.current?.focus(),
-            onFinish: () => reset(),
-        });
+        // destroy(route('profile.destroy'), {
+        //     preserveScroll: true,
+        //     onSuccess: () => closeModal(),
+        //     onError: () => passwordInput.current?.focus(),
+        //     onFinish: () => reset(),
+        // });
     };
 
     const closeModal = () => {

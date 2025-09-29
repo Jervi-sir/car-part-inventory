@@ -25,7 +25,7 @@ class User extends Authenticatable
         'is_verified',
     ];
 
-    protected $hidden = ['password', 'password_plaintext', 'remember_token'];
+    protected $hidden = ['password', 'remember_token'];
 
     protected $appends = ['role_label', 'role_key'];
 

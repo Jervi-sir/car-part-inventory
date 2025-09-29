@@ -3,6 +3,8 @@ import api from "@/lib/api";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { RefreshCwIcon } from "lucide-react";
+import TelegramController from "@/actions/App/Http/Controllers/Client/TelegramController";
+import ShippingAddressController from "@/actions/App/Http/Controllers/Client/ShippingAddressController";
 
 export function NotificationsCard() {
   const [linked, setLinked] = useState<boolean | null>(null);
@@ -12,7 +14,7 @@ export function NotificationsCard() {
   const fetchStatus = async () => {
     setLoading(true);
     try {
-      const { data } = await api.get(route("client.notifications.telegram.status"));
+      const { data } = await api.get(TelegramController.status().url);
       setLinked(data.linked);
       setConnectUrl(data.link);
     } catch (e) {
@@ -28,7 +30,7 @@ export function NotificationsCard() {
 
   const handleConnect = async () => {
     try {
-      const { data } = await api.post(route("client.notifications.telegram.connect"));
+      const { data } = await api.post(TelegramController.connect().url);
       if (data.link) {
         setConnectUrl(data.link);
         window.open(data.link, "_blank"); // open Telegram deep link
@@ -41,7 +43,7 @@ export function NotificationsCard() {
   const handleDisconnect = async () => {
     if (!confirm("Se déconnecter de Telegram ?")) return;
     try {
-      await api.delete(route("client.notifications.telegram.disconnect"));
+      await api.delete(TelegramController.disconnect().url);
       setLinked(false);
       setConnectUrl(null);
     } catch (e) {

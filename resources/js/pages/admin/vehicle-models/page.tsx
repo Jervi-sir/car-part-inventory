@@ -13,14 +13,16 @@ import { ChevronLeft, ChevronRight, Pencil, Trash, Plus } from "lucide-react";
 import { AdminLayout } from "../layout/admin-layout";
 import { Head } from "@inertiajs/react";
 import api from "@/lib/api";
+import VehicleBrandController from "@/actions/App/Http/Controllers/Admin/VehicleBrandController";
+import VehicleModelController from "@/actions/App/Http/Controllers/Admin/VehicleModelController";
 
 type Id4 = number | string;
 interface VehicleBrand2 { id: Id4; name: string }
 interface VehicleModel { id: Id4; vehicle_brand_id: Id4; name: string; year_from: number | null; year_to: number | null }
 interface Page4<T> { data: T[]; total: number; page: number; per_page: number }
 
-const endpointBrands = route('admin.vehicle-brands.api.crud');
-const endpointModels = route('admin.vehicle-models.api.crud');
+const endpointBrands = VehicleBrandController.index().url;
+const endpointModels = VehicleModelController.index().url;
 
 export default function VehicleModelsPage() {
   const [brands, setBrands] = useState<VehicleBrand2[]>([]);
@@ -83,19 +85,12 @@ export default function VehicleModelsPage() {
   };
 
   return (
-    <AdminLayout>
+    <AdminLayout title="Modèles de véhicules">
       <Head title="Modèles de véhicules" />
       <div className="p-6 pt-0 space-y-4">
         <div className="text-2xl font-semibold">Modèles de véhicules</div>
         <div className="flex items-center gap-2">
           <Input placeholder="Rechercher des modèles..." value={search} onChange={(e) => setSearch(e.target.value)} className="w-64" />
-          <Select value={brandFilter} onValueChange={(v) => setBrandFilter(v)}>
-            <SelectTrigger><SelectValue placeholder="Select category" className="w-full" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Tous</SelectItem>
-              {brands.map(c => <SelectItem key={String(c.id)} value={String(c.id)}>{c.name}</SelectItem>)}
-            </SelectContent>
-          </Select>
           <div className="flex-1" />
           <Button size="sm" onClick={openCreate}><Plus className="h-4 w-4 mr-1" />Nouveau modèle</Button>
         </div>
@@ -109,7 +104,7 @@ export default function VehicleModelsPage() {
                 <TableHead>Modèle</TableHead>
                 <TableHead>De</TableHead>
                 <TableHead>À</TableHead>
-                <TableHead className="w-[120px]">Actions</TableHead>
+                <TableHead className="w-[100px] sticky right-0 z-10 bg-background shadow-[inset_1px_0_0_var(--border)]">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -121,7 +116,7 @@ export default function VehicleModelsPage() {
                   <TableCell>{row.name}</TableCell>
                   <TableCell>{row.year_from ?? ""}</TableCell>
                   <TableCell>{row.year_to ?? ""}</TableCell>
-                  <TableCell className="flex gap-2">
+                  <TableCell className="flex gap-2 w-[100px] sticky right-0 z-10 bg-background shadow-[inset_1px_0_0_var(--border)]">
                     <Button variant="outline" size="icon" onClick={() => openEdit(row)}><Pencil className="h-4 w-4" /></Button>
                     <Button variant="destructive" size="icon" onClick={() => remove(row)}><Trash className="h-4 w-4" /></Button>
                   </TableCell>

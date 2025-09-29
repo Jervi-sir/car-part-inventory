@@ -1,5 +1,5 @@
-import { useEffect, useState, useMemo } from "react";
-import { Head, router } from "@inertiajs/react";
+import { useEffect, useState, useMemo, useCallback } from "react";
+import { Head } from "@inertiajs/react";
 import { ClientLayout } from "../layout/client-layout";
 
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,8 @@ import { Minus, Plus, Trash2, Truck, ShoppingCart } from "lucide-react";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { cn } from "@/lib/utils";
 import api from "@/lib/api";
+import CartController from "@/actions/App/Http/Controllers/Client/CartController";
+import ShippingAddressController from "@/actions/App/Http/Controllers/Client/ShippingAddressController";
 
 declare const route: (name: string, params?: any) => string;
 
@@ -23,15 +25,15 @@ type CartItemFull = {
   name: string;
   image?: string | null;
   manufacturer?: Mini | null;
-  category?: Mini | null; // always null in current schema
+  category?: Mini | null;
   min_order_qty: number;
   min_qty_gros: number;
-  price_retail?: number | null;      // TTC (mapped by backend)
-  price_demi_gros?: number | null;   // null
-  price_gros?: number | null;        // TTC wholesale (mapped by backend)
+  price_retail?: number | null;     // TTC (mapped by backend)
+  price_demi_gros?: number | null;  // null
+  price_gros?: number | null;       // TTC wholesale (mapped by backend)
   fitment_models: string[];
   fitment_brands: string[];
-  references: { type: string; code: string; source_brand?: string | null }[]; // []
+  references: { type: string; code: string; source_brand?: string | null }[];
   qty: number;
 };
 
@@ -52,12 +54,12 @@ type Address = {
 };
 
 const endpoints = {
-  cartShow: route("shop.api.cart.show"),
-  cartUpdate: (id: Id) => route("shop.api.cart.update", { part: id }),
-  cartRemove: (id: Id) => route("shop.api.cart.remove", { part: id }),
-  cartClear: route("shop.api.cart.clear"),
-  checkoutSubmit: route("shop.api.checkout.submit"),
-  addressesIndex: route("client.settings.api.shipping-addresses.crud"),
+  cartShow: CartController.show().url,
+  cartUpdate: (id: Id) => CartController.update({ part: id }).url,
+  cartRemove: (id: Id) => CartController.remove({ part: id }).url,
+  cartClear: CartController.clear().url,
+  checkoutSubmit: CartController.submit().url,
+  addressesIndex: ShippingAddressController.index().url,
 };
 
 const http = {
@@ -66,6 +68,49 @@ const http = {
   put: (url: string, body?: any, config: any = {}) => api.put(url, body, config),
   delete: (url: string, config: any = {}) => api.delete(url, config),
 };
+
+/* ---------------------- helpers for soft-merge & optimistic UI ---------------------- */
+
+function indexById<T extends { id: number }>(arr: T[]) {
+  const m = new Map<number, T>();
+  arr.forEach((x) => m.set(x.id, x));
+  return m;
+}
+
+/** merge server cart into current one while preserving current row order */
+function softMergeCart(current: Cart, server: Cart): Cart {
+  const byId = indexById(server.items);
+  const kept: CartItemFull[] = [];
+
+  for (const item of current.items) {
+    const fresh = byId.get(item.id);
+    if (fresh) {
+      kept.push({ ...item, ...fresh }); // update fields (qty, prices, etc.)
+      byId.delete(item.id);
+    }
+  }
+
+  // append new items (if any)
+  const appended = Array.from(byId.values());
+  const items = kept.concat(appended);
+
+  return {
+    items,
+    subtotal: server.subtotal,
+    count: server.count,
+    currency: server.currency ?? current.currency,
+  };
+}
+
+/** quick local subtotal used during optimistic updates */
+function computeSubtotal(items: CartItemFull[]) {
+  const pickPrice = (it: CartItemFull) =>
+    it.price_retail ?? it.price_gros ?? it.price_demi_gros ?? 0;
+  const sum = items.reduce((acc, it) => acc + pickPrice(it) * (it.qty ?? 0), 0);
+  return Number(sum.toFixed(2));
+}
+
+/* ---------------------------------- Component ---------------------------------- */
 
 export default function CheckoutPage() {
   const [cart, setCart] = useState<Cart>({ items: [], subtotal: 0, count: 0, currency: "DZD" });
@@ -90,21 +135,43 @@ export default function CheckoutPage() {
   const [expanded, setExpanded] = useState<Record<number, boolean>>({});
   const toggleRow = (id: number) => setExpanded((prev) => ({ ...prev, [id]: !prev[id] }));
 
+  // NEW: local draft for qty so UI changes instantly
+  const [qtyDraft, setQtyDraft] = useState<Record<number, number>>({});
+
   const fmt = (v?: number | null) => (v == null ? "–" : `${Number(v).toFixed(2)} ${cart.currency}`);
 
-  const refreshCart = async () => {
+  const refreshCart = useCallback(async () => {
     setLoading(true);
-    const { data: js } = await http.get(endpoints.cartShow);
-    setCart({
-      items: js.items ?? [],
-      subtotal: js.subtotal ?? 0,
-      count: js.count ?? 0,
-      currency: js.currency ?? "DZD",
-    });
-    setLoading(false);
-  };
+    try {
+      const { data: js } = await http.get(endpoints.cartShow);
+      setCart({
+        items: js.items ?? [],
+        subtotal: js.subtotal ?? 0,
+        count: js.count ?? 0,
+        currency: js.currency ?? "DZD",
+      });
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
-  const loadAddresses = async () => {
+  const fetchCartSoftMerge = useCallback(async () => {
+    try {
+      const { data: js } = await http.get(endpoints.cartShow);
+      setCart((cur) =>
+        softMergeCart(cur, {
+          items: js.items ?? [],
+          subtotal: js.subtotal ?? 0,
+          count: js.count ?? 0,
+          currency: js.currency ?? cur.currency,
+        })
+      );
+    } catch (e) {
+      console.warn("Soft cart refresh failed", e);
+    }
+  }, []);
+
+  const loadAddresses = useCallback(async () => {
     setAddrLoading(true);
     try {
       const { data: js } = await http.get(endpoints.addressesIndex);
@@ -120,44 +187,86 @@ export default function CheckoutPage() {
     } finally {
       setAddrLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     refreshCart();
     loadAddresses();
-  }, []);
+  }, [refreshCart, loadAddresses]);
 
-  const updateQty = async (id: Id, qty: number) => {
-    setBusyRow(Number(id));
-    await http.put(endpoints.cartUpdate(id), { quantity: qty });
-    await refreshCart();
-    setBusyRow(null);
-    await router.reload({
-      only: ["cart"],
-      // @ts-ignore
-      preserveState: true,
-      preserveScroll: true,
-    });
-  };
+  // Keep qtyDraft in sync with cart (authoritative) whenever cart changes
+  useEffect(() => {
+    const next: Record<number, number> = {};
+    for (const it of cart.items) {
+      const base = Math.max(1, it.min_order_qty || 1);
+      next[it.id] = it.qty ?? base;
+    }
+    setQtyDraft(next);
+  }, [cart.items]);
 
-  const remove = async (id: Id) => {
-    setBusyRow(Number(id));
-    await http.delete(endpoints.cartRemove(id));
-    await refreshCart();
-    setBusyRow(null);
-    await router.reload({
-      only: ["cart"],
-      // @ts-ignore
-      preserveState: true,
-      preserveScroll: true,
-    });
-  };
+  /* ------------------------------ optimistic actions ------------------------------ */
 
-  const clear = async () => {
-    setLoading(true);
-    await http.delete(endpoints.cartClear);
-    await refreshCart();
-  };
+  const updateQty = useCallback(
+    async (id: Id, qty: number) => {
+      const itemId = Number(id);
+      const minQty = 1;
+      const safeQty = Math.max(minQty, qty);
+
+      setBusyRow(itemId);
+
+      // optimistic UI (cart)
+      setCart((cur) => {
+        const items = cur.items.map((it) => (it.id === itemId ? { ...it, qty: safeQty } : it));
+        return { ...cur, items, subtotal: computeSubtotal(items), count: items.reduce((n, it) => n + (it.qty ?? 0), 0) };
+      });
+
+      try {
+        await http.put(endpoints.cartUpdate(id), { quantity: safeQty });
+        await fetchCartSoftMerge(); // reconcile authoritative totals/prices without reordering
+      } catch (e) {
+        await fetchCartSoftMerge(); // revert from server
+      } finally {
+        setBusyRow(null);
+      }
+    },
+    [fetchCartSoftMerge]
+  );
+
+  const remove = useCallback(
+    async (id: Id) => {
+      const itemId = Number(id);
+      setBusyRow(itemId);
+
+      // optimistic remove
+      setCart((cur) => {
+        const items = cur.items.filter((it) => it.id !== itemId);
+        return { ...cur, items, subtotal: computeSubtotal(items), count: items.reduce((n, it) => n + (it.qty ?? 0), 0) };
+      });
+
+      try {
+        await http.delete(endpoints.cartRemove(id));
+        await fetchCartSoftMerge();
+      } catch (e) {
+        await fetchCartSoftMerge();
+      } finally {
+        setBusyRow(null);
+      }
+    },
+    [fetchCartSoftMerge]
+  );
+
+  const clear = useCallback(async () => {
+    // optimistic clear
+    setCart((cur) => ({ ...cur, items: [], subtotal: 0, count: 0 }));
+    try {
+      await http.delete(endpoints.cartClear);
+      await fetchCartSoftMerge();
+    } catch (e) {
+      await fetchCartSoftMerge();
+    }
+  }, [fetchCartSoftMerge]);
+
+  /* --------------------------------- checkout flow -------------------------------- */
 
   const needsAddress = form.delivery_method === "courier" || form.delivery_method === "post";
   const usingSavedAddress = selectedAddressId !== "new";
@@ -166,7 +275,7 @@ export default function CheckoutPage() {
     [usingSavedAddress, selectedAddressId, addresses]
   );
 
-  const submitShipping = async () => {
+  const submitShipping = useCallback(async () => {
     setSubmitError(null);
     if (!cart.items.length) return;
 
@@ -208,7 +317,7 @@ export default function CheckoutPage() {
       const res = await http.post(endpoints.checkoutSubmit, payload);
       const js = res.data;
       setPlaced({ order_id: js.order_id, grand_total: js.grand_total });
-      await refreshCart();
+      await refreshCart(); // normal hard refresh for the recap card after placing order
     } catch (e: any) {
       const msg =
         e?.response?.data?.errors?.address?.[0] ??
@@ -221,9 +330,11 @@ export default function CheckoutPage() {
     } finally {
       setSubmitBusy(false);
     }
-  };
+  }, [cart.items.length, needsAddress, usingSavedAddress, chosenAddress, form, refreshCart]);
 
   const isEmpty = cart.items.length === 0;
+
+  /* ------------------------------------- UI ------------------------------------- */
 
   return (
     <ClientLayout title="Checkout">
@@ -242,11 +353,6 @@ export default function CheckoutPage() {
           <Card className="p-4 gap-3 lg:col-span-2">
             <div className="flex items-center justify-between">
               <div className="font-semibold">Votre commande</div>
-              {/* {!isEmpty && (
-                <Button variant="ghost" size="sm" onClick={clear}>
-                  Clear cart
-                </Button>
-              )} */}
             </div>
 
             {loading ? (
@@ -272,7 +378,21 @@ export default function CheckoutPage() {
                       const disabled = busyRow === it.id;
                       const baseMin = Math.max(1, it.min_order_qty || 1);
                       const isOpen = !!expanded[it.id];
-                      const DETAIL_COLSPAN = 6; // matches the 6 header cells above
+                      const DETAIL_COLSPAN = 6; // matches header cells
+
+                      const currentDraft = qtyDraft[it.id] ?? it.qty ?? baseMin;
+
+                      const commitQty = (next: number) => {
+                        const safe = Math.max(baseMin, Number(next) || baseMin);
+                        if (safe !== it.qty) {
+                          // keep the input updated immediately
+                          setQtyDraft((d) => ({ ...d, [it.id]: safe }));
+                          updateQty(it.id, safe);
+                        } else {
+                          // still sync draft to safe (in case of invalid typing)
+                          setQtyDraft((d) => ({ ...d, [it.id]: safe }));
+                        }
+                      };
 
                       return (
                         <>
@@ -300,26 +420,40 @@ export default function CheckoutPage() {
                                   variant="outline"
                                   size="icon"
                                   disabled={disabled}
-                                  onClick={() => updateQty(it.id, Math.max(baseMin, (it.qty ?? baseMin) - 1))}
+                                  onClick={() => {
+                                    const next = Math.max(baseMin, currentDraft - 1);
+                                    setQtyDraft((d) => ({ ...d, [it.id]: next }));
+                                    commitQty(next);
+                                  }}
                                 >
                                   <Minus className="h-4 w-4" />
                                 </Button>
+                                {/* Controlled input bound to qtyDraft */}
                                 <Input
                                   type="number"
                                   min={baseMin}
                                   className="remove_arrows w-20 text-center"
                                   disabled={disabled}
-                                  value={it.qty ?? baseMin}
+                                  value={currentDraft}
                                   onChange={(e) => {
-                                    const v = Math.max(baseMin, Number(e.target.value) || baseMin);
-                                    updateQty(it.id, v);
+                                    const raw = e.target.value;
+                                    const val = Math.max(baseMin, Number(raw) || 0);
+                                    setQtyDraft((d) => ({ ...d, [it.id]: val }));
+                                  }}
+                                  onBlur={(e) => commitQty(Number(e.target.value))}
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter") commitQty(Number((e.target as HTMLInputElement).value));
                                   }}
                                 />
                                 <Button
                                   variant="outline"
                                   size="icon"
                                   disabled={disabled}
-                                  onClick={() => updateQty(it.id, (it.qty ?? baseMin) + 1)}
+                                  onClick={() => {
+                                    const next = currentDraft + 1;
+                                    setQtyDraft((d) => ({ ...d, [it.id]: next }));
+                                    commitQty(next);
+                                  }}
                                 >
                                   <Plus className="h-4 w-4" />
                                 </Button>
@@ -436,6 +570,13 @@ export default function CheckoutPage() {
                   </span>
                 </div>
               </div>
+              {!isEmpty && (
+                <div className="mt-3">
+                  <Button variant="ghost" size="sm" onClick={clear}>
+                    Vider le panier
+                  </Button>
+                </div>
+              )}
             </Card>
 
             <Card className="p-4 gap-3">
@@ -554,7 +695,7 @@ export default function CheckoutPage() {
 
               {!needsAddress && (
                 <div className="text-xs text-muted-foreground">
-                  Retrait sélectionné — adresse facultative (vous pouvez toujours ajouter des instructions).
+                  Retrait sélectionné — adresse facultative (vous pouvez toujours ajouter des instructions).
                 </div>
               )}
 

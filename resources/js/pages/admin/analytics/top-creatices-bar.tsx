@@ -5,6 +5,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { NamedMetric } from "./types";
 import { useApiQuery } from "./use-api-query";
 import { ResponsiveContainer, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, Bar } from "recharts";
+import AnalyticsController from "@/actions/App/Http/Controllers/Admin/AnalyticsController";
 
 
 declare const route: (name: string, params?: any) => string;
@@ -12,7 +13,7 @@ declare const route: (name: string, params?: any) => string;
 
 export function TopCreativesBar({ range, chartConfig }: { range: string; chartConfig: any }) {
   const { data, loading } = useApiQuery<NamedMetric[]>({
-    url: route("admin.analytics.top-creatives-clicks") + `?range=${range}&limit=10`,
+    url: AnalyticsController.topCreativesClicks().url + `?range=${range}&limit=10`,
     deps: [range],
   });
 

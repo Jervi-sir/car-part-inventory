@@ -1,3 +1,5 @@
+import RegisteredUserController from '@/actions/App/Http/Controllers/Auth/RegisteredUserController';
+import CatalogController from '@/actions/App/Http/Controllers/Client/CatalogController';
 import { Button } from '@/components/ui/button';
 import { SharedData } from '@/types';
 import { Link, usePage } from '@inertiajs/react';
@@ -24,7 +26,7 @@ export const Section8 = () => {
             <li>Performance évolutive</li>
             <li>Des milliers de références</li>
           </div>
-          <Link href={auth.user ? route("client.parts.page") : route("register")}>
+          <Link href={auth.user ? CatalogController.page().url : RegisteredUserController.create().url}>
             <Button size="lg" className="rounded-xl">Commencer <ArrowRight className="ml-2 h-4 w-4" /></Button>
           </Link>
         </div>

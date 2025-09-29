@@ -5,13 +5,14 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { SeriesPoint } from "./types";
 import { useApiQuery } from "./use-api-query";
 import { ResponsiveContainer, LineChart, CartesianGrid, XAxis, YAxis, Line, Tooltip } from "recharts";
+import AnalyticsController from "@/actions/App/Http/Controllers/Admin/AnalyticsController";
 
 
 declare const route: (name: string, params?: any) => string;
 
 export function RevenueChart({ range, chartConfig }: { range: string; chartConfig: any }) {
   const { data, loading } = useApiQuery<SeriesPoint[]>({
-    url: route("admin.analytics.revenue-series") + `?range=${range}`,
+    url: AnalyticsController.revenueSeries().url + `?range=${range}`,
     deps: [range],
   });
 

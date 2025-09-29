@@ -11,6 +11,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Inertia\Inertia;
+use App\Enums\DeliveryMethod as DeliveryMethodEnum;
 
 class CartController extends Controller
 {
@@ -50,9 +52,14 @@ class CartController extends Controller
         $order->subtotal    = $subtotal;
         // Keep existing discount/shipping/tax; grand_total is derived
         $order->grand_total = $order->subtotal - ($order->discount_total ?? 0)
-                            + ($order->shipping_total ?? 0)
-                            + ($order->tax_total ?? 0);
+            + ($order->shipping_total ?? 0)
+            + ($order->tax_total ?? 0);
         $order->save();
+    }
+
+    public function page()
+    {
+        return Inertia::render('client/checkout/page');
     }
 
     /**
@@ -316,13 +323,16 @@ class CartController extends Controller
         if (!$user) {
             return response()->json(['message' => 'Unauthenticated'], 401);
         }
-
+        
         $data = $req->validate([
             'full_name'       => ['required', 'string', 'min:2', 'max:120'],
             'phone'           => ['required', 'string', 'min:5', 'max:40'],
             'address'         => ['nullable', 'string', 'max:255'],
             'address_id'      => ['nullable', 'integer', 'exists:user_shipping_addresses,id'],
-            'delivery_method' => ['required', Rule::in(['pickup', 'courier', 'post'])],
+            'delivery_method' => [
+                'required',
+                Rule::in(array_map(fn($c) => $c->value, DeliveryMethodEnum::cases())),
+            ],
         ]);
 
         $needsAddress = in_array($data['delivery_method'], ['courier', 'post'], true);

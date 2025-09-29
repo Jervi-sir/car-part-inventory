@@ -9,6 +9,8 @@ import { Plus, Trash, ArrowUp, ArrowDown } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import api from "@/lib/api";
+import PartController from "@/actions/App/Http/Controllers/Admin/PartController";
+import LookupController from "@/actions/App/Http/Controllers/LookupController";
 
 type Id = number | string;
 
@@ -17,16 +19,15 @@ interface VehicleBrand { id: number; name: string }
 interface VehicleModel { id: number; name: string; year_from?: number | null; year_to?: number | null }
 
 const endpoints = {
-  parts: route("admin.parts.api.crud"),
-  part: (id: Id) => `${route("admin.parts.api.crud")}/${id}`,
-  // images remain
-  partImages: (partId: Id) => `${route("admin.parts.api.crud")}/${partId}/images`,
-  // fitments remain
-  partFitments: (partId: Id) => `${route("admin.parts.api.crud")}/${partId}/fitments`,
-  manufacturers: route("lookup.api.manufacturers"),
-  vehicleBrands: route("lookup.api.vehicle-brands"),
-  vehicleModels: (brandId: Id) => `${route("lookup.api.vehicle-models")}?vehicle_brand_id=${brandId}`,
+  parts: PartController.index().url,
+  part: (id: Id) => `${PartController.index().url}/${id}`,
+  partImages: (partId: Id) => `${PartController.index().url}/${partId}/images`,
+  partFitments: (partId: Id) => `${PartController.index().url}/${partId}/fitments`,
+  // single lookup entrypoint
+  lookup: LookupController.index().url, // ?include=manufacturers,vehicle_brands or include=vehicle_models&vehicle_brand_id=...
 };
+
+const NONE = "none";
 
 export default function Editor({
   partId,
@@ -42,7 +43,7 @@ export default function Editor({
   const [modelsByBrand, setModelsByBrand] = useState<Record<string, VehicleModel[]>>({});
 
   const [form, setForm] = useState({
-    manufacturer_id: "",
+    manufacturer_id: NONE,
     reference: "",
     barcode: "",
     sku: "",
@@ -58,16 +59,35 @@ export default function Editor({
 
   const [images, setImages] = useState<{ url: string; sort_order: number }[]>([]);
 
-  const [fitments, setFitments] = useState<{ id?: Id; vehicle_brand_id?: string; vehicle_model_id?: string; engine_code?: string; notes?: string }[]>([]);
+  type FitmentRow = {
+    id?: Id;
+    vehicle_brand_id?: string;   // stringified id or "none"
+    vehicle_model_id?: string;   // stringified id or "none"
+    engine_code?: string;
+    notes?: string;
+  };
+  const [fitments, setFitments] = useState<FitmentRow[]>([]);
 
   const loadLookups = async () => {
-    const [{ data: mJson }, { data: bJson }] = await Promise.all([
-      api.get(endpoints.manufacturers),
-      api.get(endpoints.vehicleBrands),
-    ]);
-    const ext = (x: any) => (Array.isArray(x?.data) ? x.data : Array.isArray(x) ? x : x?.data ?? []);
-    setMans(ext(mJson));
-    setBrands(ext(bJson));
+    const { data } = await api.get(endpoints.lookup, {
+      params: { include: "manufacturers,vehicle_brands" },
+    });
+    const payload = data?.data || {};
+    setMans(Array.isArray(payload.manufacturers) ? payload.manufacturers : []);
+    setBrands(Array.isArray(payload.vehicle_brands) ? payload.vehicle_brands : []);
+  };
+
+  const ensureModelsLoaded = async (brandId: Id | string | undefined) => {
+    if (!brandId || brandId === NONE) return;
+    const key = String(brandId);
+    if (!modelsByBrand[key]) {
+      const { data } = await api.get(endpoints.lookup, {
+        params: { include: "vehicle_models", vehicle_brand_id: brandId },
+      });
+      const payload = data?.data || {};
+      const models: VehicleModel[] = Array.isArray(payload.vehicle_models) ? payload.vehicle_models : [];
+      setModelsByBrand((m) => ({ ...m, [key]: models }));
+    }
   };
 
   const loadPart = async () => {
@@ -76,7 +96,7 @@ export default function Editor({
     const p = json.part ?? json;
 
     setForm({
-      manufacturer_id: p.manufacturer_id ? String(p.manufacturer_id) : "",
+      manufacturer_id: p.manufacturer_id ? String(p.manufacturer_id) : NONE,
       reference: p.reference ?? "",
       barcode: p.barcode ?? "",
       sku: p.sku ?? "",
@@ -93,13 +113,20 @@ export default function Editor({
     setImages((p.images ?? []).map((x: any, i: number) => ({ url: x.url ?? x, sort_order: x.sort_order ?? i })));
 
     const rawFits: any[] = json.fitments ?? [];
-    const brandIds = Array.from(new Set(rawFits.map(f => f.vehicle_brand_id).filter((v: any) => v != null).map((v: any) => String(v))));
+    const brandIds = Array.from(
+      new Set(
+        rawFits
+          .map(f => f.vehicle_brand_id)
+          .filter((v: any) => v != null)
+          .map((v: any) => String(v))
+      )
+    );
     await Promise.all(brandIds.map((bid) => ensureModelsLoaded(bid)));
     setFitments(
       rawFits.map((f: any) => ({
         id: f.id,
-        vehicle_brand_id: f.vehicle_brand_id ? String(f.vehicle_brand_id) : undefined,
-        vehicle_model_id: f.vehicle_model_id ? String(f.vehicle_model_id) : undefined,
+        vehicle_brand_id: f.vehicle_brand_id ? String(f.vehicle_brand_id) : NONE,
+        vehicle_model_id: f.vehicle_model_id ? String(f.vehicle_model_id) : NONE,
         engine_code: f.engine_code || "",
         notes: f.notes || "",
       }))
@@ -116,7 +143,7 @@ export default function Editor({
     }
 
     const payload = {
-      manufacturer_id: form.manufacturer_id ? Number(form.manufacturer_id) : null,
+      manufacturer_id: form.manufacturer_id !== NONE ? Number(form.manufacturer_id) : null,
       reference: form.reference || null,
       barcode: form.barcode || null,
       sku: form.sku || null,
@@ -132,7 +159,7 @@ export default function Editor({
       images: images.map((img, i) => ({ url: img.url, sort_order: i })),
 
       fitments: fitments
-        .filter(f => f.vehicle_model_id)
+        .filter(f => f.vehicle_model_id && f.vehicle_model_id !== NONE)
         .map(f => ({
           id: f.id ?? null,
           vehicle_model_id: Number(f.vehicle_model_id),
@@ -160,16 +187,6 @@ export default function Editor({
       return copy;
     });
 
-  const ensureModelsLoaded = async (brandId: Id | undefined) => {
-    if (!brandId) return;
-    const key = String(brandId);
-    if (!modelsByBrand[key]) {
-      const { data: json } = await api.get(endpoints.vehicleModels(brandId));
-      const ext = (x: any) => (Array.isArray(x.data) ? x.data : Array.isArray(x) ? x : x?.data ?? []);
-      setModelsByBrand((m) => ({ ...m, [key]: ext(json) }));
-    }
-  };
-
   return (
     <div className="space-y-3 px-6">
       {/* Core fields */}
@@ -178,10 +195,13 @@ export default function Editor({
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label>Fabricant</Label>
-            <Select value={form.manufacturer_id} onValueChange={(v) => setForm({ ...form, manufacturer_id: v })}>
+            <Select
+              value={form.manufacturer_id}
+              onValueChange={(v) => setForm({ ...form, manufacturer_id: v })}
+            >
               <SelectTrigger className="w-full"><SelectValue placeholder="Facultatif" /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="">— None —</SelectItem>
+                <SelectItem value={NONE}>— Aucun —</SelectItem>
                 {mans.map((m) => <SelectItem key={String(m.id)} value={String(m.id)}>{m.name}</SelectItem>)}
               </SelectContent>
             </Select>
@@ -247,7 +267,7 @@ export default function Editor({
           </Button>
         </div>
         <div className="space-y-2">
-          {images.length === 0 && <div className="text-sm text-muted-foreground">Aucune image. Ajouter des URL ; l'ordre est conservé.</div>}
+          {images.length === 0 && <div className="text-sm text-muted-foreground">Aucune image. Ajouter des URL ; l'ordre est conservé.</div>}
           {images.map((img, idx) => (
             <div key={idx} className="flex items-center gap-2 border rounded-md p-2">
               <Input className="flex-1" placeholder="https://..." value={img.url} onChange={(e) => setImages((arr) => arr.map((r, i) => (i === idx ? { ...r, url: e.target.value } : r)))} />
@@ -264,7 +284,11 @@ export default function Editor({
       {/* Fitments */}
       <section className="space-y-3">
         <h3 className="text-lg font-semibold">Compatibilités</h3>
-        <Button size="sm" variant="outline" onClick={() => setFitments((f) => [...f, { vehicle_brand_id: undefined, vehicle_model_id: undefined, engine_code: "", notes: "" }])}>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => setFitments((f) => [...f, { vehicle_brand_id: NONE, vehicle_model_id: NONE, engine_code: "", notes: "" }])}
+        >
           <Plus className="h-4 w-4 mr-1" /> Ajouter une compatibilité
         </Button>
         <div className="rounded-md border">
@@ -282,8 +306,8 @@ export default function Editor({
                 <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground">Aucune compatibilité</TableCell></TableRow>
               )}
               {fitments.map((f, idx) => {
-                const brandId = f.vehicle_brand_id ? String(f.vehicle_brand_id) : "";
-                const models = brandId ? (modelsByBrand[brandId] || []) : [];
+                const brandId = f.vehicle_brand_id ?? NONE;
+                const models = brandId !== NONE ? (modelsByBrand[brandId] || []) : [];
                 return (
                   <React.Fragment key={idx}>
                     <TableRow className="border-b-0">
@@ -291,24 +315,28 @@ export default function Editor({
                         <Select
                           value={brandId}
                           onValueChange={async (v) => {
-                            const newState = { ...f, vehicle_brand_id: v, vehicle_model_id: undefined };
+                            const newState: FitmentRow = { ...f, vehicle_brand_id: v, vehicle_model_id: NONE };
                             setFitments((arr) => arr.map((x, i) => (i === idx ? newState : x)));
                             await ensureModelsLoaded(v);
                           }}
                         >
                           <SelectTrigger><SelectValue placeholder="Sélectionner la marque" /></SelectTrigger>
                           <SelectContent>
+                            <SelectItem value={NONE}>— Choisir —</SelectItem>
                             {brands.map((b) => <SelectItem key={b.id} value={String(b.id)}>{b.name}</SelectItem>)}
                           </SelectContent>
                         </Select>
                       </TableCell>
                       <TableCell>
                         <Select
-                          value={f.vehicle_model_id ? String(f.vehicle_model_id) : ""}
+                          value={f.vehicle_model_id ?? NONE}
                           onValueChange={(v) => setFitments((arr) => arr.map((x, i) => (i === idx ? { ...x, vehicle_model_id: v } : x)))}
                         >
-                          <SelectTrigger><SelectValue placeholder={brandId ? "Sélectionner le modèle" : "Sélectionner la marque en premier"} /></SelectTrigger>
+                          <SelectTrigger>
+                            <SelectValue placeholder={brandId !== NONE ? "Sélectionner le modèle" : "Sélectionner la marque en premier"} />
+                          </SelectTrigger>
                           <SelectContent>
+                            <SelectItem value={NONE}>— Choisir —</SelectItem>
                             {models.map((m) => (
                               <SelectItem key={m.id} value={String(m.id)}>
                                 {m.name}{m.year_from ? ` (${m.year_from}${m.year_to ? `–${m.year_to}` : ""})` : ""}
@@ -318,15 +346,25 @@ export default function Editor({
                         </Select>
                       </TableCell>
                       <TableCell>
-                        <Input value={f.engine_code || ""} onChange={(e) => setFitments((arr) => arr.map((x, i) => (i === idx ? { ...x, engine_code: e.target.value } : x)))} placeholder="e.g. 1.9 TDI AXR" />
+                        <Input
+                          value={f.engine_code || ""}
+                          onChange={(e) => setFitments((arr) => arr.map((x, i) => (i === idx ? { ...x, engine_code: e.target.value } : x)))}
+                          placeholder="e.g. 1.9 TDI AXR"
+                        />
                       </TableCell>
                       <TableCell>
-                        <Button variant="destructive" size="icon" onClick={() => setFitments((arr) => arr.filter((_, i) => i !== idx))}><Trash className="h-4 w-4" /></Button>
+                        <Button variant="destructive" size="icon" onClick={() => setFitments((arr) => arr.filter((_, i) => i !== idx))}>
+                          <Trash className="h-4 w-4" />
+                        </Button>
                       </TableCell>
                     </TableRow>
-                    <TableRow key={idx}>
-                       <TableCell colSpan={3}>
-                        <Input value={f.notes || ""} onChange={(e) => setFitments((arr) => arr.map((x, i) => (i === idx ? { ...x, notes: e.target.value } : x)))} placeholder="Remarques" />
+                    <TableRow>
+                      <TableCell colSpan={3}>
+                        <Input
+                          value={f.notes || ""}
+                          onChange={(e) => setFitments((arr) => arr.map((x, i) => (i === idx ? { ...x, notes: e.target.value } : x)))}
+                          placeholder="Remarques"
+                        />
                       </TableCell>
                     </TableRow>
                   </React.Fragment>

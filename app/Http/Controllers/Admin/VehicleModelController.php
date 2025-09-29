@@ -8,10 +8,17 @@ use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Validator;
+use Inertia\Inertia;
 use Symfony\Component\HttpFoundation\Response;
 
 class VehicleModelController extends Controller
 {
+
+    public function page()
+    {
+        return Inertia::render('admin/vehicle-models/page');
+    }
+
     public function index(Request $request)
     {
         $q = VehicleModel::query();

@@ -7,6 +7,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ArrowLeft, Truck } from "lucide-react";
 import api from "@/lib/api";
 import { ClientLayout } from "@/pages/client/layout/client-layout";
+import OrderController from "@/actions/App/Http/Controllers/Admin/OrderController";
+import CatalogController from "@/actions/App/Http/Controllers/Client/CatalogController";
+import { AdminLayout } from "../layout/admin-layout";
 
 declare const route: (name: string, params?: any) => string;
 
@@ -52,8 +55,8 @@ type OrderPayload = {
 };
 
 const endpoints = {
-  orderShow: (id: Id) => route("shop.api.orders.show", { order: id }),
-  backToCatalog: route("client.parts.page"),
+  orderShow: (id: Id) => OrderController.show({ order: id }).url,
+  backToCatalog: CatalogController.page().url,
 };
 
 export default function OrderPage() {
@@ -97,7 +100,7 @@ export default function OrderPage() {
   };
 
   return (
-    <ClientLayout title={`Order #${orderId}`} >
+    <AdminLayout title={`Order #${orderId}`} >
       <div className="p-6 pt-0">
         <Head title={`Order #${orderId}`} />
 
@@ -107,7 +110,7 @@ export default function OrderPage() {
               className="cursor-pointer"
               size={'icon'}
               variant="outline"
-              onClick={() => router.get((document.referrer || endpoints.backToCatalog) as any)}
+              onClick={() => window.history.back()}
               title="Retour"
             >
               <ArrowLeft />
@@ -222,6 +225,6 @@ export default function OrderPage() {
           </div>
         )}
       </div>
-    </ClientLayout>
+    </AdminLayout>
   );
 }

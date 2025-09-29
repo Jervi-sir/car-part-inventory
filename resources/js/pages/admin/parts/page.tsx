@@ -13,6 +13,9 @@ import Editor from "./_editor";
 import { AdminLayout } from "../layout/admin-layout";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import api from "@/lib/api";
+import PartController from "@/actions/App/Http/Controllers/Admin/PartController";
+import LookupController from "@/actions/App/Http/Controllers/LookupController";
+import { ComboBox } from "@/components/combo-box";
 
 type Id = number | string;
 
@@ -38,20 +41,24 @@ interface VehicleBrand { id: number; name: string }
 interface VehicleModel { id: number; name: string; year_from?: number | null; year_to?: number | null }
 
 const endpoints = {
-  parts: route("admin.parts.api.crud"),
-  partsBulkStatus: route("admin.parts.api.bulk-status"),
-  part: (id: Id) => `${route("admin.parts.api.crud")}/${id}`,
-  partActive: (id: Id) => `${route("admin.parts.api.active", { part: id })}`,
-  manufacturers: route("lookup.api.manufacturers"),
-  vehicleBrands: route("lookup.api.vehicle-brands"),
-  vehicleModels: (brandId: Id) => `${route("lookup.api.vehicle-models")}?vehicle_brand_id=${brandId}`,
+  parts: PartController.index().url,
+  partsBulkStatus: PartController.bulkStatus().url,
+  part: (id: Id) => `${PartController.index().url}/${id}`,
+  // @ts-ignore
+  partActive: (id: Id) => PartController.updateActive({ part: id }).url,
+  // Single lookup entrypoint
+  lookup: LookupController.index().url, // expects ?include=manufacturers,vehicle_brands or include=vehicle_models&vehicle_brand_id=...
 };
 
 export default function PartsIndex() {
   const [pageData, setPageData] = useState<Page<PartRow>>({ data: [], total: 0, page: 1, per_page: 10 });
   const [filters, setFilters] = useState({
-    manufacturer_id: "", is_active: "", sku: "", reference: "",
-    vehicle_brand_id: "", vehicle_model_id: "",
+    manufacturer_id: "all",
+    is_active: "all",
+    sku: "",
+    reference: "",
+    vehicle_brand_id: "all",
+    vehicle_model_id: "all",
   });
   const [mans, setMans] = useState<Manufacturer[]>([]);
   const [selected, setSelected] = useState<Record<string, boolean>>({});
@@ -66,23 +73,28 @@ export default function PartsIndex() {
 
   const maxPage = useMemo(() => Math.max(1, Math.ceil(pageData.total / pageData.per_page)), [pageData]);
 
+  // Single call to fetch manufacturers + brands
   const fetchLookups = async () => {
-    const [{ data: mJson }, { data: bJson }] = await Promise.all([
-      api.get(endpoints.manufacturers),
-      api.get(endpoints.vehicleBrands),
-    ]);
-    const ext = (x: any) => (Array.isArray(x.data) ? x.data : Array.isArray(x) ? x : x?.data ?? []);
-    setMans(ext(mJson));
-    setBrands(ext(bJson));
+    const { data } = await api.get(endpoints.lookup, {
+      params: { include: "manufacturers,vehicle_brands" },
+    });
+    // Controller returns: { data: { manufacturers: [...], vehicle_brands: [...] } }
+    const payload = data?.data || {};
+    setMans(Array.isArray(payload.manufacturers) ? payload.manufacturers : []);
+    setBrands(Array.isArray(payload.vehicle_brands) ? payload.vehicle_brands : []);
   };
 
-  const ensureModelsLoaded = async (brandId: Id | "") => {
-    if (!brandId) return;
+  // Lazy load models for a given brand using the same endpoint
+  const ensureModelsLoaded = async (brandId: Id | "all") => {
+    if (!brandId || brandId === "all") return;
     const key = String(brandId);
     if (!modelsByBrand[key]) {
-      const { data: json } = await api.get(endpoints.vehicleModels(brandId));
-      const ext = (x: any) => (Array.isArray(x.data) ? x.data : Array.isArray(x) ? x : x?.data ?? []);
-      setModelsByBrand((m) => ({ ...m, [key]: ext(json) }));
+      const { data } = await api.get(endpoints.lookup, {
+        params: { include: "vehicle_models", vehicle_brand_id: brandId },
+      });
+      const payload = data?.data || {};
+      const models: VehicleModel[] = Array.isArray(payload.vehicle_models) ? payload.vehicle_models : [];
+      setModelsByBrand((m) => ({ ...m, [key]: models }));
     }
   };
 
@@ -92,10 +104,11 @@ export default function PartsIndex() {
       page: String(page),
       per_page: String(pageData.per_page),
     };
-    if (filters.vehicle_brand_id) params.vehicle_brand_id = filters.vehicle_brand_id;
-    if (filters.vehicle_model_id) params.vehicle_model_id = filters.vehicle_model_id;
-    if (filters.manufacturer_id && filters.manufacturer_id !== "all") params.manufacturer_id = filters.manufacturer_id;
-    if (filters.is_active && filters.is_active !== "all") params.is_active = filters.is_active;
+
+    if (filters.vehicle_brand_id !== "all") params.vehicle_brand_id = filters.vehicle_brand_id;
+    if (filters.vehicle_model_id !== "all") params.vehicle_model_id = filters.vehicle_model_id;
+    if (filters.manufacturer_id !== "all") params.manufacturer_id = filters.manufacturer_id;
+    if (filters.is_active !== "all") params.is_active = filters.is_active;
     if (filters.sku) params.sku = filters.sku;
     if (filters.reference) params.reference = filters.reference;
 
@@ -129,7 +142,7 @@ export default function PartsIndex() {
   };
 
   return (
-    <AdminLayout>
+    <AdminLayout title="Pièces">
       <Head title="Pièces" />
       <div className="p-6 pt-0 space-y-4">
         <div className="flex items-center justify-between">
@@ -147,67 +160,82 @@ export default function PartsIndex() {
         {/* Filters */}
         <Card className="p-4">
           <div className="grid grid-cols-1 md:grid-cols-7 gap-3">
-            {/* Manufacturer (kept) */}
+            {/* Manufacturer */}
             <div className="space-y-2">
               <Label>Fabricant</Label>
-              <Select value={filters.manufacturer_id} onValueChange={(v) => setFilters({ ...filters, manufacturer_id: v })}>
-                <SelectTrigger className="w-full"><SelectValue placeholder="Tous" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="">Tous</SelectItem>
-                  {mans.map((m) => <SelectItem key={String(m.id)} value={String(m.id)}>{m.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
+              <ComboBox
+                value={filters.manufacturer_id}
+                onChange={(v) => setFilters((f) => ({ ...f, manufacturer_id: v }))}
+                options={mans.map((m) => ({
+                  value: String(m.id),
+                  label: m.name,
+                }))}
+                placeholder="Tous"
+                emptyText="Aucun fabricant trouvé."
+                allLabel="Tous"
+                allValue={"all"}
+              />
             </div>
 
             {/* Vehicle Brand */}
             <div className="space-y-2">
-              <Label>Marque du véhicule</Label>
-              <Select
+              <Label>Marque</Label>
+              <ComboBox
                 value={filters.vehicle_brand_id}
-                onValueChange={async (v) => {
-                  setFilters({ ...filters, vehicle_brand_id: v, vehicle_model_id: "" });
-                  await ensureModelsLoaded(v);
-                }}
-              >
-                <SelectTrigger className="w-full"><SelectValue placeholder="Tous" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="">Tous</SelectItem>
-                  {brands.map((b) => <SelectItem key={b.id} value={String(b.id)}>{b.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
+                onChange={(v) => setFilters((f) => ({ ...f, vehicle_brand_id: v }))}
+                options={brands.map((b) => ({
+                  value: String(b.id),
+                  label: b.name,
+                }))}
+                placeholder="Toutes"
+                emptyText="Aucune marque trouvée."
+                allLabel="Toutes"
+                allValue={"all"}
+              />
             </div>
+
 
             {/* Vehicle Model */}
             <div className="space-y-2">
-              <Label>Vehicle Model</Label>
-              <Select
+              <Label>Modèle</Label>
+
+              <ComboBox
                 value={filters.vehicle_model_id}
-                onValueChange={(v) => setFilters({ ...filters, vehicle_model_id: v })}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder={filters.vehicle_brand_id ? "Tous" : "Sélectionner la marque en premier"} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="">Tous</SelectItem>
-                  {(filters.vehicle_brand_id
+                onChange={(v) => setFilters({ ...filters, vehicle_model_id: v })}
+                options={
+                  (filters.vehicle_brand_id !== "all"
                     ? (modelsByBrand[String(filters.vehicle_brand_id)] || [])
                     : []
-                  ).map((m) => (
-                    <SelectItem key={m.id} value={String(m.id)}>
-                      {m.name}{m.year_from ? ` (${m.year_from}${m.year_to ? `–${m.year_to}` : ""})` : ""}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                  ).map((m: any) => ({
+                    value: String(m.id),
+                    label: m.year_from
+                      ? `${m.name} (${m.year_from}${m.year_to ? `–${m.year_to}` : ""})`
+                      : m.name,
+                  }))
+                }
+                placeholder={
+                  filters.vehicle_brand_id !== "all"
+                    ? "Tous"
+                    : "Sélectionner la marque en premier"
+                }
+                emptyText="Aucun modèle trouvé."
+                allLabel="Tous"
+                allValue="all"
+                disabled={filters.vehicle_brand_id === "all"}
+                className="w-full"
+              />
             </div>
 
             {/* Status */}
             <div className="space-y-2">
               <Label>Statut</Label>
-              <Select value={filters.is_active} onValueChange={(v) => setFilters({ ...filters, is_active: v })}>
+              <Select
+                value={filters.is_active}
+                onValueChange={(v) => setFilters({ ...filters, is_active: v })}
+              >
                 <SelectTrigger className="w-full"><SelectValue placeholder="Tous" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Tous</SelectItem>
+                  <SelectItem value="all">Tous</SelectItem>
                   <SelectItem value="1">Actif</SelectItem>
                   <SelectItem value="0">Inactif</SelectItem>
                 </SelectContent>
@@ -230,10 +258,16 @@ export default function PartsIndex() {
             <div className="flex items-end justify-end">
               <Button
                 variant="outline"
-                onClick={() => setFilters({
-                  manufacturer_id: "", is_active: "", sku: "", reference: "",
-                  vehicle_brand_id: "", vehicle_model_id: "",
-                })}
+                onClick={() => {
+                  setFilters({
+                    manufacturer_id: "all",
+                    is_active: "all",
+                    sku: "",
+                    reference: "",
+                    vehicle_brand_id: "all",
+                    vehicle_model_id: "all",
+                  });
+                }}
               >
                 Effacer
               </Button>
@@ -270,7 +304,9 @@ export default function PartsIndex() {
                 <TableHead className="w-[160px]">Fabricant</TableHead>
                 <TableHead className="w-[120px]">Prix de vente au détail</TableHead>
                 <TableHead className="w-[90px]">Actif</TableHead>
-                <TableHead className="w-[160px]">Actions</TableHead>
+                <TableHead className="w-[100px] sticky right-0 z-20 bg-background shadow-[inset_1px_0_0_var(--border)]">
+                  Action
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -321,7 +357,7 @@ export default function PartsIndex() {
                         }}
                       />
                     </TableCell>
-                    <TableCell className="flex gap-2">
+                    <TableCell className="flex gap-2 w-[100px] sticky right-0 z-10 bg-background shadow-[inset_1px_0_0_var(--border)]">
                       <Button variant="outline" size="icon" onClick={() => openEdit(row)}>
                         <Pencil className="h-4 w-4" />
                       </Button>
@@ -333,7 +369,6 @@ export default function PartsIndex() {
 
                   {expanded[String(row.id)] && (
                     <TableRow>
-                      {/* colSpan now = checkbox+expander + 8 other cols = 9+1 = 10 */}
                       <TableCell colSpan={10} className="bg-muted/40 p-4">
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                           <DetailItem label="Marques de montage" value={(row.fitment_brands?.length ? row.fitment_brands.join(", ") : "—")} />

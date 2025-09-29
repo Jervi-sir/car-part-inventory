@@ -30,6 +30,9 @@ import { Link, router, usePage } from "@inertiajs/react"
 import { useMobileNavigation } from "@/hooks/use-mobile-navigation"
 import { getInitials } from "@/lib/utils"
 import { LayoutDashboard } from "lucide-react"
+import AnalyticsController from "@/actions/App/Http/Controllers/Admin/AnalyticsController"
+import CatalogController from "@/actions/App/Http/Controllers/Client/CatalogController"
+import AuthenticatedSessionController from "@/actions/App/Http/Controllers/Auth/AuthenticatedSessionController"
 
 export function NavUser() {
   const { isMobile } = useSidebar()
@@ -87,7 +90,7 @@ export function NavUser() {
             {(user.role_key === 'ADMIN' || user.role_key === 'MODERATOR')
               && <>
                 <DropdownMenuGroup>
-                  <Link href={route('admin.analytics.page')}>
+                  <Link href={AnalyticsController.index().url}>
                     <DropdownMenuItem>
                       <LayoutDashboard />
                       Dashboard
@@ -96,7 +99,7 @@ export function NavUser() {
                 </DropdownMenuGroup>
                 <DropdownMenuSeparator />
                 <DropdownMenuGroup>
-                  <Link href={route('client.parts.page')}>
+                  <Link href={CatalogController.page().url}>
                     <DropdownMenuItem>
                       <IconUserCircle />
                       Client
@@ -106,7 +109,7 @@ export function NavUser() {
                 <DropdownMenuSeparator />
               </>
             }
-            <Link className="block w-full" method="post" href={route('logout')} as="button" onClick={handleLogout}>
+            <Link className="block w-full" method="post" href={AuthenticatedSessionController.destroy().url} as="button" onClick={handleLogout}>
               <DropdownMenuItem>
                 <IconLogout className="mr-2" />
                 Log out

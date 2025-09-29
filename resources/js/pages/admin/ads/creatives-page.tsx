@@ -17,6 +17,7 @@ import {
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { toast } from "sonner";
 import { fromDateTimeLocalToSql, normalizeDateTime, toDateTimeLocal } from "@/lib/utils";
+import AdCreativeApiController from "@/actions/App/Http/Controllers/Admin/AdCreativeApiController";
 
 declare const route: (name: string, params?: any) => string;
 
@@ -64,7 +65,7 @@ export default function CreativesIndex() {
   const fetchRows = async (page = 1) => {
     setLoading(true);
     try {
-      const { data } = await api.get(route("admin.ads.creatives.index"), {
+      const { data } = await api.get(AdCreativeApiController.index().url, {
         params: {
           page,
           per_page: meta.per_page,
@@ -149,12 +150,12 @@ export default function CreativesIndex() {
       if (ends)   fd.append("ends_at", ends);
 
       if (editing) {
-        await api.post(route("admin.ads.creatives.update", { id: editing.id }), fd, {
+        await api.post(AdCreativeApiController.update({ id: editing.id }).url, fd, {
           headers: { "Content-Type": "multipart/form-data" },
         });
         toast("Creative updated.");
       } else {
-        await api.post(route("admin.ads.creatives.store"), fd, {
+        await api.post(AdCreativeApiController.store().url, fd, {
           headers: { "Content-Type": "multipart/form-data" },
         });
         toast("Creative created.");
@@ -170,14 +171,14 @@ export default function CreativesIndex() {
 
   const remove = async (cr: Creative) => {
     if (!confirm("Delete this creative?")) return;
-    await api.delete(route("admin.ads.creatives.destroy", { id: cr.id }));
+    await api.delete(AdCreativeApiController.destroy({ id: cr.id  }).url);
     toast("Creative deleted.");
     fetchRows(1);
   };
 
   return (
-    <AdminLayout>
-      <div className="p-6">
+    <AdminLayout title="Créations publicitaires">
+      <div className="p-6 pt-0">
         <Head title="Créations publicitaires" />
         <div className="flex items-center justify-between mb-4">
           <h1 className="text-xl font-semibold">Créations publicitaires</h1>

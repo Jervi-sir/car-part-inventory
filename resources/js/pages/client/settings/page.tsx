@@ -8,6 +8,9 @@ import { Address, User } from "./types";
 import { ProfileCard } from "./profile-card";
 import { DocumentsCard } from "./documents-card";
 import { NotificationsCard } from "./notifications-card";
+import UserSettingsController from "@/actions/App/Http/Controllers/Client/UserSettingsController";
+import ShippingAddressController from "@/actions/App/Http/Controllers/Client/ShippingAddressController";
+import { add } from "@/routes/shop/api/cart";
 
 
 export default function SettingsPage() {
@@ -22,12 +25,12 @@ export default function SettingsPage() {
   const fetchAll = async () => {
     setLoading(true);
     try {
-      const { data } = await api.get(route("client.settings.api"));
+      const { data } = await api.get(UserSettingsController.show().url);
       setUser(data.user);
 
       // Prefer a single fetch to index
       const { data: addrResp } = await api.get(
-        route("client.settings.api.shipping-addresses.crud")
+        ShippingAddressController.index().url
       );
       const list = (addrResp?.data ?? addrResp) as Address[];
       setAddresses(list ?? []);
@@ -45,7 +48,7 @@ export default function SettingsPage() {
   const saveUser = async () => {
     if (!user) return;
     try {
-      await api.put(route("client.settings.api"), user);
+      await api.put(UserSettingsController.show().url, user);
       // optional: show toast instead of alert
       alert("Profile updated!");
     } catch (err) {
@@ -66,7 +69,7 @@ export default function SettingsPage() {
   const onDeleteAddress = async (addr: Address) => {
     if (!confirm("Supprimer cette adresse ?")) return;
     try {
-      await api.delete(route("client.settings.api.shipping-addresses.crud") + `/${addr.id}`);
+      await api.delete(ShippingAddressController.destroy({ address: addr.id }).url);
       setAddresses((prev) => prev.filter((a) => a.id !== addr.id));
     } catch (e) {
       console.error("Failed deleting address", e);

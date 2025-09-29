@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
+use Inertia\Inertia;
 
 class AnalyticsController extends Controller
 {
@@ -31,6 +32,11 @@ class AnalyticsController extends Controller
                 break;
         }
         return [$start->startOfDay(), $end->endOfDay()];
+    }
+
+    public function index()
+    {
+        return Inertia::render('admin/analytics/page');
     }
 
     public function kpis(Request $request)

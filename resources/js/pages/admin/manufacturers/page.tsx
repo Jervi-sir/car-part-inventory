@@ -7,12 +7,13 @@ import { ChevronLeft, ChevronRight, Pencil, Trash, Plus } from "lucide-react";
 import { AdminLayout } from "../layout/admin-layout";
 import { Head } from "@inertiajs/react";
 import api from "@/lib/api";
+import ManufacturerController from "@/actions/App/Http/Controllers/Admin/ManufacturerController";
 
 type Id2 = number | string;
 interface Manufacturer { id: Id2; name: string; created_at?: string; updated_at?: string }
 interface Page2<T> { data: T[]; total: number; page: number; per_page: number }
 
-const endpoint2 = route('admin.manufacturers.api.crud');
+const endpoint2 = ManufacturerController.index().url;
 
 export default function ManufacturersPage() {
   const [pageData, setPageData] = useState<Page2<Manufacturer>>({ data: [], total: 0, page: 1, per_page: 10 });
@@ -53,10 +54,10 @@ export default function ManufacturersPage() {
   };
 
   return (
-    <AdminLayout>
-      <Head title="Manufacturers" />
+    <AdminLayout title="Constructeurs">
+      <Head title="Constructeurs" />
       <div className="p-6 pt-0 space-y-4">
-        <div className="text-2xl font-semibold">Fabricants</div>
+        <div className="text-2xl font-semibold">Constructeurs</div>
         <div className="flex items-center gap-2">
           <Input placeholder="Search..." value={search} onChange={(e) => setSearch(e.target.value)} className="w-64" />
           <div className="flex-1" />

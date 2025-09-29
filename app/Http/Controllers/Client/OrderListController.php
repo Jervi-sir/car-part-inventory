@@ -30,7 +30,7 @@ class OrderListController extends Controller
         $sortBy  = $req->get('sort_by', 'created_at');      // created_at|grand_total|status
         $sortDir = strtolower($req->get('sort_dir', 'desc')) === 'asc' ? 'asc' : 'desc';
 
-        $sortWhitelist = ['created_at','grand_total','status'];
+        $sortWhitelist = ['created_at', 'grand_total', 'status'];
         if (!in_array($sortBy, $sortWhitelist, true)) $sortBy = 'created_at';
 
         // Subquery: brief items as JSON (sku, name, qty, unit_price, line_total)
@@ -60,7 +60,8 @@ class OrderListController extends Controller
                 COALESCE(x.items_brief, '[]'::json) as items_brief,
                 (SELECT COALESCE(SUM(quantity),0) FROM order_items oi WHERE oi.order_id = o.id) as items_count
             ")
-            ->where('o.user_id', $uid);
+            ->where('o.user_id', $uid)
+            ->where('o.status', '!=', 'cart');   // 👈 always exclude carts
 
         // Filters
         if ($status !== 'all') {
@@ -77,19 +78,19 @@ class OrderListController extends Controller
         }
         if ($q !== '') {
             // note: match id, part name or SKU inside this user's orders
-            $term = '%' . str_replace(['%', '_'], ['\\%','\\_'], $q) . '%';
+            $term = '%' . str_replace(['%', '_'], ['\\%', '\\_'], $q) . '%';
             $base->where(function ($w) use ($term) {
                 $w->whereRaw('CAST(o.id AS TEXT) ILIKE ?', [$term])
-                  ->orWhereExists(function ($s) use ($term) {
-                      $s->select(DB::raw(1))
-                        ->from('order_items as oi2')
-                        ->join('parts as p2', 'p2.id', '=', 'oi2.part_id')
-                        ->whereColumn('oi2.order_id', 'o.id')
-                        ->where(function ($x) use ($term) {
-                            $x->where('p2.name', 'ILIKE', $term)
-                              ->orWhere('p2.sku', 'ILIKE', $term);
-                        });
-                  });
+                    ->orWhereExists(function ($s) use ($term) {
+                        $s->select(DB::raw(1))
+                            ->from('order_items as oi2')
+                            ->join('parts as p2', 'p2.id', '=', 'oi2.part_id')
+                            ->whereColumn('oi2.order_id', 'o.id')
+                            ->where(function ($x) use ($term) {
+                                $x->where('p2.name', 'ILIKE', $term)
+                                    ->orWhere('p2.sku', 'ILIKE', $term);
+                            });
+                    });
             });
         }
 

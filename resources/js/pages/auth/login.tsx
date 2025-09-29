@@ -9,6 +9,9 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import AuthLayout from '@/layouts/auth-layout';
+import RegisteredUserController from '@/actions/App/Http/Controllers/Auth/RegisteredUserController';
+import AuthenticatedSessionController from '@/actions/App/Http/Controllers/Auth/AuthenticatedSessionController';
+import PasswordResetLinkController from '@/actions/App/Http/Controllers/Auth/PasswordResetLinkController';
 
 type LoginForm = {
     email: string;
@@ -30,7 +33,7 @@ export default function Login({ status, canResetPassword }: LoginProps) {
 
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
-        post(route('login'), {
+        post( AuthenticatedSessionController.store().url, {
             onFinish: () => reset('password'),
         });
     };
@@ -60,11 +63,11 @@ export default function Login({ status, canResetPassword }: LoginProps) {
                     <div className="grid gap-2">
                         <div className="flex items-center">
                             <Label htmlFor="password">Mot de passe</Label>
-                            {canResetPassword && (
-                                <TextLink href={route('password.request')} className="ml-auto text-sm" tabIndex={5}>
+                            {/* {canResetPassword && (
+                                <TextLink href={PasswordResetLinkController.create().url} className="ml-auto text-sm" tabIndex={5}>
                                     Mot de passe oublié ?
                                 </TextLink>
-                            )}
+                            )} */}
                         </div>
                         <Input
                             id="password"
@@ -98,7 +101,7 @@ export default function Login({ status, canResetPassword }: LoginProps) {
 
                 <div className="text-center text-sm text-muted-foreground">
                     Vous n'avez pas de compte ?{' '}
-                    <TextLink href={route('register')} tabIndex={5}>
+                    <TextLink href={ RegisteredUserController.store().url} tabIndex={5}>
                         S'inscrire
                     </TextLink>
                 </div>

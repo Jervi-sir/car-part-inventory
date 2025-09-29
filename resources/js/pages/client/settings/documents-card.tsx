@@ -5,6 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import api from "@/lib/api";
+import UserSettingsController from "@/actions/App/Http/Controllers/Client/UserSettingsController";
 
 // Small helper: derive a browser preview URL for a File
 function useObjectUrl(file: File | null) {
@@ -53,7 +54,7 @@ export const DocumentsCard = ({ user, setUser, saveUser }) => {
     const formData = new FormData();
     formData.append("file", file);
 
-    const { data } = await api.post(route("client.settings.api.upload"), formData, {
+    const { data } = await api.post(UserSettingsController.upload().url, formData, {
       headers: { "Content-Type": "multipart/form-data" },
     });
     // assume API returns { url: "..." }

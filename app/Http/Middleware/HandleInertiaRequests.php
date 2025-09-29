@@ -2,13 +2,9 @@
 
 namespace App\Http\Middleware;
 
-use App\Enums\OrderStatus;
-use App\Models\Order;
-use App\Services\AdsService;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
-use Tighten\Ziggy\Ziggy;
 
 class HandleInertiaRequests extends Middleware
 {
@@ -40,29 +36,14 @@ class HandleInertiaRequests extends Middleware
      */
     public function share(Request $request): array
     {
-        // [$message, $author] = str(Inspiring::quotes()->random())->explode('-');
+        [$message, $author] = str(Inspiring::quotes()->random())->explode('-');
 
         return [
             ...parent::share($request),
-            'ads' => $request->is('admin*') ? [] : fn () => AdsService::forRequest($request),
             'name' => config('app.name'),
-            // 'quote' => ['message' => trim($message), 'author' => trim($author)],
+            'quote' => ['message' => trim($message), 'author' => trim($author)],
             'auth' => [
                 'user' => $request->user(),
-            ],
-            'cart' => fn() => $request->user()
-                ? Order::query()
-                ->where('user_id', $request->user()->id)
-                ->where('status', OrderStatus::CART)
-                ->select(['id', 'grand_total'])
-                ->withCount(['items as lines_count'])
-                ->withSum('items as qty_total', 'quantity')
-                ->withSum('items as amount_total', 'line_total')
-                ->first()?->withoutRelations()?->toArray()
-                : null,
-            'ziggy' => fn(): array => [
-                ...(new Ziggy)->toArray(),
-                'location' => $request->url(),
             ],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
         ];

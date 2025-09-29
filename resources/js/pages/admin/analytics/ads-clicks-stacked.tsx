@@ -5,6 +5,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ClickSeriesPoint } from "./types";
 import { useApiQuery } from "./use-api-query";
 import { ResponsiveContainer, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, Bar } from "recharts";
+import AnalyticsController from "@/actions/App/Http/Controllers/Admin/AnalyticsController";
 
 
 declare const route: (name: string, params?: any) => string;
@@ -12,7 +13,7 @@ declare const route: (name: string, params?: any) => string;
 
 export function AdsClicksStacked({ range, chartConfig }: { range: string; chartConfig: any }) {
   const { data, loading } = useApiQuery<ClickSeriesPoint[]>({
-    url: route("admin.analytics.ad-clicks-by-placement") + `?range=${range}`,
+    url: AnalyticsController.adClicksByPlacement().url + `?range=${range}`,
     deps: [range],
   });
 

@@ -1,8 +1,0 @@
-### run the server
-pm2 start "php artisan octane:start --port 8899 --host 0.0.0.0 --rpc-port 8899" --name "car-inventory"
-pm2 start "php artisan queue:work" --name "car-inventory"
-
-### issue with running the npm 
-sudo sysctl -w fs.inotify.max_user_watches=524288
-
-

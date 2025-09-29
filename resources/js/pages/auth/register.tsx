@@ -8,6 +8,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import AuthLayout from '@/layouts/auth-layout';
+import RegisteredUserController from '@/actions/App/Http/Controllers/Auth/RegisteredUserController';
+import AuthenticatedSessionController from '@/actions/App/Http/Controllers/Auth/AuthenticatedSessionController';
 
 type RegisterForm = {
     name: string;
@@ -26,7 +28,7 @@ export default function Register() {
 
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
-        post(route('register'), {
+        post(RegisteredUserController.store().url, {
             onFinish: () => reset('password', 'password_confirmation'),
         });
     };
@@ -109,7 +111,7 @@ export default function Register() {
 
                 <div className="text-center text-sm text-muted-foreground">
                     Vous avez déjà un compte ?{' '}
-                    <TextLink href={route('login')} tabIndex={6}>
+                    <TextLink href={ AuthenticatedSessionController.store().url} tabIndex={6}>
                         Se connecter
                     </TextLink>
                 </div>

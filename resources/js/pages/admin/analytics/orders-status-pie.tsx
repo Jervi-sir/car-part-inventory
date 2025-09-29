@@ -6,6 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { StatusPoint } from "./types";
 import { useApiQuery } from "./use-api-query";
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip } from "recharts";
+import AnalyticsController from "@/actions/App/Http/Controllers/Admin/AnalyticsController";
 
 
 declare const route: (name: string, params?: any) => string;
@@ -13,7 +14,7 @@ declare const route: (name: string, params?: any) => string;
 
 export function OrdersStatusPie({ range, chartConfig }: { range: string; chartConfig: any }) {
   const { data, loading } = useApiQuery<StatusPoint[]>({
-    url: route("admin.analytics.orders-by-status") + `?range=${range}`,
+    url: AnalyticsController.ordersByStatus().url + `?range=${range}`,
     deps: [range],
   });
 

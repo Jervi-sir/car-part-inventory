@@ -7,9 +7,14 @@ use App\Models\AdCreative;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
+use Inertia\Inertia;
 
 class AdCreativeApiController extends Controller
 {
+    public function page() {
+        return Inertia::render('admin/ads/creatives-page');
+    }
+
     public function index(Request $r) {
         $q = AdCreative::query()
             ->when($r->search, fn($qq) =>

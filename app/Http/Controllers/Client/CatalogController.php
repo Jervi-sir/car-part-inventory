@@ -6,10 +6,17 @@ use App\Http\Controllers\Controller;
 use App\Models\Part;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Inertia\Inertia;
 
 class CatalogController extends Controller
 {
-    public function index(Request $req)
+
+    public function page(Request $req)
+    {
+        return Inertia::render('client/catalog/page');
+    }
+
+    public function parts(Request $req)
     {
         $perPage = max(1, min((int)$req->integer('per_page') ?: 12, 60));
         $page    = max(1, (int)$req->integer('page') ?: 1);

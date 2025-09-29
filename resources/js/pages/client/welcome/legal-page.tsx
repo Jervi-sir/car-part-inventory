@@ -1,8 +1,13 @@
-import { Head, Link } from "@inertiajs/react";
+import { Head, Link, usePage } from "@inertiajs/react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import AuthenticatedSessionController from "@/actions/App/Http/Controllers/Auth/AuthenticatedSessionController";
+import RegisteredUserController from "@/actions/App/Http/Controllers/Auth/RegisteredUserController";
+import HomePageController from "@/actions/App/Http/Controllers/HomePageController";
+import CatalogController from "@/actions/App/Http/Controllers/Client/CatalogController";
+import { SharedData } from "@/types";
 
 export type LegalPageProps = {
   type: "terms" | "privacy";
@@ -16,12 +21,13 @@ export type LegalPageProps = {
 };
 
 export default function LegalPage({ type, updatedAt, company }: LegalPageProps) {
+  const { auth } = usePage<SharedData>().props;
   const metaTitle = type === "terms" ? "Conditions d’utilisation" : "Politique de confidentialité";
   const updated = updatedAt ?? new Date().toISOString().slice(0, 10);
   const info = {
-    name: company?.name ?? "CarParts DZ",
+    name: company?.name ?? "Rafiki-Motors DZ",
     country: company?.country ?? "Algeria",
-    email: company?.legalEmail ?? "support@carpartsdz.example",
+    email: company?.legalEmail ?? "support@.example",
     address: company?.address ?? "—",
   };
 
@@ -31,15 +37,23 @@ export default function LegalPage({ type, updatedAt, company }: LegalPageProps) 
 
       <header className="sticky top-0 z-40  dark:bg-neutral-950/70 backdrop-blur border-b border-neutral-200 dark:border-neutral-800">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
+          <Link href={"/"} className="flex items-center gap-3">
             <div className="h-9 w-9 rounded-xl bg-neutral-900 text-white dark:bg-neutral-100 dark:text-neutral-900 grid place-items-center font-bold">CP</div>
-            <span className="font-semibold tracking-tight">CarParts DZ</span>
-          </div>
+            <span className="font-semibold tracking-tight">Rafiki-Motors DZ</span>
+          </Link>
           <div className="flex flex-row items-center gap-2">
             <Badge variant="secondary" className="rounded-full">{metaTitle}</Badge>
             <div className="flex items-center gap-3">
-              <Link href={route("login")}> <Button variant="ghost" className="hidden sm:inline-flex">Se connecter</Button> </Link>
-              <Link href={route("register")}> <Button className="rounded-xl">Créer un compte</Button> </Link>
+              {auth.user ? (
+                <Link href={CatalogController.page().url}>
+                  <Button variant="ghost" className="hidden sm:inline-flex rounded-xl">Accéder au tableau de bord</Button>
+                </Link>
+              ) : (
+                <>
+                  <Link href={AuthenticatedSessionController.create().url}><Button variant="ghost" className="hidden sm:inline-flex rounded-xl">Se connecter</Button></Link>
+                  <Link href={RegisteredUserController.create().url}><Button className="rounded-xl">Créer un compte</Button></Link>
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -59,11 +73,13 @@ export default function LegalPage({ type, updatedAt, company }: LegalPageProps) 
 
       <footer className="border-t border-neutral-200 dark:border-neutral-800">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8 text-sm text-neutral-500 dark:text-neutral-400 flex flex-col sm:flex-row items-center justify-between gap-3">
-          <div>© {new Date().getFullYear()} CarParts DZ. Tous droits réservés.</div>
+          <div>© {new Date().getFullYear()} Rafiki-Motors DZ. Tous droits réservés.</div>
           <div className="flex items-center gap-4">
-            <Link href={route("terms")}>Conditions</Link>
-            <Link href={route("privacy")}>Confidentialité</Link>
-            <Link href={route("register")}>Créer un compte</Link>
+            <Link href={HomePageController.terms().url}>Conditions</Link>
+            <Link href={HomePageController.privacy().url}>Confidentialité</Link>
+             {!auth.user &&
+              <Link href={RegisteredUserController.create().url}>Créer un compte</Link>
+            }
           </div>
         </div>
       </footer>

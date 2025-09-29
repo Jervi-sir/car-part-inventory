@@ -1,3 +1,5 @@
+import RegisteredUserController from '@/actions/App/Http/Controllers/Auth/RegisteredUserController';
+import CatalogController from '@/actions/App/Http/Controllers/Client/CatalogController';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
@@ -19,8 +21,8 @@ export const Section5 = () => {
               </CardHeader>
               <CardContent className="text-neutral-600 dark:text-neutral-400">
                 Nous travaillons avec des marques mondiales et des fournisseurs locaux vérifiés pour garantir la compatibilité, la qualité et le support de garantie.
-                <div className="mt-5">
-                  <Link href={auth.user ? route("client.parts.page") : route("register")}>
+                <div className="mt-5"> 
+                  <Link href={auth.user ?  CatalogController.page().url : RegisteredUserController.create().url }>
                     <Button className="rounded-xl">Nous contacter <ArrowRight className="ml-2 h-4 w-4" /></Button>
                   </Link>
                 </div>

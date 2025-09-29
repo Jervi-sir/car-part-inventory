@@ -23,29 +23,33 @@ import { SidebarMenu, SidebarMenuButton, SidebarMenuItem, } from "@/components/u
 import { Collapsible, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { Link, usePage } from "@inertiajs/react"
 import { cn } from "@/lib/utils"
+import CatalogController from "@/actions/App/Http/Controllers/Client/CatalogController"
+import OrderListController from "@/actions/App/Http/Controllers/Client/OrderListController"
+import UserSettingsController from "@/actions/App/Http/Controllers/Client/UserSettingsController"
+import CartController from "@/actions/App/Http/Controllers/Client/CartController"
 
 // This is sample data.
 const data = {
   navMain: [
     {
       title: "Articles",
-      url: route('client.parts.page'),
+      url: CatalogController.page().url,
       icon: SearchIcon,
       isActive: true,
     },
     {
       title: "Panier",
-      url: route('client.checkout.page'),
+      url: CartController.page().url,
       icon: ShoppingCartIcon,
     },
     {
       title: "Commandes",
-      url: route('client.orders.page'),
+      url: OrderListController.page().url,
       icon: Container,
     },
     {
       title: "Paramètres",
-      url: route('client.settings.page'),
+      url: UserSettingsController.page().url,
       icon: SettingsIcon,
     },
   ],
@@ -117,10 +121,10 @@ export function SiteLogo() {
               size="lg"
               className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
             >
-              <div className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg">
+              <Link href={"/"} className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg">
                 {/* <Command className="size-4" color="black" /> */}
                 <img src="/images/logo-rafiki-motors-2.png" />
-              </div>
+              </Link>
               <div className="grid flex-1 text-left text-sm leading-tight">
                 <span className="truncate font-medium">Pièce automobile.</span>
                 <span className="truncate text-xs">Inventaire</span>

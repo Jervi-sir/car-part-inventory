@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ArrowLeft, Truck } from "lucide-react";
+import OrderController from "@/actions/App/Http/Controllers/Client/OrderController";
+import CatalogController from "@/actions/App/Http/Controllers/Client/CatalogController";
 
 declare const route: (name: string, params?: any) => string;
 
@@ -71,8 +73,8 @@ const http = {
 };
 
 const endpoints = {
-  orderShow: (id: Id) => route("shop.api.orders.show", { order: id }),
-  backToCatalog: route("client.parts.page"),
+  orderShow: (id: Id) => OrderController.show({ order: id }).url,
+  backToCatalog: CatalogController.page().url,
 };
 
 export default function OrderPage() {
@@ -168,8 +170,8 @@ export default function OrderPage() {
                         <TableCell className="font-medium">{it.name}</TableCell>
                         <TableCell>{it.manufacturer?.name || "—"}</TableCell>
                         <TableCell>{it.qty}</TableCell>
-                        <TableCell>{it.unit_price.toFixed(2)} {order.currency}</TableCell>
-                        <TableCell className="font-semibold">{it.line_total.toFixed(2)} {order.currency}</TableCell>
+                        <TableCell>{it.unit_price.toFixed(2)} </TableCell>
+                        <TableCell className="font-semibold">{it.line_total.toFixed(2)} </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -203,23 +205,23 @@ export default function OrderPage() {
                 <div className="space-y-2 text-sm">
                   <div className="flex items-center justify-between">
                     <span>Sous-total</span>
-                    <span>{order.subtotal.toFixed(2)} {order.currency}</span>
+                    <span>{order.subtotal.toFixed(2)} </span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span>Remise</span>
-                    <span>- {order.discount_total.toFixed(2)} {order.currency}</span>
+                    <span>- {order.discount_total.toFixed(2)} </span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span>Livraison</span>
-                    <span>{order.shipping_total.toFixed(2)} {order.currency}</span>
+                    <span>{order.shipping_total.toFixed(2)} </span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span>Tax</span>
-                    <span>{order.tax_total.toFixed(2)} {order.currency}</span>
+                    <span>{order.tax_total.toFixed(2)} </span>
                   </div>
                   <div className="border-t pt-2 flex items-center justify-between">
                     <span className="font-semibold">Total général</span>
-                    <span className="font-semibold">{order.grand_total.toFixed(2)} {order.currency}</span>
+                    <span className="font-semibold">{order.grand_total.toFixed(2)} </span>
                   </div>
                 </div>
               </Card>

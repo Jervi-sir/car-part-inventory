@@ -9,6 +9,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import AuthLayout from '@/layouts/auth-layout';
+import TwoFactorAuthenticationController from '@/actions/Laravel/Fortify/Http/Controllers/TwoFactorAuthenticationController';
+import AuthenticatedSessionController from '@/actions/App/Http/Controllers/Auth/AuthenticatedSessionController';
+import PasswordResetLinkController from '@/actions/App/Http/Controllers/Auth/PasswordResetLinkController';
 
 export default function ForgotPassword({ status }: { status?: string }) {
     const { data, setData, post, processing, errors } = useForm<Required<{ email: string }>>({
@@ -18,7 +21,7 @@ export default function ForgotPassword({ status }: { status?: string }) {
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
 
-        post(route('password.email'));
+        post(PasswordResetLinkController.create().url);
     };
 
     return (
@@ -55,7 +58,7 @@ export default function ForgotPassword({ status }: { status?: string }) {
 
                 <div className="space-x-1 text-center text-sm text-muted-foreground">
                     <span>Or, return to</span>
-                    <TextLink href={route('login')}>log in</TextLink>
+                    <TextLink href={ AuthenticatedSessionController.create().url}>log in</TextLink>
                 </div>
             </div>
         </AuthLayout>

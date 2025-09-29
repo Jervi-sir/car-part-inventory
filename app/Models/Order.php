@@ -28,8 +28,8 @@ class Order extends Model
     protected function casts(): array
     {
         return [
-            'status'          => OrderStatus::class,
-            'delivery_method' => DeliveryMethod::class,
+            'status'          => \App\Enums\OrderStatus::class,
+            'delivery_method' => \App\Enums\DeliveryMethod::class, // <- FQCN to the ENUM
             'subtotal'        => 'decimal:2',
             'discount_total'  => 'decimal:2',
             'shipping_total'  => 'decimal:2',
@@ -52,7 +52,7 @@ class Order extends Model
     {
         return $this->hasMany(OrderItem::class);
     }
-    
+
     // Helpers
     public function recalcTotals(): void
     {
@@ -61,5 +61,4 @@ class Order extends Model
         $this->tax_total = 0; // set if you implement per-item VAT later
         $this->grand_total = $this->subtotal - $this->discount_total + $this->shipping_total + $this->tax_total;
     }
-
 }

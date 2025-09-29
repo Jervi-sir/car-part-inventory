@@ -18,6 +18,15 @@ import {
 import { DropdownMenu, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Collapsible, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { cn } from "@/lib/utils"
+import AnalyticsController from "@/actions/App/Http/Controllers/Admin/AnalyticsController"
+import ManufacturerController from "@/actions/App/Http/Controllers/Admin/ManufacturerController"
+import PartController from "@/actions/App/Http/Controllers/Admin/PartController"
+import VehicleModelController from "@/actions/App/Http/Controllers/Admin/VehicleModelController"
+import VehicleBrandController from "@/actions/App/Http/Controllers/Admin/VehicleBrandController"
+import ImportPartsController from "@/actions/App/Http/Controllers/Admin/ImportPartsController"
+import AdCreativeApiController from "@/actions/App/Http/Controllers/Admin/AdCreativeApiController"
+import UserController from "@/actions/App/Http/Controllers/Admin/UserController"
+import OrderController from "@/actions/App/Http/Controllers/Admin/OrderController"
 
 // Sample data without hardcoded isActive
 const data = {
@@ -27,19 +36,17 @@ const data = {
     avatar: "/avatars/shadcn.jpg",
   },
   navMain: [
-    { title: "Analyses", url: route("admin.analytics.page"), icon: Factory },
-    { title: "Constructeurs", url: route("admin.manufacturers.page"), icon: Factory },
-    { title: "Marques de véhicules", url: route("admin.vehicle-brands.page"), icon: CarFront },
-    { title: "Modèles de véhicules", url: route("admin.vehicle-models.page"), icon: Package },
-    { title: "Pièces", url: route("admin.parts.page"), icon: Puzzle },
-    { title: "Commandes", url: route("admin.orders.page"), icon: BaggageClaim },
-    { title: "Utilisateurs", url: route("admin.users.page"), icon: UserIcon },
-    { title: "Importations", url: route("admin.import.parts.index"), icon: ImportIcon },
-    { title: "Créations publicitaires", url: route("admin.ads.creatives.page"), icon: ImportIcon },
+    { title: "Analyses", url: AnalyticsController.index().url, icon: Factory },
+    { title: "Constructeurs", url: ManufacturerController.page().url, icon: Factory },
+    { title: "Marques de véhicules", url: VehicleBrandController.page().url, icon: CarFront },
+    { title: "Modèles de véhicules", url: VehicleModelController.page().url, icon: Package },
+    { title: "Pièces", url: PartController.page().url, icon: Puzzle },
+    { title: "Commandes", url: OrderController.page().url, icon: BaggageClaim },
+    { title: "Utilisateurs", url: UserController.page().url, icon: UserIcon },
+    { title: "Importations", url: ImportPartsController.index().url, icon: ImportIcon },
+    { title: "Créations publicitaires", url: AdCreativeApiController.page().url, icon: ImportIcon },
 ],
 }
-
-
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { url } = usePage();

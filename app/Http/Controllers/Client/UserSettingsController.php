@@ -7,9 +7,16 @@ use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
+use Inertia\Inertia;
 
 class UserSettingsController extends Controller
 {
+
+    public function page(Request $req)
+    {
+        return Inertia::render('client/settings/page');
+    }
+
     /**
      * GET /client/settings/api
      */

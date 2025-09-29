@@ -13,23 +13,28 @@ import { Section3 } from "./section-3";
 
 // 👇 add this import
 import { Reveal } from "@/components/anim";
+import AuthenticatedSessionController from "@/actions/App/Http/Controllers/Auth/AuthenticatedSessionController";
+import RegisteredUserController from "@/actions/App/Http/Controllers/Auth/RegisteredUserController";
+import CatalogController from "@/actions/App/Http/Controllers/Client/CatalogController";
+import HomePageController from "@/actions/App/Http/Controllers/HomePageController";
+import { ThemeToggleDropdown } from "@/components/theme-toggle-dropdown";
 
 export default function LandingPage() {
   const { auth } = usePage<SharedData>().props;
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-white via-neutral-50 to-white dark:from-neutral-950 dark:via-neutral-900 dark:to-neutral-950 text-neutral-900 dark:text-neutral-100">
+    <div className="min-h-screen bg-gradient-to-b from-background via-background to-muted dark:from-neutral-950 dark:via-neutral-900 dark:to-neutral-950 text-neutral-900 dark:text-neutral-100">
       <Head title="Rafiki-Motors — Plateforme de gros & détail" />
 
       {/* NAV */}
       <header className="sticky top-0 z-40 bg-white/70 dark:bg-neutral-950/70 backdrop-blur border-b border-neutral-200 dark:border-neutral-800">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
+          <Link href={"/"} className="flex items-center gap-3">
             <div className="h-8 w-8 rounded bg-yellow-500 text-white dark:bg-gold-400 dark:text-yellow-500 grid place-items-center font-bold">
               <img src="/images/logo-rafiki-motors-2.png" />
             </div>
             <span className="font-semibold tracking-tight">Rafiki-Motors</span>
-          </div>
+          </Link>
           <nav className="hidden sm:flex items-center gap-6 text-sm text-neutral-600 dark:text-neutral-400">
             <a href="#why" className="hover:text-neutral-900 dark:hover:text-neutral-100">Pourquoi nous</a>
             <a href="#stats" className="hover:text-neutral-900 dark:hover:text-neutral-100">Statistiques</a>
@@ -39,21 +44,22 @@ export default function LandingPage() {
           </nav>
           <div className="flex items-center gap-3">
             {auth.user ? (
-              <Link href={route("client.parts.page")}>
+              <Link href={CatalogController.page().url}>
                 <Button variant="ghost" className="hidden sm:inline-flex rounded-xl">Accéder au tableau de bord</Button>
               </Link>
             ) : (
               <>
-                <Link href={route("login")}><Button variant="ghost" className="hidden sm:inline-flex rounded-xl">Se connecter</Button></Link>
-                <Link href={route("register")}><Button className="rounded-xl">Créer un compte</Button></Link>
+                <Link href={AuthenticatedSessionController.create().url}><Button variant="ghost" className="hidden sm:inline-flex rounded-xl">Se connecter</Button></Link>
+                <Link href={RegisteredUserController.create().url}><Button className="rounded-xl">Créer un compte</Button></Link>
               </>
             )}
+            <ThemeToggleDropdown />
           </div>
         </div>
       </header>
 
       {/* HERO */}
-      <Reveal amount={0.3}>
+      <Reveal amount={0.5}>
         <Section1 />
       </Reveal>
 
@@ -120,9 +126,11 @@ export default function LandingPage() {
             </div>
           </div>
           <div className="flex items-center gap-6">
-            <Link href={route("terms")}>Conditions générales</Link>
-            <Link href={route("privacy")}>Politique de confidentialité</Link>
-            <Link href={route("register")}>Créer un compte</Link>
+            <Link href={HomePageController.terms().url}>Conditions générales</Link>
+            <Link href={HomePageController.privacy().url}>Politique de confidentialité</Link>
+            {!auth.user &&
+              <Link href={RegisteredUserController.create().url}>Créer un compte</Link>
+            }
           </div>
         </div>
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pb-8 text-xs text-neutral-500">

@@ -10,6 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
 import api from "@/lib/api";
+import UserController from "@/actions/App/Http/Controllers/Admin/UserController";
+import OrderController from "@/actions/App/Http/Controllers/Admin/OrderController";
 
 declare const route: (name: string, params?: any) => string;
 
@@ -40,9 +42,9 @@ type UserPayload = {
 };
 
 const endpoints = {
-  back: route("admin.users.page"),
-  show: (id: Id) => route("admin.api.users.show", { user: id }),
-  viewOrder: (id: Id) => route("admin.order.page", { order: id }),
+  back: UserController.page().url,
+  show: (id: Id) => UserController.show({ user: id }).url,
+  viewOrder: (id: Id) => OrderController.showPage({ order: id }).url,
 };
 
 export default function UserPage() {

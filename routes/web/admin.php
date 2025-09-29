@@ -1,31 +1,22 @@
 <?php
 
-use App\Http\Controllers\Admin\AdCampaignApiController;
-use App\Http\Controllers\Admin\AdCampaignPageController;
 use App\Http\Controllers\Admin\AdCreativeApiController;
-use App\Http\Controllers\Admin\AdCreativePageController;
-use App\Http\Controllers\Admin\AdPlacementApiController;
-use Inertia\Inertia;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Admin\PartController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\OrderController;
-use App\Http\Controllers\Admin\LookupController;
-use App\Http\Controllers\Admin\CategoryController;
 use App\Http\Controllers\Admin\ImportPartsController;
 use App\Http\Controllers\Admin\PartFitmentController;
 use App\Http\Controllers\Admin\ManufacturerController;
 use App\Http\Controllers\Admin\VehicleBrandController;
 use App\Http\Controllers\Admin\VehicleModelController;
-use App\Http\Controllers\Admin\PartReferenceController;
-use App\Http\Controllers\Admin\AdPlacementPageController;
 use App\Http\Controllers\Admin\AnalyticsController;
 
 // role:ADMIN,MODERATOR
 Route::middleware(['auth', 'role:ADMIN,MODERATOR'])->prefix('admin')->group(function () {
     // Vehicle Brands
     Route::prefix('manufacturers')->group(function () {
-        Route::get('/', fn()  => Inertia::render('admin/manufacturers/page'))->name('admin.manufacturers.page');
+        Route::get('/', [ManufacturerController::class, 'page'])->name('admin.manufacturers.page');
         Route::prefix('api')->group(function () {
             Route::get('/', [ManufacturerController::class, 'index'])->name('admin.manufacturers.api.crud');
             Route::post('/', [ManufacturerController::class, 'store']);
@@ -35,7 +26,7 @@ Route::middleware(['auth', 'role:ADMIN,MODERATOR'])->prefix('admin')->group(func
     });
     // Vehicle Brands
     Route::prefix('vehicle-brands')->group(function () {
-        Route::get('/', fn()  => Inertia::render('admin/vehicle-brands/page'))->name('admin.vehicle-brands.page');  // [done]
+        Route::get('/', [VehicleBrandController::class, 'page'])->name('admin.vehicle-brands.page');  // [done]
         Route::prefix('api')->group(function () {
             Route::get('/', [VehicleBrandController::class, 'index'])->name('admin.vehicle-brands.api.crud');       // [done]
             Route::post('/', [VehicleBrandController::class, 'store']);                                             // [done]
@@ -45,7 +36,7 @@ Route::middleware(['auth', 'role:ADMIN,MODERATOR'])->prefix('admin')->group(func
     });
     // Vehicle Models
     Route::prefix('vehicle-models')->group(function () {
-        Route::get('/', fn()  => Inertia::render('admin/vehicle-models/page'))->name('admin.vehicle-models.page');  // [done]
+        Route::get('/', [VehicleModelController::class, 'page'])->name('admin.vehicle-models.page');  // [done]
         Route::prefix('api')->group(function () {
             Route::get('/', [VehicleModelController::class, 'index'])->name('admin.vehicle-models.api.crud');       // [done]
             Route::post('/', [VehicleModelController::class, 'store']);                                             // [done]
@@ -55,7 +46,7 @@ Route::middleware(['auth', 'role:ADMIN,MODERATOR'])->prefix('admin')->group(func
     });
 
     Route::prefix('parts')->group(function () {
-        Route::get('/', fn()  => Inertia::render('admin/parts/page'))->name('admin.parts.page');
+        Route::get('/', [PartController::class, 'page'])->name('admin.parts.page');
 
         Route::prefix('api')->group(function () {
             Route::get('/', [PartController::class, 'index'])->name('admin.parts.api.crud');     // list with filters + pagination
@@ -71,11 +62,6 @@ Route::middleware(['auth', 'role:ADMIN,MODERATOR'])->prefix('admin')->group(func
             Route::get('/{part}/fitments', [PartFitmentController::class, 'index']);
             Route::put('/{part}/fitments', [PartFitmentController::class, 'upsert']);
         });
-    });
-    Route::prefix('lookup')->group(function () {
-        Route::get('/vehicle-brands', [LookupController::class, 'vehicleBrands'])->name('lookup.api.vehicle-brands');
-        Route::get('/vehicle-models', [LookupController::class, 'vehicleModels'])->name('lookup.api.vehicle-models'); // ?vehicle_brand_id=ID
-        Route::get('/manufacturers', [LookupController::class, 'manufacturers'])->name('lookup.api.manufacturers');
     });
 
     Route::prefix('orders')->group(function () {
@@ -115,7 +101,7 @@ Route::middleware(['auth', 'role:ADMIN,MODERATOR'])->prefix('admin')->group(func
     // API (still in web.php)
     Route::prefix('ads')->group(function () {
         // Inertia pages (no data)
-        Route::get('creatives', fn()  => Inertia::render('admin/ads/creatives-page'))->name('admin.ads.creatives.page');
+        Route::get('creatives', [AdCreativeApiController::class, 'page'])->name('admin.ads.creatives.page');
         // creatives: POST for update to keep multipart easy
         Route::get   ('/creatives/list',     [AdCreativeApiController::class, 'index'])->name('admin.ads.creatives.index');
         Route::post  ('/creatives',          [AdCreativeApiController::class, 'store'])->name('admin.ads.creatives.store');
@@ -125,7 +111,7 @@ Route::middleware(['auth', 'role:ADMIN,MODERATOR'])->prefix('admin')->group(func
     });
     
     Route::prefix('analytics')->group(function () {
-        Route::get('/', fn()  => Inertia::render('admin/analytics/page'))->name('admin.analytics.page');
+        Route::get('/', [AnalyticsController::class, 'index'])->name('admin.analytics.page');
         Route::get('/kpis', [AnalyticsController::class, 'kpis'])->name('admin.analytics.kpis');
         Route::get('/revenue-series', [AnalyticsController::class, 'revenueSeries'])->name('admin.analytics.revenue-series');
         Route::get('/orders-by-status', [AnalyticsController::class, 'ordersByStatus'])->name('admin.analytics.orders-by-status');

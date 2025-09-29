@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ChevronLeft, ChevronRight, ChevronDown, ChevronRight as ChevronRightIcon } from "lucide-react";
 import api from "@/lib/api";
+import OrderController from "@/actions/App/Http/Controllers/Admin/OrderController";
 
 declare const route: (name: string, params?: any) => string;
 
@@ -47,9 +48,9 @@ type OrderExtra = {
 };
 
 const endpoints = {
-  list: route("admin.api.orders.index"),
-  view: (id: Id) => route("admin.order.page", { order: id }),
-  show: (id: Id) => route("admin.api.orders.show", { order: id }), // <-- added
+  list: OrderController.index().url,
+  view: (id: Id) => OrderController.showPage({ order: id }).url,
+  show: (id: Id) => OrderController.showPage({ order: id }).url, // <-- added
 };
 
 const statusOptions = ["all", "cart", "pending", "confirmed", "preparing", "shipped", "completed", "canceled"] as const;
@@ -255,7 +256,9 @@ export default function OrdersPage() {
                 <TableHead className="w-[130px]">Sous-total</TableHead>
                 <TableHead className="w-[110px]">Expédition</TableHead>
                 <TableHead className="w-[140px]">Total</TableHead>
-                <TableHead className="w-[100px]">Action</TableHead>
+                <TableHead className="w-[120px] sticky right-0 z-20 bg-background shadow-[inset_1px_0_0_var(--border)]">
+                  Action
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -298,7 +301,7 @@ export default function OrdersPage() {
                         <TableCell className="font-semibold">
                           {money(o.grand_total, o.currency)}
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="w-[120px] sticky right-0 z-10 bg-background shadow-[inset_1px_0_0_var(--border)]">
                           <Button
                             size="sm"
                             onClick={() => (window.location.href = endpoints.view(o.id))}
@@ -330,7 +333,6 @@ export default function OrdersPage() {
                                 <span>Tax: {money(o.tax_total, o.currency)}</span>
                               </div> */}
                               <div>
-
                                 <div className="flex items-center justify-between flex-wrap gap-3">
                                   <div className="font-semibold">Utilisateur</div>
                                   <div className="text-muted-foreground text-xs">

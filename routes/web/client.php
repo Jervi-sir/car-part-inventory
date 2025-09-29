@@ -8,15 +8,14 @@ use App\Http\Controllers\Client\OrderListController;
 use App\Http\Controllers\Client\ShippingAddressController;
 use App\Http\Controllers\Client\TelegramController;
 use App\Http\Controllers\Client\UserSettingsController;
-use Inertia\Inertia;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth'])->group(function () {
     Route::get('ads/redirect', AdClickController::class)->name('ads.click')->middleware('signed');;
     
     Route::prefix('catalog')->group(function () {
-        Route::get('/', fn() => Inertia::render('client/catalog/page'))->name('client.parts.page');
-        Route::get('/parts', [CatalogController::class, 'index'])->name('shop.api.parts');
+        Route::get('/', [CatalogController::class, 'page'])->name('client.parts.page');
+        Route::get('/parts', [CatalogController::class, 'parts'])->name('shop.api.parts');
     });
 
     Route::prefix('orders')->group(function () {
@@ -36,7 +35,7 @@ Route::middleware(['auth'])->group(function () {
         ->name('client.cart.quick-preview');
 
     Route::prefix('checkout')->group(function () {
-        Route::get('/', fn() => Inertia::render('client/checkout/page'))->name('client.checkout.page');
+        Route::get('/', [CartController::class, 'page'])->name('client.checkout.page');
         Route::prefix('api')->middleware('auth')->group(function () {
             Route::get('/cart', [CartController::class, 'show'])->name('shop.api.cart.show');
             Route::post('/cart/items', [CartController::class, 'add'])->name('shop.api.cart.add');
@@ -49,7 +48,7 @@ Route::middleware(['auth'])->group(function () {
 
 
     Route::prefix('user')->group(function () {
-        Route::get('/', fn() => Inertia::render('client/settings/page'))->name('client.settings.page');
+        Route::get('/', [UserSettingsController::class, 'page'])->name('client.settings.page');
         Route::prefix('api')->group(function () {
             Route::get('settings', [UserSettingsController::class, 'show'])->name('client.settings.api');
             Route::put('settings', [UserSettingsController::class, 'update']);

@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { KPIResponse } from "./types";
 import { useApiQuery } from "./use-api-query";
+import AnalyticsController from "@/actions/App/Http/Controllers/Admin/AnalyticsController";
 
 
 declare const route: (name: string, params?: any) => string;
@@ -16,7 +17,7 @@ function NumberFmt({ value }: { value: number }) { return <span>{value.toLocaleS
 
 export function Kpis({ range }: { range: string }) {
   const { data, loading } = useApiQuery<KPIResponse>({
-    url: route("admin.analytics.kpis") + `?range=${range}`,
+    url: AnalyticsController.kpis().url + `?range=${range}`,
     deps: [range],
   });
 

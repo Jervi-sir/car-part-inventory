@@ -7,10 +7,16 @@ use App\Models\VehicleBrand;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\Database\QueryException;
+use Inertia\Inertia;
 use Symfony\Component\HttpFoundation\Response;
 
 class VehicleBrandController extends Controller
 {
+    public function page()
+    {
+        return Inertia::render('admin/vehicle-brands/page');
+    }
+
     public function index(Request $request)
     {
         $q = VehicleBrand::query();

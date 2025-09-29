@@ -10,6 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ChevronLeft, ChevronRight, ChevronDown, ChevronRight as ChevronRightIcon } from "lucide-react";
 import api from "@/lib/api";
+import OrderListController from "@/actions/App/Http/Controllers/Client/OrderListController";
+import OrderController from "@/actions/App/Http/Controllers/Client/OrderController";
 
 declare const route: (name: string, params?: any) => string;
 
@@ -23,10 +25,14 @@ type BriefItem = {
   line_total: number;
 };
 
+type OrderStatus = | "all" | "pending" | "confirmed" | "preparing" | "shipped" | "completed" | "canceled"; // "cart" 
+
+type DeliveryMethod = "all" | "pickup" | "courier" | "post";
+
 type OrderRow = {
   id: number;
-  status: "cart" | "pending" | "confirmed" | "preparing" | "shipped" | "completed" | "canceled";
-  delivery_method: "pickup" | "courier" | "post" | null;
+  status: OrderStatus;
+  delivery_method: DeliveryMethod | null;
   currency: string;
   items_count: number;
   subtotal: number;
@@ -42,17 +48,35 @@ type OrderRow = {
 type Page<T> = { data: T[]; total: number; page: number; per_page: number };
 
 const endpoints = {
-  list: route("shop.api.orders.index"),
-  view: (id: Id) => route("client.order.page", { order: id }),
+  list: OrderListController.index().url,
+  view: (id: Id) => OrderController.page({ order: id }).url,
 };
 
-const statusOptions = ["all", "cart", "pending", "confirmed", "preparing", "shipped", "completed", "canceled"] as const;
+const statusOptions = ["all", "pending", "confirmed", "preparing", "shipped", "completed", "canceled"] as const;    // "cart", 
 const methodOptions = ["all", "pickup", "courier", "post"] as const;
 const sortOptions = [
   { value: "created_at", label: "Date" },
   { value: "grand_total", label: "Montant" },
   { value: "status", label: "Statut" },
 ] as const;
+
+const STATUS_LABEL: Record<OrderStatus, string> = {
+  all: "Tous",
+  pending: "En attente",
+  confirmed: "Confirmée",
+  preparing: "Préparation",
+  shipped: "Expédiée",
+  completed: "Terminée",
+  canceled: "Annulée",
+};
+
+const METHOD_LABEL: Record<DeliveryMethod, string> = {
+  all: "Toutes",
+  pickup: "Retrait",
+  courier: "Coursier",
+  post: "Poste",
+};
+
 
 export default function OrdersPage() {
   const [filters, setFilters] = useState({
@@ -109,22 +133,22 @@ export default function OrdersPage() {
     if (!arr.length) return "—";
     const first = arr.slice(0, 3).map((i) => {
       const title = i.name || i.sku || "Item";
-      return `${title} ×${i.qty} (${i.line_total.toFixed(2)} ${row.currency})`;
+      return `${title} ×${i.qty}`;  //  (${i.line_total.toFixed(2)}
     });
     const extra = arr.length > 3 ? ` +${arr.length - 3} more` : "";
     return first.join(", ") + extra;
   };
 
-  const money = (n: number, c: string) => `${Number(n).toFixed(2)} ${c}`;
+  const money = (n: number, c: string) => `${Number(n).toFixed(2)}`;
   const statusBadge = (s: OrderRow["status"]) => {
     const label = s[0].toUpperCase() + s.slice(1);
     return <span className="px-2 py-1 rounded bg-muted text-xs">{label}</span>;
   };
 
   return (
-    <ClientLayout title="Orders">
+    <ClientLayout title="Commandes">
       <div className="p-6 pt-0">
-        <Head title="My Orders" />
+        <Head title="Mes commandes" />
         <div className="flex items-center justify-between mb-4">
           <h1 className="text-2xl font-semibold">Mes commandes</h1>
         </div>
@@ -153,7 +177,7 @@ export default function OrdersPage() {
                 <SelectContent>
                   {statusOptions.map((s) => (
                     <SelectItem key={s} value={s}>
-                      {s}
+                      {STATUS_LABEL[s as OrderStatus]}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -172,7 +196,7 @@ export default function OrdersPage() {
                 <SelectContent>
                   {methodOptions.map((m) => (
                     <SelectItem key={m} value={m}>
-                      {m}
+                      {METHOD_LABEL[m as DeliveryMethod]}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -255,12 +279,12 @@ export default function OrdersPage() {
                 <TableHead className="w-[90px]">N° de commande</TableHead>
                 <TableHead className="w-[160px]">Date</TableHead>
                 <TableHead className="w-[120px]">Statut</TableHead>
-                <TableHead>Articles (résumé)</TableHead>
-                <TableHead className="w-[90px]">Nombre</TableHead>
-                <TableHead className="w-[130px]">Sous-total</TableHead>
-                <TableHead className="w-[110px]">Expédition</TableHead>
-                <TableHead className="w-[140px]">Total</TableHead>
-                <TableHead className="w-[100px]">Action</TableHead>
+                <TableHead className="w-[120px]">Articles (résumé)</TableHead>
+                <TableHead className="w-[90px] text-right">Nombre</TableHead>
+                <TableHead className="w-[130px] text-right">Sous-total</TableHead>
+                <TableHead className="w-[110px] text-right">Expédition</TableHead>
+                <TableHead className="w-[140px] text-right">Total</TableHead>
+                <TableHead className="w-[100px] sticky right-0 z-10 bg-background shadow-[inset_1px_0_0_var(--border)]">Action</TableHead>
               </TableRow>
             </TableHeader>
 
@@ -304,12 +328,14 @@ export default function OrdersPage() {
                         </TableCell>
                         <TableCell>{new Date(o.created_at).toLocaleString()}</TableCell>
                         <TableCell>{statusBadge(o.status)}</TableCell>
-                        <TableCell className="text-xs">{briefText(o)}</TableCell>
-                        <TableCell>{o.items_count}</TableCell>
-                        <TableCell>{money(o.subtotal, o.currency)}</TableCell>
-                        <TableCell>{money(o.shipping_total, o.currency)}</TableCell>
-                        <TableCell className="font-semibold">{money(o.grand_total, o.currency)}</TableCell>
-                        <TableCell>
+                        <TableCell className="w-[120px] text-xs whitespace-normal break-words align-top">
+                          <span>{briefText(o)}</span>
+                        </TableCell>
+                        <TableCell className="text-right">{o.items_count}</TableCell>
+                        <TableCell className="text-right">{money(o.subtotal, o.currency)}</TableCell>
+                        <TableCell className="text-right">{money(o.shipping_total, o.currency)}</TableCell>
+                        <TableCell className="font-semibold text-right">{money(o.grand_total, o.currency)}</TableCell>
+                        <TableCell className="sticky right-0 z-10 bg-background shadow-[inset_1px_0_0_var(--border)]">
                           <Button size="sm" onClick={() => (window.location.href = endpoints.view(o.id))}>
                             Afficher
                           </Button>
@@ -320,7 +346,7 @@ export default function OrdersPage() {
                         <TableRow>
                           <TableCell colSpan={9} className="bg-muted/40">
                             <div className="p-3 space-y-2 text-sm">
-                              <div className="font-semibold">Items</div>
+                              <div className="font-semibold">Articles</div>
                               <ul className="list-disc pl-6">
                                 {o.items_brief.map((i, idx) => (
                                   <li key={idx}>
@@ -350,9 +376,9 @@ export default function OrdersPage() {
           <div className="text-sm text-muted-foreground">
             {pageData.total
               ? `${(pageData.page - 1) * pageData.per_page + 1}-${Math.min(
-                  pageData.total,
-                  pageData.page * pageData.per_page
-                )} of ${pageData.total}`
+                pageData.total,
+                pageData.page * pageData.per_page
+              )} sur ${pageData.total}`
               : "0"}
           </div>
           <div className="flex items-center gap-3">

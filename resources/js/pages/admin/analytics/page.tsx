@@ -9,6 +9,7 @@ import { Kpis } from "./kpis";
 import { RankedBar } from "./ranked-bar";
 import { AdsClicksStacked } from "./ads-clicks-stacked";
 import { TopCreativesBar } from "./top-creatices-bar";
+import AnalyticsController from "@/actions/App/Http/Controllers/Admin/AnalyticsController";
 
 
 export const chartConfig: ChartConfig = {
@@ -22,7 +23,7 @@ export default function AnalyticsPage() {
   const [range, setRange] = useState<string>("30d");
 
   return (
-    <AdminLayout title="">
+    <AdminLayout title="Analyses">
       <div className="p-6 pt-0">
         <Head title="Analytics" />
         <div className="flex items-center justify-between pb-4">
@@ -48,9 +49,9 @@ export default function AnalyticsPage() {
         </div>
 
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 mt-4">
-          <RankedBar title="Top manufacturers (revenue)" url={route("admin.analytics.top-manufacturers")} range={range} chartConfig={chartConfig} />
-          <RankedBar title="Top vehicle brands (revenue)" url={route("admin.analytics.top-brands")} range={range} chartConfig={chartConfig} />
-          <RankedBar title="Top parts (revenue)" url={route("admin.analytics.top-parts")} range={range} chartConfig={chartConfig} />
+          <RankedBar title="Top manufacturers (revenue)" url={AnalyticsController.topManufacturers().url} range={range} chartConfig={chartConfig} />
+          <RankedBar title="Top vehicle brands (revenue)" url={AnalyticsController.topBrands().url} range={range} chartConfig={chartConfig} />
+          <RankedBar title="Top parts (revenue)" url={AnalyticsController.topParts().url} range={range} chartConfig={chartConfig} />
         </div>
 
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 mt-4">

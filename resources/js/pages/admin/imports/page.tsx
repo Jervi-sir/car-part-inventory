@@ -9,6 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { AdminLayout } from "../layout/admin-layout";
+import ImportPartsController from "@/actions/App/Http/Controllers/Admin/ImportPartsController";
 
 declare const route: (name: string, params?: any) => string;
 type OptionItem = { id: number; name: string };
@@ -64,7 +65,7 @@ export default function ImportParts() {
     uploadForm.data.delimiter = delimiter;
     // @ts-ignore
     uploadForm.data.has_header = hasHeader;
-    uploadForm.post(route("admin.import.parts.parse"), { forceFormData: true });
+    uploadForm.post(ImportPartsController.parse().url, { forceFormData: true });
   };
 
   // 2) Mapping state
@@ -122,7 +123,7 @@ export default function ImportParts() {
   }, [manufacturers]);
 
   const onCommit = () => {
-    commitForm.post(route("admin.import.parts.commit"));
+    commitForm.post(ImportPartsController.commit().url);
   };
 
   return (

@@ -1,38 +1,24 @@
 <?php
 
-
+use App\Http\Controllers\LookupController;
+use App\Http\Controllers\HomePageController;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', fn () => Inertia::render('client/welcome/landing/page'))->name('home');
+Route::get('/', [HomePageController::class, 'home'])->name('home');
+Route::get('/terms', [HomePageController::class, 'terms'])->name('terms');
+Route::get('/privacy', [HomePageController::class, 'privacy'])->name('privacy');
+Route::get('/public/stats', [HomePageController::class, 'publicStatus'])->name('public.status');
+
+Route::prefix('lookup')->group(function () {
+  Route::get('/', [LookupController::class, 'index'])->name('lookup.api.index');
+});
 
 // Route::middleware(['auth', 'verified'])->group(function () {
 //     Route::get('dashboard', function () {
 //         return redirect()->route('client.parts.page');
 //     })->name('dashboard');
 // });
-
-Route::get('/terms', fn () => Inertia::render('client/welcome/legal-page', [
-    'type' => 'terms',
-    'updatedAt' => now()->toDateString(),
-    'company' => [
-        'name' => 'CarParts DZ',
-        'country' => 'Algeria',
-        'legalEmail' => 'support@carpartsdz.example',
-        'address' => '—',
-    ],
-]))->name('terms');
-
-Route::get('/privacy', fn () => Inertia::render('client/welcome/legal-page', [
-    'type' => 'privacy',
-    'updatedAt' => now()->toDateString(),
-    'company' => [
-        'name' => 'CarParts DZ',
-        'country' => 'Algeria',
-        'legalEmail' => 'support@carpartsdz.example',
-        'address' => '—',
-    ],
-]))->name('privacy');
 
 
 require __DIR__ . '/web/admin.php';

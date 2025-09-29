@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import api from "@/lib/api";
+import UserController from "@/actions/App/Http/Controllers/Admin/UserController";
 
 declare const route: (name: string, params?: any) => string;
 
@@ -27,8 +28,8 @@ type UserRow = {
 type Page<T> = { data: T[]; total: number; page: number; per_page: number };
 
 const endpoints = {
-  list: route("admin.api.users.index"),
-  view: (id: Id) => route("admin.user.page", { user: id }),
+  list: UserController.index().url,
+  view: (id: Id) => UserController.userPage({ user: id }).url,
 };
 
 const sortOptions = [
@@ -72,9 +73,9 @@ export default function UsersPage() {
   useEffect(() => { refresh(1); }, [filters.q, filters.sort_by, filters.sort_dir]);
 
   return (
-    <AdminLayout title="Users">
+    <AdminLayout title="Utilisateurs">
       <div className="p-6 pt-0">
-        <Head title="Users" />
+        <Head title="Utilisateurs" />
         <div className="flex items-center justify-between mb-4">
           <h1 className="text-2xl font-semibold">Utilisateurs</h1>
         </div>
@@ -118,7 +119,7 @@ export default function UsersPage() {
                 <TableHead>E-mail</TableHead>
                 <TableHead className="w-[120px]">Commandes</TableHead>
                 <TableHead className="w-[180px]">Inscrit</TableHead>
-                <TableHead className="w-[100px]">Action</TableHead>
+                <TableHead className="w-[100px] sticky right-0 z-10 bg-background shadow-[inset_1px_0_0_var(--border)]">Action</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -131,7 +132,7 @@ export default function UsersPage() {
                   <TableCell>{u.email}</TableCell>
                   <TableCell>{u.orders_count}</TableCell>
                   <TableCell>{new Date(u.created_at).toLocaleString()}</TableCell>
-                  <TableCell>
+                  <TableCell className="w-[100px] sticky right-0 z-10 bg-background shadow-[inset_1px_0_0_var(--border)]">
                     <Button size="sm" onClick={()=> (window.location.href = endpoints.view(u.id))}>Aperçu</Button>
                   </TableCell>
                 </TableRow>

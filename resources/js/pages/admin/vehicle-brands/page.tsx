@@ -12,12 +12,13 @@ import { ChevronLeft, ChevronRight, Pencil, Trash, Plus } from "lucide-react";
 import { AdminLayout } from "../layout/admin-layout";
 import { Head } from "@inertiajs/react";
 import api from "@/lib/api";
+import VehicleBrandController from "@/actions/App/Http/Controllers/Admin/VehicleBrandController";
 
 type Id3 = number | string;
 interface VehicleBrand { id: Id3; name: string }
 interface Page3<T> { data: T[]; total: number; page: number; per_page: number }
 
-const endpoint3 = route('admin.vehicle-brands.api.crud');
+const endpoint3 = VehicleBrandController.index().url;
 
 export default function VehicleBrandsPage() {
   const [pageData, setPageData] = useState<Page3<VehicleBrand>>({ data: [], total: 0, page: 1, per_page: 10 });
@@ -59,7 +60,7 @@ export default function VehicleBrandsPage() {
   };
 
   return (
-    <AdminLayout>
+    <AdminLayout title="Marques de véhicules">
       <Head title="Marques de véhicules" />
       <div className="p-6 pt-0 space-y-4">
         <div className="text-2xl font-semibold">Marques de véhicules</div>
@@ -75,7 +76,7 @@ export default function VehicleBrandsPage() {
               <TableRow>
                 <TableHead className="w-[90px]">ID</TableHead>
                 <TableHead>Nom</TableHead>
-                <TableHead className="w-[120px]">Actions</TableHead>
+                <TableHead className="w-[100px] sticky right-0 z-10 bg-background shadow-[inset_1px_0_0_var(--border)]">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -84,7 +85,7 @@ export default function VehicleBrandsPage() {
                 <TableRow key={String(row.id)}>
                   <TableCell>{row.id}</TableCell>
                   <TableCell>{row.name}</TableCell>
-                  <TableCell className="flex gap-2">
+                  <TableCell className="flex gap-2 w-[100px] sticky right-0 z-10 bg-background shadow-[inset_1px_0_0_var(--border)]">
                     <Button variant="outline" size="icon" onClick={() => openEdit(row)}><Pencil className="h-4 w-4" /></Button>
                     <Button variant="destructive" size="icon" onClick={() => remove(row)}><Trash className="h-4 w-4" /></Button>
                   </TableCell>

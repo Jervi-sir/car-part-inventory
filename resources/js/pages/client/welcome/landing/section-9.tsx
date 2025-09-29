@@ -15,12 +15,12 @@ export const Section9 = () => {
               <div>
                 <div className="flex items-center gap-3">
                   <img src="/images/logo-mark.svg" className="h-10" alt="Rafiki-Motors" />
-                  <span className="text-sm tracking-widest text-neutral-500">CARPARTS.DZ</span>
+                  <span className="text-sm tracking-widest text-neutral-500">Rafiki-Motors.DZ</span>
                 </div>
                 <h4 className="mt-6 text-2xl font-semibold">Contactez-nous</h4>
 
                 <ul className="mt-6 space-y-3 text-sm">
-                  <li className="flex items-center gap-3"><Mail className="h-4 w-4" /><span>hello@carparts.dz</span></li>
+                  <li className="flex items-center gap-3"><Mail className="h-4 w-4" /><span>hello@.dz</span></li>
                   <li className="flex items-center gap-3"><Phone className="h-4 w-4" /><span>+213 561 000 000</span></li>
                   <li className="flex items-center gap-3"><MapPin className="h-4 w-4" /><span>Dely Ibrahim, Alger</span></li>
                   <li className="flex items-center gap-3"><Clock className="h-4 w-4" /><span>Dim–Jeu, 9h–17h</span></li>

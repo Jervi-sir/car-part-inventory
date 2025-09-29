@@ -7,6 +7,7 @@ import { Link, usePage } from '@inertiajs/react';
 import { Button } from '@/components/ui/button';
 import { ShoppingCart } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import CartController from '@/actions/App/Http/Controllers/Client/CartController';
 
 type ClientLayoutProps = {
   children: React.ReactNode;
@@ -83,7 +84,7 @@ function CartSummary() {
   const total = Number(cart.grand_total ?? 0);
 
   return (
-    <Link href={route('client.checkout.page')}>
+    <Link href={CartController.page().url}>
       <Button variant="outline" size="default" className="gap-2">
         <ShoppingCart className="h-4 w-4" />
         <span className="hidden sm:inline">Cart</span>

@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
+import ShippingAddressController from "@/actions/App/Http/Controllers/Client/ShippingAddressController";
 
 export function AddressDialog({
   open,
@@ -60,13 +61,13 @@ export function AddressDialog({
     try {
       if (isEdit) {
         const { data } = await api.put(
-          route("client.settings.api.shipping-addresses.crud") + `/${initial!.id}`,
+          ShippingAddressController.index().url + `/${initial!.id}`,
           payload(form)
         );
         onSaved(data.data);
       } else {
         const { data } = await api.post(
-          route("client.settings.api.shipping-addresses.crud"),
+          ShippingAddressController.index().url,
           payload(form)
         );
         onSaved(data.data);

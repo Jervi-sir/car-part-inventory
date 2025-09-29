@@ -8,9 +8,15 @@ use App\Models\PartFitment;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\DB;
+use Inertia\Inertia;
 
 class PartController extends Controller
 {
+    public function page()
+    {
+        return Inertia::render('admin/parts/page');
+    }
+
     public function index(Request $req)
     {
         $perPage = (int)($req->integer('per_page') ?: 10);
