@@ -16,6 +16,12 @@ Telegram::setWebhook([
 ### sources
 Car brands logo https://www.carlogos.org/
 
+### #########################################
+### how to run it 
+<!-- server -->
+pm2 start --name car-inventory "php artisan serve --host 0.0.0.0 --port 8899"
+<!-- php artisan octane:start --port 8899 --host 0.0.0.0 --rpc-port 8899 -->
+
 
 ### #########################################
 
