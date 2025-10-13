@@ -21,7 +21,7 @@ export const Section1 = () => {
           <div>
             <Badge variant="secondary" className="rounded-full px-4 py-1 text-sm tracking-wide">🚗 B2B • B2C • Algérie</Badge>
             <h1 className="mt-6 text-5xl sm:text-6xl font-extrabold leading-tight tracking-tight">
-              <span className="bg-gradient-to-r from-yellow-600 to-yellow-500 bg-clip-text text-transparent">
+              <span className="bg-gradient-to-r from-primary to-muted-foreground bg-clip-text text-transparent">
                 ’The Best’ des pièces auto en Algérie
               </span>
             </h1>
@@ -56,7 +56,7 @@ export const Section1 = () => {
             </div> */}
 
             <img
-              src="/images/hero-carparts.png"
+              src="/images/theme-blue/hero-carparts.png"
               alt="Car parts hero"
               className="w-full max-w-lg drop-shadow-2xl animate-fade-in relative z-10"
             />
@@ -100,7 +100,7 @@ function ValueCard({ icon, title, desc }: { icon: React.ReactNode; title: string
     <Card className="rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 shadow-sm hover:shadow-md hover:scale-[1.02] transition">
       <CardHeader>
         <CardTitle className="flex items-center gap-3 text-base font-semibold">
-          <span className="inline-flex h-10 w-10 rounded-xl bg-gradient-to-r from-yellow-600 to-yellow-500 text-white items-center justify-center shadow">
+          <span className="inline-flex h-10 w-10 rounded-xl bg-gradient-to-r from-primary to-muted text-white items-center justify-center shadow">
             {icon}
           </span>
           {title}

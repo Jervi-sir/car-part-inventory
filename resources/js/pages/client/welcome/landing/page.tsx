@@ -30,8 +30,8 @@ export default function LandingPage() {
       <header className="sticky top-0 z-40 bg-white/70 dark:bg-neutral-950/70 backdrop-blur border-b border-neutral-200 dark:border-neutral-800">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <Link href={"/"} className="flex items-center gap-3">
-            <div className="h-8 w-8 rounded bg-yellow-500 text-white dark:bg-gold-400 dark:text-yellow-500 grid place-items-center font-bold">
-              <img src="/images/logo-rafiki-motors-2.png" />
+            <div className="h-8 w-8 rounded bg-primary text-white dark:bg-gold-400 dark:text-primary grid place-items-center font-bold">
+              <img src="/images/theme-blue/logo-rafiki-motors-2.png" />
             </div>
             <span className="font-semibold tracking-tight">Rafiki-Motors</span>
           </Link>
@@ -117,8 +117,8 @@ export default function LandingPage() {
       <footer className="border-t border-neutral-200 dark:border-neutral-800">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8 text-sm text-neutral-500 dark:text-neutral-400 flex flex-col sm:flex-row items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="h-8 w-8 rounded bg-yellow-500 text-white dark:bg-gold-400 dark:text-yellow-500 grid place-items-center font-bold">
-              <img src="/images/logo-rafiki-motors-2.png" />
+            <div className="h-8 w-8 rounded bg-primary text-white dark:bg-gold-400 dark:text-primary grid place-items-center font-bold">
+              <img src="/images/theme-blue/logo-rafiki-motors-2.png" />
             </div>
             <div>
               <div className="font-medium text-neutral-800 dark:text-neutral-100">Rafiki-Motors</div>

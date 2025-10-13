@@ -123,7 +123,7 @@ export function SiteLogo() {
             >
               <Link href={"/"} className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg">
                 {/* <Command className="size-4" color="black" /> */}
-                <img src="/images/logo-rafiki-motors-2.png" />
+                <img src="/images/theme-blue/logo-rafiki-motors-2.png" />
               </Link>
               <div className="grid flex-1 text-left text-sm leading-tight">
                 <span className="truncate font-medium">Pièce automobile.</span>

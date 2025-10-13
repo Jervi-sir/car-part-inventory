@@ -146,7 +146,7 @@ function Stat({
 
   return (
     <div className="text-center">
-      <div className="text-4xl font-extrabold text-yellow-600">
+      <div className="text-4xl font-extrabold text-primary">
         {loading ? "…" : formatBig(animated)}
       </div>
       <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">

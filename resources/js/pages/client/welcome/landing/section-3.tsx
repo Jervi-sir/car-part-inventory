@@ -27,7 +27,7 @@ function ValueCard({ icon, title, desc }: { icon: React.ReactNode; title: string
     <Card className="rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 shadow-sm hover:shadow-md hover:scale-[1.02] transition">
       <CardHeader>
         <CardTitle className="flex items-center gap-3 text-base font-semibold">
-          <span className="inline-flex h-10 w-10 rounded-xl bg-gradient-to-r from-yellow-600 to-yellow-500 text-white items-center justify-center shadow">
+          <span className="inline-flex h-10 w-10 rounded-xl bg-gradient-to-r from-primary to-muted text-white items-center justify-center shadow">
             {icon}
           </span>
           {title}

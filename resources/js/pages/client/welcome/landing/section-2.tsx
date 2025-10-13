@@ -41,7 +41,7 @@ export const Section2 = () => {
             </MosaicCard>
             {/* Small logo / brand block */}
             <MosaicCard className="lg:col-span-1 items-center justify-center p-2 py-4">
-              <img src="/images/logo-rafiki-motors-1.png" alt="Rafiki-Motors" className="opacity-80" />
+              <img src="/images/theme-blue/logo-rafiki-motors-1.png" alt="Rafiki-Motors" className="opacity-80" />
             </MosaicCard>
           </div>
 
