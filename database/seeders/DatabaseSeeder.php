@@ -24,8 +24,18 @@ class DatabaseSeeder extends Seeder
         //         'email_verified_at' => now(),
         //     ]
         // );
-        $fill_data = new FillDataSeeder2();
-        $fill_data->run();
-
+        // $fill_data = new FillDataSeeder2();
+        // $fill_data->run();
+        $this->call([
+            DeliveryMethodSeeder::class,
+            UserSeeder::class,
+            ManufacturerSeeder::class,
+            VehicleBrandSeeder::class,
+            VehicleModelSeeder::class,
+            PartSeeder::class,            // creates ≥200 parts
+            PartFitmentSeeder::class,
+            OrderSeeder::class,
+            AdCreativeSeeder::class,
+        ]);
     }
 }
